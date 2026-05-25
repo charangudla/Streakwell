@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/v_categories.dart';
@@ -9,15 +10,16 @@ import '../../../core/widgets/cat_tile.dart';
 import '../../../core/widgets/progress_ring.dart';
 import '../../../core/widgets/thirty_day_grid.dart';
 import '../../../core/widgets/v_button.dart';
+import '../application/onboarding_provider.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _index = 0;
 
@@ -55,15 +57,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _next() {
+  Future<void> _next() async {
     if (_index < _slides.length - 1) {
       _controller.nextPage(
         duration: const Duration(milliseconds: 320),
         curve: Curves.easeOut,
       );
-    } else {
-      context.go('/register');
+      return;
     }
+    await ref.read(onboardingProvider.notifier).markSeen();
+    if (!mounted) return;
+    context.go('/register');
+  }
+
+  Future<void> _skip() async {
+    await ref.read(onboardingProvider.notifier).markSeen();
+    if (!mounted) return;
+    context.go('/welcome');
   }
 
   @override
@@ -78,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => context.go('/welcome'),
+                    onPressed: _skip,
                     style: TextButton.styleFrom(
                       foregroundColor: Vital30Colors.muted,
                     ),

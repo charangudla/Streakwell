@@ -1,32 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/v_colors.dart';
 import '../../../core/theme/v_spacing.dart';
 import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/v_icon_button.dart';
+import '../application/notification_settings_provider.dart';
 
-class NotificationSettingsScreen extends StatefulWidget {
+class NotificationSettingsScreen extends ConsumerWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() =>
-      _NotificationSettingsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(notificationSettingsProvider);
+    final notifier = ref.read(notificationSettingsProvider.notifier);
+    final prefs = state.preferences;
 
-class _NotificationSettingsScreenState
-    extends State<NotificationSettingsScreen> {
-  bool _daily = true;
-  bool _quiet = true;
-  bool _streak = true;
-  bool _challengeComplete = true;
-  bool _friend = false;
-  bool _weekly = true;
-  bool _newChallenges = false;
-  bool _tips = false;
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -54,16 +44,16 @@ class _NotificationSettingsScreenState
                 _SettingRow(
                   title: 'Daily reminder',
                   description: 'A friendly nudge to check in.',
-                  trailing: '8:00 AM',
+                  trailing: state.reminderTime.format(context),
                   trailingTap: () => context.push('/reminder-time'),
-                  toggle: _daily,
-                  onToggle: (v) => setState(() => _daily = v),
+                  toggle: prefs.daily,
+                  onToggle: notifier.setDailyReminderEnabled,
                 ),
                 _SettingRow(
                   title: 'Quiet hours',
                   description: 'No reminders 10pm – 7am.',
-                  toggle: _quiet,
-                  onToggle: (v) => setState(() => _quiet = v),
+                  toggle: prefs.quietHours,
+                  onToggle: notifier.setQuietHoursEnabled,
                 ),
               ],
             ),
@@ -73,20 +63,20 @@ class _NotificationSettingsScreenState
                 _SettingRow(
                   title: 'Streak milestones',
                   description: 'Day 7, 14, 21 celebrations.',
-                  toggle: _streak,
-                  onToggle: (v) => setState(() => _streak = v),
+                  toggle: prefs.streakMilestones,
+                  onToggle: notifier.setStreakMilestonesEnabled,
                 ),
                 _SettingRow(
                   title: 'Challenge complete',
                   description: 'When you finish day 30.',
-                  toggle: _challengeComplete,
-                  onToggle: (v) => setState(() => _challengeComplete = v),
+                  toggle: prefs.challengeComplete,
+                  onToggle: notifier.setChallengeCompleteEnabled,
                 ),
                 _SettingRow(
                   title: 'Friend activity',
                   description: 'When friends join challenges via your invite.',
-                  toggle: _friend,
-                  onToggle: (v) => setState(() => _friend = v),
+                  toggle: prefs.friendActivity,
+                  onToggle: notifier.setFriendActivityEnabled,
                 ),
               ],
             ),
@@ -96,20 +86,20 @@ class _NotificationSettingsScreenState
                 _SettingRow(
                   title: 'Weekly summary',
                   description: 'Sundays at 7pm.',
-                  toggle: _weekly,
-                  onToggle: (v) => setState(() => _weekly = v),
+                  toggle: prefs.weeklySummary,
+                  onToggle: notifier.setWeeklySummaryEnabled,
                 ),
                 _SettingRow(
                   title: 'New challenges',
                   description: 'When new categories or challenges launch.',
-                  toggle: _newChallenges,
-                  onToggle: (v) => setState(() => _newChallenges = v),
+                  toggle: prefs.newChallenges,
+                  onToggle: notifier.setNewChallengesEnabled,
                 ),
                 _SettingRow(
                   title: 'Tips & guides',
                   description: 'Short reads on habit science.',
-                  toggle: _tips,
-                  onToggle: (v) => setState(() => _tips = v),
+                  toggle: prefs.tips,
+                  onToggle: notifier.setTipsEnabled,
                 ),
               ],
             ),

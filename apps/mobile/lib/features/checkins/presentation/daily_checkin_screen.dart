@@ -11,6 +11,7 @@ import '../../../core/widgets/progress_ring.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/widgets/v_icon_button.dart';
 import '../../../core/widgets/v_pill.dart';
+import '../../celebrations/domain/checkin_celebration.dart';
 import '../../challenges/presentation/challenges_provider.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
 
@@ -25,7 +26,7 @@ class DailyCheckinScreen extends ConsumerStatefulWidget {
 class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
   bool _submitting = false;
 
-  Future<void> _checkin(String status) async {
+  Future<void> _checkin(String status, int dayN) async {
     setState(() => _submitting = true);
     final ok = await ref
         .read(myChallengesNotifierProvider.notifier)
@@ -35,7 +36,10 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
     setState(() => _submitting = false);
     if (ok) {
       if (status == 'COMPLETED') {
-        context.pushReplacement('/celebrate/${widget.userChallengeId}');
+        final route = CheckinCelebration.isFinalDay(dayN)
+            ? '/complete/${widget.userChallengeId}'
+            : '/celebrate/${widget.userChallengeId}';
+        context.pushReplacement(route);
       } else if (status == 'MISSED') {
         await showDialog(
           context: context,
@@ -196,7 +200,7 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
                         icon: Icons.check,
                         onPressed: _submitting
                             ? null
-                            : () => _checkin('COMPLETED'),
+                            : () => _checkin('COMPLETED', dayN),
                       ),
                       const SizedBox(height: 9),
                       Row(
@@ -207,7 +211,7 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
                               child: OutlinedButton(
                                 onPressed: _submitting
                                     ? null
-                                    : () => _checkin('MISSED'),
+                                    : () => _checkin('MISSED', dayN),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Vital30Colors.berry,
                                   side: const BorderSide(
@@ -227,7 +231,7 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
                             child: OutlinedButton(
                               onPressed: _submitting
                                   ? null
-                                  : () => _checkin('SKIPPED'),
+                                  : () => _checkin('SKIPPED', dayN),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Vital30Colors.muted,
                                 shape: RoundedRectangleBorder(

@@ -1,21 +1,41 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/v_colors.dart';
 import '../../../core/theme/v_spacing.dart';
 import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/v_button.dart';
+import '../application/notification_settings_provider.dart';
 
-class ReminderTimeScreen extends StatefulWidget {
+class ReminderTimeScreen extends ConsumerStatefulWidget {
   const ReminderTimeScreen({super.key});
 
   @override
-  State<ReminderTimeScreen> createState() => _ReminderTimeScreenState();
+  ConsumerState<ReminderTimeScreen> createState() => _ReminderTimeScreenState();
 }
 
-class _ReminderTimeScreenState extends State<ReminderTimeScreen> {
-  DateTime _time = DateTime(2026, 1, 1, 8, 0);
+class _ReminderTimeScreenState extends ConsumerState<ReminderTimeScreen> {
+  late DateTime _time;
+  bool _initialised = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialised) return;
+    final initial = ref.read(notificationSettingsProvider).reminderTime;
+    _time = DateTime(2026, 1, 1, initial.hour, initial.minute);
+    _initialised = true;
+  }
+
+  Future<void> _save() async {
+    final picked = TimeOfDay(hour: _time.hour, minute: _time.minute);
+    await ref
+        .read(notificationSettingsProvider.notifier)
+        .setReminderTime(picked);
+    if (mounted) context.pop(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +114,7 @@ class _ReminderTimeScreenState extends State<ReminderTimeScreen> {
                           child: VButton(
                             label: 'Save',
                             fullWidth: true,
-                            onPressed: () => context.pop(_time),
+                            onPressed: _save,
                           ),
                         ),
                       ],

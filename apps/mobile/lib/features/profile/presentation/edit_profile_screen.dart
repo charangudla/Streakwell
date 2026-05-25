@@ -21,12 +21,15 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _email;
+  late final String _originalName;
+  bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
     final u = ref.read(authProvider).user;
-    _name = TextEditingController(text: u?.name ?? '');
+    _originalName = u?.name ?? '';
+    _name = TextEditingController(text: _originalName);
     _email = TextEditingController(text: u?.email ?? '');
   }
 
@@ -35,6 +38,82 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _name.dispose();
     _email.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmAndDeleteAccount() async {
+    if (_submitting) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Vital30Colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Vital30Radius.xl),
+        ),
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This will permanently remove your profile, all challenge progress, '
+          'check-ins, and shared activity. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep account'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Vital30Colors.berry),
+            child: const Text('Delete forever'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _submitting = true);
+    final error = await ref.read(authProvider.notifier).deleteAccount();
+    // On success, the auth state flips to unauthenticated and the router
+    // redirects us away from this screen — there is no `mounted` widget to
+    // call setState on.
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
+  }
+
+  Future<void> _save() async {
+    if (_submitting) return;
+
+    final newName = _name.text.trim();
+    if (newName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name cannot be empty.')),
+      );
+      return;
+    }
+    if (newName == _originalName.trim()) {
+      // Nothing to save — match the user's "Save" expectation by closing.
+      context.pop();
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final error =
+        await ref.read(authProvider.notifier).updateProfile(name: newName);
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+      return;
+    }
+    context.pop();
   }
 
   String _initials() {
@@ -67,15 +146,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       style: Vital30Text.h3.copyWith(fontSize: 16)),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => context.pop(),
-                    child: Text(
-                      'Save',
-                      style: Vital30Text.body.copyWith(
-                        color: Vital30Colors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                      ),
-                    ),
+                    onPressed: _submitting ? null : _save,
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Vital30Colors.primary,
+                            ),
+                          )
+                        : Text(
+                            'Save',
+                            style: Vital30Text.body.copyWith(
+                              color: Vital30Colors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -137,6 +225,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 label: 'Email',
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
+                enabled: false,
+                helper: 'Email changes aren’t available yet.',
                 suffix: const Padding(
                   padding: EdgeInsets.only(right: 10),
                   child: VPill(
@@ -159,7 +249,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 label: 'Delete account',
                 icon: Icons.delete_outline,
                 berry: true,
-                onTap: () {},
+                onTap: _submitting ? () {} : _confirmAndDeleteAccount,
               ),
               const SizedBox(height: 28),
               VButton(

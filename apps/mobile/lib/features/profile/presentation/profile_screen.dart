@@ -9,6 +9,7 @@ import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/screen_header.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
+import '../application/notification_settings_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -17,6 +18,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final myAsync = ref.watch(myChallengesNotifierProvider);
+    final notificationSettings = ref.watch(notificationSettingsProvider);
 
     final active = myAsync.maybeWhen(
       data: (l) => l.where((u) => u.status == 'ACTIVE').length,
@@ -66,13 +68,13 @@ class ProfileScreen extends ConsumerWidget {
               _SettingsRow(
                 title: 'Notifications',
                 icon: Icons.notifications_outlined,
-                trailing: 'On',
+                trailing: notificationSettings.preferences.daily ? 'On' : 'Off',
                 onTap: () => context.push('/notification-settings'),
               ),
               _SettingsRow(
                 title: 'Reminder time',
                 icon: Icons.schedule_outlined,
-                trailing: '8:00 AM',
+                trailing: notificationSettings.reminderTime.format(context),
                 onTap: () => context.push('/reminder-time'),
               ),
               _SettingsRow(

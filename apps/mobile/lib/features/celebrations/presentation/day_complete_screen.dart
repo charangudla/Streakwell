@@ -13,6 +13,8 @@ import '../../../core/utils/progress_calculator.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../challenges/presentation/challenges_provider.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
+import '../domain/checkin_celebration.dart';
+import 'streak_milestone_modal.dart';
 
 class DayCompleteScreen extends ConsumerStatefulWidget {
   const DayCompleteScreen({super.key, required this.userChallengeId});
@@ -24,6 +26,7 @@ class DayCompleteScreen extends ConsumerStatefulWidget {
 
 class _DayCompleteScreenState extends ConsumerState<DayCompleteScreen> {
   Timer? _autoDismiss;
+  bool _milestoneHandled = false;
 
   @override
   void initState() {
@@ -46,6 +49,21 @@ class _DayCompleteScreenState extends ConsumerState<DayCompleteScreen> {
     } else {
       context.go('/home');
     }
+  }
+
+  void _maybeShowStreakMilestone(int currentStreak) {
+    if (_milestoneHandled) return;
+    if (!CheckinCelebration.isStreakMilestone(currentStreak)) return;
+    _milestoneHandled = true;
+    _autoDismiss?.cancel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      StreakMilestoneModal.show(
+        context,
+        streakDays: currentStreak,
+        totalDays: CheckinCelebration.totalDays,
+      );
+    });
   }
 
   @override
@@ -89,6 +107,10 @@ class _DayCompleteScreenState extends ConsumerState<DayCompleteScreen> {
         completionPercentage: 0,
       ),
     );
+
+    if (checkinsAsync.hasValue) {
+      _maybeShowStreakMilestone(stats.currentStreak);
+    }
 
     final dayN = uc == null
         ? 1

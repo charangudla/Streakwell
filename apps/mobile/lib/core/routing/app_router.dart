@@ -15,6 +15,7 @@ import '../../features/challenges/presentation/challenge_detail_screen.dart';
 import '../../features/checkins/presentation/daily_checkin_screen.dart';
 import '../../features/my_challenges/presentation/progress_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/onboarding/application/onboarding_provider.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/health_disclaimer_screen.dart';
@@ -26,6 +27,7 @@ import 'main_navigation_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
+  final onboardingSeen = ref.watch(onboardingProvider);
 
   const publicPaths = <String>{
     '/splash',
@@ -55,9 +57,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Unauthenticated: bounce splash to welcome, block private routes.
-      if (loc == '/splash') return '/welcome';
-      if (!isPublic) return '/welcome';
+      // Unauthenticated first-launch users see the onboarding carousel
+      // before any auth surface.
+      final landingPath = onboardingSeen ? '/welcome' : '/onboarding';
+      if (loc == '/splash') return landingPath;
+      if (!onboardingSeen && loc != '/onboarding') return '/onboarding';
+      if (!isPublic) return landingPath;
       return null;
     },
     routes: [

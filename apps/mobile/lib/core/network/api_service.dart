@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/domain/user.dart';
 import '../constants/app_constants.dart';
 import '../storage/secure_storage.dart';
 import 'mock_data.dart' show MockData;
@@ -91,6 +92,26 @@ class ApiService {
       'password': password,
     });
     return AuthResponse.fromJson(response.data ?? {});
+  }
+
+  /// Updates the authenticated user's profile. Errors propagate so callers can
+  /// surface validation problems or auth failures to the UI; no offline
+  /// fallback because we never want to silently "succeed" on a mutation.
+  Future<User> updateProfile({String? name}) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/users/me',
+      data: body,
+    );
+    return User.fromJson(response.data ?? {});
+  }
+
+  /// Hard-deletes the authenticated user and all owned data. Errors propagate
+  /// so the UI can surface them; the JWT becomes invalid the moment the
+  /// server returns 204.
+  Future<void> deleteAccount() async {
+    await _dio.delete<void>('/users/me');
   }
 
   // 3. Challenge Catalog
