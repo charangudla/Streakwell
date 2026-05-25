@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AppInfo {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ChallengeDifficulty {
+  BEGINNER
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum UserChallengeStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+enum CheckinStatus {
+  COMPLETED
+  MISSED
+  SKIPPED
+}
+
+enum ShareType {
+  CHALLENGE_INVITE
+  DAILY_PROGRESS
+  COMPLETION
+}
+
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique
+  passwordHash String
+  name         String?
+  role         UserRole      @default(USER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  userChallenges UserChallenge[]
+  shareEvents    ShareEvent[]
+}
+
+model ChallengeCategory {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String      @unique
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  challenges  Challenge[]
+}
+
+model Challenge {
+  id               String              @id @default(uuid()) @db.Uuid
+  title            String
+  slug             String              @unique
+  shortDescription String
+  description      String
+  durationDays     Int                 @default(30)
+  difficulty       ChallengeDifficulty
+  dailyTask        String
+  benefits         Json
+  safetyNote       String?
+  isPopular        Boolean             @default(false)
+  isRecommended    Boolean             @default(false)
+  isActive         Boolean             @default(true)
+  categoryId       String              @db.Uuid
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  
+  category         ChallengeCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userChallenges   UserChallenge[]
+
+  @@index([categoryId])
+}
+
+model UserChallenge {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String              @db.Uuid
+  challengeId String              @db.Uuid
+  status      UserChallengeStatus @default(ACTIVE)
+  startDate   DateTime            @default(now())
+  endDate     DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge           @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  checkins    DailyCheckin[]
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}
+
+model DailyCheckin {
+  id              String        @id @default(uuid()) @db.Uuid
+  userChallengeId String        @db.Uuid
+  checkinDate     DateTime      @db.Date
+  status          CheckinStatus
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  userChallenge   UserChallenge @relation(fields: [userChallengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userChallengeId, checkinDate])
+  @@index([userChallengeId])
+}
+
+model ShareEvent {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  type      ShareType
+  platform  String?
+  payload   Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
