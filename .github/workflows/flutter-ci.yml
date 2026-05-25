@@ -1,0 +1,46 @@
+name: Flutter Mobile CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/flutter-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/flutter-ci.yml'
+
+jobs:
+  flutter-test:
+    name: Flutter Mobile Quality Checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter Stable Environment
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Verify Code Formatting
+        run: dart format --set-exit-if-changed lib test
+
+      - name: Static Code Analysis
+        run: flutter analyze
+
+      - name: Run Widget and Unit Tests
+        run: flutter test

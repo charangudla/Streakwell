@@ -1,0 +1,88 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/api/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/api/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  backend-test:
+    name: NestJS API Quality Checks
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vital30
+          POSTGRES_PASSWORD: vital30_password
+          POSTGRES_DB: vital30_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vital30 -d vital30_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: services/api
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://vital30:vital30_password@localhost:5432/vital30_db?schema=public
+      TEST_DATABASE_URL: postgresql://vital30:vital30_password@localhost:5432/vital30_db?schema=public
+      JWT_SECRET: ci_test_secret_for_vital30_api_mvp
+      JWT_EXPIRES_IN: 15m
+      CORS_ORIGIN: http://localhost:5173
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/api/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Apply DB Migrations
+        run: npx prisma migrate deploy
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Run Unit Tests
+        run: npm run test
+
+      - name: Run End-to-End Tests
+        run: npm run test:e2e
+
+      - name: Compile NestJS Build
+        run: npm run build

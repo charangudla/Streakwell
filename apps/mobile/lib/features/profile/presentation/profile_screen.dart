@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/presentation/auth_provider.dart';
 
@@ -103,6 +104,14 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Terms of Wellness Service',
                       trailing: const Icon(Icons.chevron_right, color: Color(0xFF8A9A92)),
                     ),
+                    const Divider(color: Color(0xFFE1E8E4)),
+                    _buildSettingsTile(
+                      context,
+                      icon: Icons.health_and_safety_outlined,
+                      title: 'Health Disclaimer',
+                      trailing: const Icon(Icons.chevron_right, color: Color(0xFF8A9A92)),
+                      onTap: () => GoRouter.of(context).push('/health-disclaimer'),
+                    ),
                   ],
                 ),
               ),
@@ -127,25 +136,35 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingsTile(BuildContext context, {required IconData icon, required String title, required Widget trailing}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF4D5D55), size: 20),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E293B),
-                fontSize: 14,
+  Widget _buildSettingsTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Widget trailing,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFF4D5D55), size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                  fontSize: 14,
+                ),
               ),
             ),
-          ),
-          trailing,
-        ],
+            trailing,
+          ],
+        ),
       ),
     );
   }

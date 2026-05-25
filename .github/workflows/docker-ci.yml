@@ -1,0 +1,64 @@
+name: Docker Stack Production CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.prod.yml'
+      - 'services/api/Dockerfile'
+      - 'apps/admin/Dockerfile'
+      - 'deploy/nginx/**'
+      - '.github/workflows/docker-ci.yml'
+
+jobs:
+  docker-audit:
+    name: Docker Stack Compile Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Mock Environment Variables
+        run: |
+          echo "NODE_ENV=production" > .env
+          echo "API_PORT=3000" >> .env
+          echo "JWT_SECRET=ci_docker_build_mock_secret_key" >> .env
+          echo "JWT_EXPIRES_IN=7d" >> .env
+          echo "CORS_ORIGIN=https://admin.vital30.com" >> .env
+          echo "POSTGRES_USER=vital30_ci" >> .env
+          echo "POSTGRES_PASSWORD=vital30_ci_password" >> .env
+          echo "POSTGRES_DB=vital30_ci_db" >> .env
+          echo "DATABASE_URL=postgresql://vital30_ci:vital30_ci_password@postgres:5432/vital30_ci_db?schema=public" >> .env
+          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "VITE_API_BASE_URL=https://api.vital30.com" >> .env
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose -f docker-compose.prod.yml config
+
+      - name: Build NestJS API Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/api
+          file: ./services/api/Dockerfile
+          push: false
+          tags: vital30-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build React Admin Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/admin
+          file: ./apps/admin/Dockerfile
+          push: false
+          build-args: |
+            VITE_API_BASE_URL=https://api.vital30.com
+          tags: vital30-admin:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

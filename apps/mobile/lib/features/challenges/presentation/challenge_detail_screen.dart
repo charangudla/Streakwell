@@ -248,6 +248,39 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 36),
                 ],
 
+                // General Medical Disclaimer Card
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.privacy_tip_outlined,
+                        color: Color(0xFF64748B),
+                        size: 18,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Vital30 is a general wellness habit platform, not a medical device. This blueprint is for habit-building and motivation, and is not a substitute for professional medical advice, diagnosis, or clinical support.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // Action Floating Rows
                 Row(
                   children: [

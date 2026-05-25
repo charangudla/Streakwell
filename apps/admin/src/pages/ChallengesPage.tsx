@@ -621,10 +621,9 @@ export function ChallengesPage() {
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="safetyNote">
                   Safety Note / Precaution (Optional)
                 </label>
-                <input
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-emerald-600"
+                <textarea
+                  className="w-full min-h-[80px] rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-950 outline-none transition focus:border-emerald-600 resize-y"
                   id="safetyNote"
-                  type="text"
                   placeholder="e.g. Consult cardiac specialists if diagnosed with arrhythmias."
                   value={safetyNote}
                   onChange={(e) => setSafetyNote(e.target.value)}

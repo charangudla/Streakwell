@@ -8,6 +8,7 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/challenges/presentation/challenge_detail_screen.dart';
 import '../../features/my_challenges/presentation/progress_screen.dart';
 import '../../features/checkins/presentation/daily_checkin_screen.dart';
+import '../../features/profile/presentation/health_disclaimer_screen.dart';
 import 'main_navigation_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -75,6 +76,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           final id = state.pathParameters['userChallengeId'] ?? '';
           return ProgressScreen(userChallengeId: id);
         },
+      ),
+      GoRoute(
+        path: '/health-disclaimer',
+        builder: (context, state) => const HealthDisclaimerScreen(),
       ),
     ],
   );

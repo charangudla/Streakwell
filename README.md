@@ -1,5 +1,10 @@
 # Vital30
 
+[![Backend CI](https://github.com/<your-username>/vital30/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/<your-username>/vital30/actions/workflows/backend-ci.yml)
+[![Admin Dashboard CI](https://github.com/<your-username>/vital30/actions/workflows/admin-ci.yml/badge.svg)](https://github.com/<your-username>/vital30/actions/workflows/admin-ci.yml)
+[![Flutter Mobile CI](https://github.com/<your-username>/vital30/actions/workflows/flutter-ci.yml/badge.svg)](https://github.com/<your-username>/vital30/actions/workflows/flutter-ci.yml)
+[![Docker Production CI](https://github.com/<your-username>/vital30/actions/workflows/docker-ci.yml/badge.svg)](https://github.com/<your-username>/vital30/actions/workflows/docker-ci.yml)
+
 Vital30 is a 30-day health and wellness challenge app. The MVP will focus on users joining challenges, checking in daily, tracking active days/streaks, and sharing progress.
 
 This repository currently contains the foundation only:
@@ -113,7 +118,13 @@ flutter run
 
 ## Quality Gates
 
-CI is configured in `.github/workflows/ci.yml` for backend lint/test/build, admin lint/test/build, and Flutter analyze/test. See `docs/testing-and-qa.md`, `docs/security-checklist.md`, and `docs/release-checklist.md` for the QA and security process.
+Quality control and continuous integration is managed by four granular GitHub Actions workflows under `.github/workflows/`:
+- **`backend-ci.yml`**: Triggers on NestJS API updates (installs, lints, runs unit/E2E tests, and compiles dist).
+- **`admin-ci.yml`**: Triggers on React Admin dashboard updates (installs, lints, runs tests, and compiles Vite builds).
+- **`flutter-ci.yml`**: Triggers on Flutter Mobile updates (installs Flutter stable, audits formats, analyzes, and runs tests).
+- **`docker-ci.yml`**: Triggers on main push to compile production API/Admin Docker images and validate compose schema layouts.
+
+See [docs/ci-cd.md](file:///Users/cg1971/Documents/Vital30/docs/ci-cd.md), `docs/testing-and-qa.md`, `docs/security-checklist.md`, and `docs/release-checklist.md` for QA, testing, and deployment guidelines.
 
 ## Deployment Notes
 
