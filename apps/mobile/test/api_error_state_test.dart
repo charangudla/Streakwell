@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dio/dio';
+import 'package:dio/dio.dart';
 import 'package:vital30/core/network/api_service.dart';
 
 void main() {

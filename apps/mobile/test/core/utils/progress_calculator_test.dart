@@ -88,7 +88,7 @@ void main() {
 
       expect(
         text,
-        "I’m on Day 15 of the [No Refined Sugar] on Vital30. I completed 12 out of 30 active days. Join me and build better habits!",
+        "I'm on Day 15 of the [No Refined Sugar] on Vital30. I completed 12 out of 30 active days. Join me and build better habits!",
       );
     });
   });

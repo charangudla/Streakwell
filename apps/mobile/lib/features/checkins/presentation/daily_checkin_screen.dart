@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/mock_data.dart';
+import '../../../core/theme/v_categories.dart';
+import '../../../core/theme/v_colors.dart';
+import '../../../core/theme/v_spacing.dart';
+import '../../../core/theme/v_typography.dart';
+import '../../../core/widgets/progress_ring.dart';
+import '../../../core/widgets/v_button.dart';
+import '../../../core/widgets/v_icon_button.dart';
+import '../../../core/widgets/v_pill.dart';
 import '../../challenges/presentation/challenges_provider.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
-import '../../../core/network/mock_data.dart';
 
 class DailyCheckinScreen extends ConsumerStatefulWidget {
-  const DailyCheckinScreen({
-    super.key,
-    required this.userChallengeId,
-  });
-
+  const DailyCheckinScreen({super.key, required this.userChallengeId});
   final String userChallengeId;
 
   @override
@@ -19,273 +23,330 @@ class DailyCheckinScreen extends ConsumerStatefulWidget {
 }
 
 class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
-  final _notesController = TextEditingController();
-  bool _isSubmitting = false;
+  bool _submitting = false;
 
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleCheckin(String status) async {
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    final notes = _notesController.text.trim();
-    final success = await ref
+  Future<void> _checkin(String status) async {
+    setState(() => _submitting = true);
+    final ok = await ref
         .read(myChallengesNotifierProvider.notifier)
-        .checkin(widget.userChallengeId, status, notes.isNotEmpty ? notes : null);
+        .checkin(widget.userChallengeId, status, null);
 
-    if (mounted) {
-      setState(() {
-        _isSubmitting = false;
-      });
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Daily milestone logged as ${status.toLowerCase()}!'),
-            backgroundColor: status == 'COMPLETED' ? const Color(0xFF10B981) : const Color(0xFF64748B),
-            behavior: SnackBarBehavior.floating,
-          ),
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (ok) {
+      if (status == 'COMPLETED') {
+        context.pushReplacement('/celebrate/${widget.userChallengeId}');
+      } else if (status == 'MISSED') {
+        await showDialog(
+          context: context,
+          barrierColor: Colors.black.withValues(alpha: 0.55),
+          builder: (_) =>
+              _MissedFeedbackDialog(userChallengeId: widget.userChallengeId),
         );
-        context.pop();
+        if (mounted) context.pop();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save daily check-in. please try again.'),
-            backgroundColor: Color(0xFFEF4444),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        context.pop();
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save check-in. Try again.')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final myChallengesAsync = ref.watch(myChallengesNotifierProvider);
+    final myAsync = ref.watch(myChallengesNotifierProvider);
     final challengesAsync = ref.watch(challengesProvider);
 
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Habit Check-in'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
+      body: myAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Vital30Colors.primary),
         ),
-      ),
-      body: myChallengesAsync.when(
-        data: (myChallenges) {
-          final uc = myChallenges.firstWhere(
-            (item) => item.id == widget.userChallengeId,
+        error: (e, _) => Center(child: Text('$e')),
+        data: (list) {
+          final uc = list.firstWhere(
+            (u) => u.id == widget.userChallengeId,
             orElse: () => UserChallenge(
               id: '',
               userId: '',
               challengeId: '',
               status: 'ACTIVE',
               startDate: DateTime.now(),
-              progressPercent: 0.0,
+              progressPercent: 0,
             ),
           );
-
           if (uc.id.isEmpty) {
-            return const Center(child: Text('Challenge progress logs not found.'));
+            return const Center(child: Text('Challenge not found'));
           }
-
           final challenge = challengesAsync.maybeWhen(
-            data: (chals) => chals.firstWhere((c) => c.id == uc.challengeId),
-            orElse: () => const Challenge(
-              id: '',
-              title: 'Habit Blueprint',
-              slug: 'unknown',
-              shortDescription: '',
-              description: '',
-              durationDays: 30,
-              difficulty: 'EASY',
-              categoryId: '',
-              dailyTask: '',
-              benefits: [],
-              safetyNote: '',
+            data: (cs) => cs.firstWhere(
+              (c) => c.id == uc.challengeId,
+              orElse: () => cs.first,
             ),
+            orElse: () => null,
           );
+          final cat = challenge == null
+              ? Vital30Category.diet
+              : Vital30Categories.fromCategoryId(challenge.categoryId);
+          final catStyle = Vital30Categories.of(cat);
+          final dayN =
+              (DateTime.now().difference(uc.startDate.toLocal()).inDays + 1)
+                  .clamp(1, 30);
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+          return SafeArea(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top header card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE1E8E4)),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      VIconButton(
+                        icon: Icons.close,
+                        iconSize: 16,
+                        onPressed: () => context.pop(),
+                      ),
+                      Text(
+                        'DAY $dayN OF 30',
+                        style: Vital30Text.eyebrow.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: Vital30Colors.muted,
+                        ),
+                      ),
+                      const SizedBox(width: 38),
+                    ],
                   ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: VPill(
+                      label: catStyle.label,
+                      tone: VPillTone.neutral,
+                      size: VPillSize.sm,
+                      icon: catStyle.glyph,
+                      backgroundOverride: catStyle.tint,
+                      foregroundOverride: catStyle.ink,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        challenge.title,
-                        style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFF12211B),
+                        challenge?.title ?? 'Today',
+                        style: Vital30Text.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Vital30Colors.muted,
+                          fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Day ${(uc.progressPercent / 100 * 30).toInt().clamp(1, 30)} of 30 Blueprint Milestone',
-                        style: const TextStyle(
-                          color: Color(0xFF8A9A92),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
+                        'Did you finish today?',
+                        style: Vital30Text.h1,
                       ),
-                      const SizedBox(height: 12),
-                      const Divider(color: Color(0xFFE1E8E4)),
-                      const SizedBox(height: 12),
-                      const Text(
-                        "Today's Guided Task:",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF4D5D55),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 10),
                       Text(
-                        challenge.dailyTask,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
+                        "One tap. We won't make a big deal either way — but consistency adds up.",
+                        style: Vital30Text.body,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
-
-                // Central Question
+                const Spacer(),
                 Center(
-                  child: Text(
-                    'Did you complete today’s task?',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFF12211B),
-                      letterSpacing: -0.5,
+                  child: ProgressRing(
+                    progress: dayN / 30,
+                    size: 156,
+                    stroke: 10,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          dayN.toString().padLeft(2, '0'),
+                          style: Vital30Text.numberHero,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'OF 30',
+                          style: Vital30Text.label.copyWith(
+                            fontSize: 10.5,
+                            letterSpacing: 1.6,
+                          ),
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 24),
-
-                // Main checkin buttons
-                if (_isSubmitting)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20.0),
-                      child: CircularProgressIndicator(color: Color(0xFF10B981)),
-                    ),
-                  )
-                else ...[
-                  // 1. Yes, Completed
-                  FilledButton.icon(
-                    onPressed: () => _handleCheckin('COMPLETED'),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Yes, completed today'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(52),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+                  child: Column(
                     children: [
-                      // 2. No, Missed
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _handleCheckin('MISSED'),
-                          icon: const Icon(Icons.cancel_outlined, color: Color(0xFFEF4444)),
-                          label: const Text('No, missed'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            side: const BorderSide(color: Color(0xFFFCA5A5)),
-                            foregroundColor: const Color(0xFFB91C1C),
-                          ),
-                        ),
+                      VButton(
+                        label: _submitting ? 'Saving…' : 'Yes, completed',
+                        fullWidth: true,
+                        icon: Icons.check,
+                        onPressed: _submitting
+                            ? null
+                            : () => _checkin('COMPLETED'),
                       ),
-                      const SizedBox(width: 12),
-
-                      // 3. Skip Day
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _handleCheckin('SKIPPED'),
-                          icon: const Icon(Icons.next_plan_outlined, color: Color(0xFFF59E0B)),
-                          label: const Text('Skip day'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 54,
+                              child: OutlinedButton(
+                                onPressed: _submitting
+                                    ? null
+                                    : () => _checkin('MISSED'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Vital30Colors.berry,
+                                  side: const BorderSide(
+                                      color: Vital30Colors.berryTint),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        Vital30Radius.lg),
+                                  ),
+                                ),
+                                child: const Text('No, missed today'),
+                              ),
                             ),
-                            side: const BorderSide(color: Color(0xFFFDE68A)),
-                            foregroundColor: const Color(0xFFB45309),
                           ),
-                        ),
+                          const SizedBox(width: 9),
+                          SizedBox(
+                            height: 54,
+                            child: OutlinedButton(
+                              onPressed: _submitting
+                                  ? null
+                                  : () => _checkin('SKIPPED'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Vital30Colors.muted,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      Vital30Radius.lg),
+                                ),
+                              ),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Text('Skip'),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-                const SizedBox(height: 32),
-
-                // Optional Journal Notes Box
-                const Text(
-                  'Journal Entry (Optional)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                    fontSize: 13,
-                  ),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Record physical sensations, hurdles overcome, or daily learnings...',
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
-                ),
-                const SizedBox(height: 24),
               ],
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF10B981)),
-        ),
-        error: (err, _) => Center(
-          child: Text('Error loading daily task detail: $err'),
+      ),
+    );
+  }
+}
+
+class _MissedFeedbackDialog extends ConsumerWidget {
+  const _MissedFeedbackDialog({required this.userChallengeId});
+  final String userChallengeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dialog(
+      backgroundColor: Vital30Colors.surface,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Vital30Radius.xl),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [Vital30Colors.accentTint, Vital30Colors.surface],
+                ),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Container(
+                width: 54,
+                height: 54,
+                decoration: const BoxDecoration(
+                  color: Vital30Colors.accentTint,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '·5·',
+                  style: Vital30Text.serifAccent(
+                    size: 32,
+                    color: Vital30Colors.accentDeep,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              "THAT'S OKAY",
+              style: Vital30Text.eyebrow.copyWith(
+                color: Vital30Colors.accent,
+                letterSpacing: 1.4,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 8),
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: Vital30Text.h2.copyWith(fontSize: 24, height: 1.18),
+                children: [
+                  const TextSpan(text: 'Recovery '),
+                  TextSpan(
+                    text: 'matters',
+                    style: Vital30Text.serifAccent(
+                      size: 24,
+                      color: Vital30Colors.primary,
+                    ),
+                  ),
+                  const TextSpan(text: '. Come back tomorrow.'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your streak may break, but your active days are still counting. Progress over perfection.',
+              textAlign: TextAlign.center,
+              style: Vital30Text.body.copyWith(color: Vital30Colors.inkSoft),
+            ),
+            const SizedBox(height: 18),
+            VButton(
+              label: 'See my progress',
+              fullWidth: true,
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.go('/progress/$userChallengeId');
+              },
+            ),
+            const SizedBox(height: 6),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
         ),
       ),
     );

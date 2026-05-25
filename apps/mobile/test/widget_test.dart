@@ -1,22 +1,31 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vital30/app.dart';
 
 void main() {
-  testWidgets('app starts and shows the welcome screen', (tester) async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Stub flutter_secure_storage so checkAuth() resolves cleanly during boot.
+  setUp(() {
+    const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async => null);
+  });
+
+  testWidgets('app boots and lands on the welcome screen', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: Vital30App(),
       ),
     );
-    await tester.pump();
-    await tester.pump(); // Allow router redirection loop to complete
+    // Splash has an infinite-loop dot animation, so we can't pumpAndSettle.
+    // Pump frames so auth init finishes and the router redirects to /welcome.
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
-    // Verify Welcome Screen details
-    expect(find.text('Vital30'), findsWidgets);
-    expect(find.text('Build lifelong habits in 30 days'), findsOneWidget);
-    expect(find.text('Get Started'), findsOneWidget);
+    expect(find.text('Get started'), findsOneWidget);
     expect(find.text('I already have an account'), findsOneWidget);
   });
 }

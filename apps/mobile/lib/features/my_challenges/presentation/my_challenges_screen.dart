@@ -1,324 +1,393 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../challenges/presentation/challenges_provider.dart';
-import '../../my_challenges/presentation/my_challenges_provider.dart';
-import '../../../core/utils/progress_calculator.dart';
 import '../../../core/network/mock_data.dart';
+import '../../../core/theme/v_categories.dart';
+import '../../../core/theme/v_colors.dart';
+import '../../../core/theme/v_spacing.dart';
+import '../../../core/theme/v_typography.dart';
+import '../../../core/utils/progress_calculator.dart';
+import '../../../core/widgets/cat_tile.dart';
+import '../../../core/widgets/screen_header.dart';
+import '../../../core/widgets/v_button.dart';
+import '../../../core/widgets/v_pill.dart';
+import '../../../core/widgets/v_progress_bar.dart';
+import '../../../core/widgets/v_stat.dart';
+import '../../challenges/presentation/challenges_provider.dart';
+import 'my_challenges_provider.dart';
 
 class MyChallengesScreen extends ConsumerWidget {
   const MyChallengesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final myChallengesAsync = ref.watch(myChallengesNotifierProvider);
+    final myAsync = ref.watch(myChallengesNotifierProvider);
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'My Streaks',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5),
-          ),
-          bottom: const TabBar(
-            indicatorColor: Color(0xFF10B981),
-            labelColor: Color(0xFF10B981),
-            unselectedLabelColor: Color(0xFF64748B),
-            labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-            unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            tabs: [
-              Tab(text: 'Active Blueprints'),
-              Tab(text: 'Completed'),
-            ],
-          ),
+    return SafeArea(
+      bottom: false,
+      child: myAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Vital30Colors.primary),
         ),
-        body: myChallengesAsync.when(
-          data: (myChallenges) {
-            final active = myChallenges.where((uc) => uc.status == 'ACTIVE').toList();
-            final completed = myChallenges.where((uc) => uc.status == 'COMPLETED').toList();
+        error: (e, _) => Center(child: Text('Error: $e', style: Vital30Text.body)),
+        data: (list) {
+          final active = list.where((u) => u.status == 'ACTIVE').toList();
+          final completed = list.where((u) => u.status == 'COMPLETED').toList();
+          final dueCount = active.length;
 
-            return TabBarView(
-              children: [
-                _buildActiveTab(context, ref, active),
-                _buildCompletedTab(context, ref, completed),
-              ],
-            );
-          },
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: Color(0xFF10B981)),
-          ),
-          error: (err, _) => Center(
-            child: Text('Error loading my habits: $err'),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActiveTab(BuildContext context, WidgetRef ref, List<UserChallenge> list) {
-    if (list.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.stars_outlined, size: 56, color: Color(0xFF8A9A92)),
-            const SizedBox(height: 16),
-            const Text(
-              'No active wellness habits',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B)),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Join a habit blueprint from Explore to begin.',
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(20.0),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final uc = list[index];
-        return _buildChallengeActiveCard(context, ref, uc);
-      },
-    );
-  }
-
-  Widget _buildCompletedTab(BuildContext context, WidgetRef ref, List<UserChallenge> list) {
-    if (list.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.emoji_events_outlined, size: 56, color: Color(0xFF8A9A92)),
-            const SizedBox(height: 16),
-            const Text(
-              'No completed streaks yet',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B)),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Complete all 30 days of a habit blueprint to show it here.',
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(20.0),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final uc = list[index];
-        return Consumer(builder: (context, ref, _) {
-          final challengesAsync = ref.watch(challengesProvider);
-          final title = challengesAsync.maybeWhen(
-            data: (chals) => chals.firstWhere((c) => c.id == uc.challengeId).title,
-            orElse: () => 'Habit Blueprint',
-          );
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.stars, color: Color(0xFFF59E0B), size: 36),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B)),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '30 Days 100% Completed!',
-                          style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w700, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+          return ListView(
+            padding: const EdgeInsets.only(top: 14, bottom: 140),
+            children: [
+              ScreenHeader(
+                title: 'My progress',
+                subtitle: active.isEmpty
+                    ? 'No active challenges yet. Browse to start one.'
+                    : '${active.length} active ${active.length == 1 ? "challenge" : "challenges"}. ${dueCount > 0 ? "$dueCount check-in waiting." : ""}',
               ),
-            ),
+              const SizedBox(height: 16),
+              if (dueCount > 0)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+                  child: _DueReminderStrip(),
+                ),
+              const SizedBox(height: 20),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+                child: _SectionLabel(label: 'Active'),
+              ),
+              const SizedBox(height: 12),
+              for (final uc in active)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      Vital30Space.screenH, 0, Vital30Space.screenH, 12),
+                  child: _ActiveCard(uc: uc),
+                ),
+              if (active.isEmpty) const _EmptyActive(),
+              if (completed.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+                  child: _SectionLabel(label: 'Completed'),
+                ),
+                const SizedBox(height: 12),
+                for (final uc in completed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        Vital30Space.screenH, 0, Vital30Space.screenH, 10),
+                    child: _CompletedCard(uc: uc),
+                  ),
+              ],
+            ],
           );
-        });
-      },
-    );
-  }
-
-  Widget _buildChallengeActiveCard(BuildContext context, WidgetRef ref, UserChallenge uc) {
-    final challengesAsync = ref.watch(challengesProvider);
-    final checkinsAsync = ref.watch(checkinsProvider(uc.id));
-
-    final title = challengesAsync.maybeWhen(
-      data: (chals) => chals.firstWhere((c) => c.id == uc.challengeId).title,
-      orElse: () => 'Habit Blueprint',
-    );
-
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      key: ValueKey(uc.id), // For automated testing lookup
-      margin: const EdgeInsets.only(bottom: 20),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: title and day number
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                ),
-                Text(
-                  'Day ${(uc.progressPercent / 100 * 30).toInt().clamp(1, 30)} of 30',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Progress bar
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: uc.progressPercent / 100,
-                      backgroundColor: const Color(0xFFE1E8E4),
-                      color: const Color(0xFF10B981),
-                      minHeight: 8,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '${uc.progressPercent.toInt()}%',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: Color(0xFF475569),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Streak and compliance row
-            checkinsAsync.when(
-              data: (checkins) {
-                final stats = ProgressCalculator.calculate(checkins);
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildStatCol('Active Days', '${stats.completedCount}'),
-                    _buildStatCol('Streak', '${stats.currentStreak} 🔥'),
-                    _buildStatCol('Missed Days', '${stats.missedCount}'),
-                  ],
-                );
-              },
-              loading: () => const SizedBox(height: 40),
-              error: (_, __) => const SizedBox(height: 40),
-            ),
-            const SizedBox(height: 24),
-
-            // Action row: Check-in & Progress buttons
-            checkinsAsync.when(
-              data: (checkins) {
-                final today = DateTime.now();
-                final checkedInToday = checkins.any((c) =>
-                    c.checkinDate.year == today.year &&
-                    c.checkinDate.month == today.month &&
-                    c.checkinDate.day == today.day);
-
-                return Row(
-                  children: [
-                    if (!checkedInToday) ...[
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: () => context.push('/checkin/${uc.id}'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981),
-                            minimumSize: const Size.fromHeight(48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('Check in Today'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => context.push('/progress/${uc.id}'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          foregroundColor: const Color(0xFF334155),
-                        ),
-                        child: const Text('View Progress'),
-                      ),
-                    ),
-                  ],
-                );
-              },
-              loading: () => const SizedBox(height: 48),
-              error: (_, __) => const SizedBox(height: 48),
-            ),
-          ],
-        ),
+        },
       ),
     );
   }
+}
 
-  Widget _buildStatCol(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFF8A9A92),
-            fontWeight: FontWeight.w800,
-            fontSize: 10,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w900,
-            fontSize: 15,
+        Expanded(
+          child: Text(
+            label,
+            style: Vital30Text.h3.copyWith(fontSize: 16),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DueReminderStrip extends StatelessWidget {
+  const _DueReminderStrip();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Vital30Colors.ink,
+        borderRadius: BorderRadius.circular(Vital30Radius.lg),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Vital30Colors.accent.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.notifications_active_outlined,
+              size: 16,
+              color: Vital30Colors.accent,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Check-ins waiting today',
+              style: Vital30Text.body.copyWith(
+                color: Vital30Colors.surface,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const Icon(Icons.chevron_right,
+              color: Colors.white60, size: 18),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActiveCard extends ConsumerWidget {
+  const _ActiveCard({required this.uc});
+  final UserChallenge uc;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final challengesAsync = ref.watch(challengesProvider);
+    final checkinsAsync = ref.watch(checkinsProvider(uc.id));
+
+    final challenge = challengesAsync.maybeWhen(
+      data: (l) => l.firstWhere(
+        (c) => c.id == uc.challengeId,
+        orElse: () => l.first,
+      ),
+      orElse: () => null,
+    );
+    final cat = challenge == null
+        ? Vital30Category.diet
+        : Vital30Categories.fromCategoryId(challenge.categoryId);
+    final catStyle = Vital30Categories.of(cat);
+
+    final today = DateTime.now();
+    final dueToday = checkinsAsync.maybeWhen(
+      data: (cks) {
+        return !cks.any((c) =>
+            c.checkinDate.year == today.year &&
+            c.checkinDate.month == today.month &&
+            c.checkinDate.day == today.day);
+      },
+      orElse: () => true,
+    );
+
+    final stats = checkinsAsync.maybeWhen(
+      data: ProgressCalculator.calculate,
+      orElse: () => const ProgressStats(
+        completedCount: 0,
+        missedCount: 0,
+        skippedCount: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        completionPercentage: 0,
+      ),
+    );
+
+    final dayN =
+        (today.difference(uc.startDate.toLocal()).inDays + 1).clamp(1, 30);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Vital30Colors.card,
+        borderRadius: BorderRadius.circular(Vital30Radius.lg),
+        border: Border.all(color: Vital30Colors.hairlineSoft),
+        boxShadow: Vital30Shadow.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CatTile(category: cat, size: 42, radius: 11),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      catStyle.short.toUpperCase(),
+                      style: TextStyle(
+                        color: catStyle.ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10.5,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      challenge?.title ?? 'Challenge',
+                      style: Vital30Text.title.copyWith(fontSize: 15),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                'Day $dayN/30',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Vital30Colors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          VProgressBar(progress: stats.completedCount / 30),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    VStat(label: 'Active', value: '${stats.completedCount}'),
+                    const SizedBox(width: 14),
+                    VStat(
+                      label: 'Streak',
+                      value: '${stats.currentStreak}',
+                      icon: Icons.local_fire_department_outlined,
+                      iconColor: Vital30Colors.accent,
+                    ),
+                    if (stats.missedCount > 0) ...[
+                      const SizedBox(width: 14),
+                      VStat(
+                        label: 'Missed',
+                        value: '${stats.missedCount}',
+                        color: Vital30Colors.berry,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (dueToday)
+                VButton(
+                  label: 'Check in',
+                  size: VButtonSize.sm,
+                  onPressed: () => context.push('/checkin/${uc.id}'),
+                )
+              else
+                VButton(
+                  label: 'View',
+                  size: VButtonSize.sm,
+                  kind: VButtonKind.secondary,
+                  onPressed: () => context.push('/progress/${uc.id}'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompletedCard extends ConsumerWidget {
+  const _CompletedCard({required this.uc});
+  final UserChallenge uc;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final challengesAsync = ref.watch(challengesProvider);
+    final challenge = challengesAsync.maybeWhen(
+      data: (l) => l.firstWhere(
+        (c) => c.id == uc.challengeId,
+        orElse: () => l.first,
+      ),
+      orElse: () => null,
+    );
+    final cat = challenge == null
+        ? Vital30Category.diet
+        : Vital30Categories.fromCategoryId(challenge.categoryId);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(Vital30Radius.lg),
+        border: Border.all(color: Vital30Colors.hairline, style: BorderStyle.solid),
+      ),
+      child: Row(
+        children: [
+          CatTile(category: cat, size: 36, radius: 10),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  challenge?.title ?? 'Challenge',
+                  style: Vital30Text.title.copyWith(fontSize: 14.5),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '30 of 30 active days',
+                  style: Vital30Text.caption.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const VPill(
+            label: 'Complete',
+            tone: VPillTone.primary,
+            size: VPillSize.sm,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyActive extends StatelessWidget {
+  const _EmptyActive();
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(Vital30Radius.lg),
+          border: Border.all(color: Vital30Colors.hairline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Vital30Colors.primaryTint,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome,
+                  color: Vital30Colors.primaryDeep, size: 22),
+            ),
+            const SizedBox(height: 14),
+            Text('Nothing active yet.', style: Vital30Text.h3),
+            const SizedBox(height: 6),
+            Text(
+              'Pick a challenge from the Challenges tab to get started.',
+              style: Vital30Text.body,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

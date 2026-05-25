@@ -12,9 +12,13 @@ class AppConstants {
       return dartDefineApiBaseUrl;
     }
 
-    final envValue = dotenv.env['API_BASE_URL'];
-    if (envValue != null && envValue.isNotEmpty) {
-      return envValue;
+    try {
+      final envValue = dotenv.env['API_BASE_URL'];
+      if (envValue != null && envValue.isNotEmpty) {
+        return envValue;
+      }
+    } catch (_) {
+      // dotenv not initialized (e.g. tests). Fall through to default.
     }
 
     return defaultApiBaseUrl;

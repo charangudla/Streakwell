@@ -1,40 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/network/mock_data.dart';
 import '../../../core/routing/main_navigation_shell.dart';
+import '../../../core/theme/v_categories.dart';
+import '../../../core/theme/v_colors.dart';
+import '../../../core/theme/v_spacing.dart';
+import '../../../core/theme/v_typography.dart';
+import '../../../core/widgets/cat_tile.dart';
+import '../../../core/widgets/v_button.dart';
+import '../../../core/widgets/v_icon_button.dart';
+import '../../../core/widgets/v_pill.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
 import 'challenges_provider.dart';
 
 class ChallengeDetailScreen extends ConsumerWidget {
-  const ChallengeDetailScreen({
-    super.key,
-    required this.challengeId,
-  });
-
+  const ChallengeDetailScreen({super.key, required this.challengeId});
   final String challengeId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final challengesAsync = ref.watch(challengesProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
     final myChallengesAsync = ref.watch(myChallengesNotifierProvider);
 
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Habit Blueprint'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
       body: challengesAsync.when(
-        data: (challenges) {
-          final challenge = challenges.firstWhere(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Vital30Colors.primary),
+        ),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (list) {
+          final challenge = list.firstWhere(
             (c) => c.id == challengeId,
             orElse: () => const Challenge(
               id: '',
@@ -50,322 +49,353 @@ class ChallengeDetailScreen extends ConsumerWidget {
               safetyNote: '',
             ),
           );
-
           if (challenge.id.isEmpty) {
             return const Center(child: Text('Challenge not found'));
           }
 
-          final categoryName = categoriesAsync.when(
-            data: (cats) => cats.firstWhere((cat) => cat.id == challenge.categoryId).name,
-            loading: () => 'Loading...',
-            error: (_, __) => 'Wellness Category',
-          );
-
+          final cat =
+              Vital30Categories.fromCategoryId(challenge.categoryId);
           final alreadyJoined = myChallengesAsync.maybeWhen(
-            data: (list) => list.any((uc) => uc.challengeId == challengeId && uc.status == 'ACTIVE'),
+            data: (uc) => uc.any((u) =>
+                u.challengeId == challengeId && u.status == 'ACTIVE'),
             orElse: () => false,
           );
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Category Header Tag
-                Text(
-                  categoryName.toUpperCase(),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 1.0,
+          return Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.only(bottom: 140),
+                children: [
+                  _Hero(challenge: challenge, cat: cat),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
+                    child: Text(challenge.description, style: Vital30Text.body.copyWith(fontSize: 15)),
                   ),
-                ),
-                const SizedBox(height: 8),
-
-                // Challenge Title
-                Text(
-                  challenge.title,
-                  style: textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF12211B),
-                    letterSpacing: -0.5,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
+                    child: _DailyTaskCard(task: challenge.dailyTask),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Difficulty and Duration row
-                Row(
-                  children: [
-                    _buildMetaChip(
-                      context,
-                      icon: Icons.offline_bolt_outlined,
-                      label: challenge.difficulty,
-                      color: const Color(0xFF10B981),
+                  if (challenge.benefits.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 24, 22, 0),
+                      child: _Benefits(benefits: challenge.benefits),
                     ),
-                    const SizedBox(width: 12),
-                    _buildMetaChip(
-                      context,
-                      icon: Icons.calendar_today_outlined,
-                      label: '${challenge.durationDays} Days Duration',
-                      color: const Color(0xFF3B82F6),
+                  if (challenge.safetyNote.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
+                      child: _SafetyNote(note: challenge.safetyNote),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Description
-                Text(
-                  'About this Blueprint',
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  challenge.description,
-                  style: const TextStyle(
-                    color: Color(0xFF4D5D55),
-                    fontSize: 14,
-                    height: 1.6,
+                ],
+              ),
+              // Sticky CTA
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    14,
+                    20,
+                    MediaQuery.of(context).padding.bottom + 16,
                   ),
-                ),
-                const SizedBox(height: 24),
-
-                // Daily Physical Task card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [const Color(0xFF10B981).withValues(alpha: 0.06), const Color(0xFF059669).withValues(alpha: 0.02)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x00F4F1E8), Vital30Colors.surface],
+                      stops: [0.0, 0.3],
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.15)),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.stars, color: Color(0xFF10B981), size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Today's Daily Action",
-                            style: textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0F5132),
-                            ),
-                          ),
-                        ],
+                      VButton(
+                        label: '',
+                        kind: VButtonKind.secondary,
+                        size: VButtonSize.lg,
+                        icon: Icons.ios_share,
+                        onPressed: () => SharePlus.instance.share(ShareParams(
+                            text:
+                                "I'm starting ${challenge.title} on Vital30. Join me!")),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        challenge.dailyTask,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // Benefits Bullet Points
-                if (challenge.benefits.isNotEmpty) ...[
-                  Text(
-                    'Key Physiological Benefits',
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-                  ...challenge.benefits.map((benefit) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                benefit,
-                                style: const TextStyle(
-                                  color: Color(0xFF334155),
-                                  fontSize: 14,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                  const SizedBox(height: 24),
-                ],
-
-                // Safety Note Warning Box
-                if (challenge.safetyNote.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Safety Guidelines',
-                                style: TextStyle(
-                                  color: Color(0xFF92400E),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                challenge.safetyNote,
-                                style: const TextStyle(
-                                  color: Color(0xFFB45309),
-                                  fontSize: 12,
-                                  height: 1.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                ],
-
-                // General Medical Disclaimer Card
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.privacy_tip_outlined,
-                        color: Color(0xFF64748B),
-                        size: 18,
-                      ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          'Vital30 is a general wellness habit platform, not a medical device. This blueprint is for habit-building and motivation, and is not a substitute for professional medical advice, diagnosis, or clinical support.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF64748B),
-                            height: 1.4,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: VButton(
+                          label:
+                              alreadyJoined ? 'Already joined' : 'Join challenge',
+                          fullWidth: true,
+                          onPressed: alreadyJoined
+                              ? null
+                              : () async {
+                                  final ok = await ref
+                                      .read(myChallengesNotifierProvider.notifier)
+                                      .join(challenge.id);
+                                  if (ok && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text('Joined ${challenge.title}'),
+                                      ),
+                                    );
+                                    ref
+                                        .read(mainNavigationTabProvider.notifier)
+                                        .state = 2;
+                                    context.pop();
+                                  }
+                                },
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-
-                // Action Floating Rows
-                Row(
+              ),
+              // Floating glass back/share
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 20,
+                right: 20,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      flex: 3,
-                      child: FilledButton(
-                        onPressed: alreadyJoined
-                            ? null
-                            : () async {
-                                final success = await ref
-                                    .read(myChallengesNotifierProvider.notifier)
-                                    .join(challenge.id);
-                                if (success && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Successfully joined ${challenge.title}!'),
-                                      backgroundColor: const Color(0xFF10B981),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  // Switch to My Challenges tab
-                                  ref.read(mainNavigationTabProvider.notifier).state = 2;
-                                  context.pop();
-                                }
-                              },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                        ),
-                        child: Text(alreadyJoined ? 'Active Challenge' : 'Join Challenge'),
-                      ),
+                    VIconButton(
+                      icon: Icons.arrow_back_ios_new,
+                      iconSize: 16,
+                      background: Colors.white.withValues(alpha: 0.7),
+                      borderColor: Colors.transparent,
+                      onPressed: () => context.pop(),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          final shareText = "I'm starting the ${challenge.title} on Vital30. Join me and build better habits!";
-                          SharePlus.instance.share(ShareParams(text: shareText));
-                        },
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(52),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          foregroundColor: const Color(0xFF334155),
-                        ),
-                        child: const Icon(Icons.share_outlined),
-                      ),
+                    VIconButton(
+                      icon: Icons.ios_share,
+                      iconSize: 16,
+                      background: Colors.white.withValues(alpha: 0.7),
+                      borderColor: Colors.transparent,
+                      onPressed: () => SharePlus.instance.share(ShareParams(
+                          text:
+                              "I'm starting ${challenge.title} on Vital30!")),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
+              ),
+            ],
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF10B981)),
+      ),
+    );
+  }
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.challenge, required this.cat});
+  final Challenge challenge;
+  final Vital30Category cat;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Vital30Categories.of(cat);
+    final difficulty = _readableDifficulty(challenge.difficulty);
+
+    return ClipRect(
+      child: Container(
+        color: style.tint,
+        padding: EdgeInsets.fromLTRB(
+          22,
+          MediaQuery.of(context).padding.top + 66,
+          22,
+          28,
         ),
-        error: (err, _) => Center(
-          child: Text('Error loading blueprint detail: $err'),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned(
+              right: -30,
+              top: 30,
+              child: Text(
+                '30',
+                style: GoogleFonts.instrumentSerif(
+                  fontStyle: FontStyle.italic,
+                  fontSize: 280,
+                  fontWeight: FontWeight.w400,
+                  color: style.ink.withValues(alpha: 0.10),
+                  height: 0.85,
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CatTile(category: cat, size: 56, radius: 14),
+                const SizedBox(height: 16),
+                Text(
+                  style.label.toUpperCase(),
+                  style: Vital30Text.eyebrow.copyWith(
+                    color: style.ink,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(challenge.title, style: Vital30Text.h1),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    VPill(
+                      label: difficulty,
+                      tone: VPillTone.dark,
+                      size: VPillSize.sm,
+                    ),
+                    VPill(
+                      label: '${challenge.durationDays} days',
+                      tone: VPillTone.outline,
+                      size: VPillSize.sm,
+                      backgroundOverride:
+                          Colors.white.withValues(alpha: 0.4),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMetaChip(BuildContext context, {required IconData icon, required String label, required Color color}) {
+  String _readableDifficulty(String d) {
+    switch (d.toUpperCase()) {
+      case 'EASY':
+        return 'Beginner';
+      case 'MEDIUM':
+        return 'Moderate';
+      case 'HARD':
+        return 'Hard';
+      default:
+        return d;
+    }
+  }
+}
+
+class _DailyTaskCard extends StatelessWidget {
+  const _DailyTaskCard({required this.task});
+  final String task;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-        borderRadius: BorderRadius.circular(10),
+        color: Vital30Colors.card,
+        borderRadius: BorderRadius.circular(Vital30Radius.lg),
+        border: Border.all(color: Vital30Colors.hairlineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('DAILY TASK', style: Vital30Text.label.copyWith(fontSize: 11)),
+          const SizedBox(height: 6),
+          Text(
+            task.isEmpty ? 'Complete one small action today.' : task,
+            style: Vital30Text.title.copyWith(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Benefits extends StatelessWidget {
+  const _Benefits({required this.benefits});
+  final List<String> benefits;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "WHAT YOU'LL NOTICE",
+          style: Vital30Text.label.copyWith(fontSize: 13, letterSpacing: 1),
+        ),
+        const SizedBox(height: 12),
+        for (final b in benefits) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Vital30Colors.primaryTint,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check,
+                    size: 14, color: Vital30Colors.primaryDeep),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  b,
+                  style: Vital30Text.title.copyWith(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _SafetyNote extends StatelessWidget {
+  const _SafetyNote({required this.note});
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Vital30Colors.skyTint,
+        borderRadius: BorderRadius.circular(Vital30Radius.md),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: Vital30Colors.sky.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'i',
+              style: GoogleFonts.instrumentSerif(
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: Vital30Colors.sky,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Vital30 provides general wellness guidance only. $note',
+              style: Vital30Text.body.copyWith(
+                fontSize: 12,
+                color: Vital30Colors.skyDeep,
+                height: 1.5,
+              ),
             ),
           ),
         ],
