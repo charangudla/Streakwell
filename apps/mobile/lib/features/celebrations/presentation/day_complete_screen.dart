@@ -31,7 +31,9 @@ class _DayCompleteScreenState extends ConsumerState<DayCompleteScreen> {
   @override
   void initState() {
     super.initState();
-    _autoDismiss = Timer(const Duration(milliseconds: 2500), () {
+    // 4.5s gives users time to actually read the celebration; the Continue
+    // button is right there if they want to dismiss sooner.
+    _autoDismiss = Timer(const Duration(milliseconds: 4500), () {
       if (mounted) _finish();
     });
   }

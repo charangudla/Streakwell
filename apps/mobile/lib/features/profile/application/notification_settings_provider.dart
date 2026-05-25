@@ -46,8 +46,29 @@ class NotificationSettingsNotifier
 
   /// Initialise the notification subsystem and align the OS schedule with
   /// the persisted preferences. Call once at app startup.
+  ///
+  /// If the daily reminder is enabled but the OS has not granted permission,
+  /// we proactively request it here — otherwise iOS silently drops every
+  /// scheduled notification and the user never gets the system prompt. If
+  /// permission ends up denied, we persist the toggle as off so the UI
+  /// reflects reality (the user can re-enable from Settings + the in-app
+  /// toggle later).
   Future<void> bootstrap() async {
     await _notifications.init();
+
+    if (state.preferences.daily) {
+      final granted = await _notifications.requestPermission();
+      if (!granted) {
+        debugPrint(
+          '[notification_settings] Daily reminder is enabled in prefs but the '
+          'OS denied notification permission. Disabling the toggle.',
+        );
+        await _updatePreferences(state.preferences.copyWith(daily: false));
+        await _notifications.cancelDailyReminder();
+        return;
+      }
+    }
+
     await _applyDailyReminderSchedule();
   }
 
