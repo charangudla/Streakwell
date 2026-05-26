@@ -16,6 +16,19 @@ cp apps/admin/.env.example apps/admin/.env
 cp apps/mobile/.env.example apps/mobile/.env
 ```
 
+> ⚠️ **Heads-up — `services/api/.env` shadows the root `.env`.**
+>
+> The NestJS app loads `services/api/.env` first, then falls back to the
+> repo-root `.env` for missing keys. That means:
+> - **API-only secrets** (`BETTER_AUTH_SECRET`, `EMAIL_PROVIDER`,
+>   `RESEND_API_KEY`, `MAILPIT_HOST`) live in `services/api/.env`.
+> - **Shared keys** (`CORS_ORIGIN`, `DATABASE_URL`) are duplicated in
+>   both files in this repo. When you change a shared key, change it
+>   in **both** places — otherwise the API won't see your edit.
+> - The mobile app reads its own `apps/mobile/assets/env/<env>.env`
+>   asset file, **not** any of these `.env` files.
+> - The website reads `NEXT_PUBLIC_*` only from the root `.env`.
+
 ## 2. Start PostgreSQL and Redis
 
 ```bash
