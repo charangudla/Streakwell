@@ -16,6 +16,7 @@ import '../../../core/widgets/v_pill.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../challenges/presentation/challenges_provider.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
+import '../../notifications/application/notifications_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -25,6 +26,7 @@ class HomeScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final challengesAsync = ref.watch(challengesProvider);
     final myChallengesAsync = ref.watch(myChallengesNotifierProvider);
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
 
     final firstName =
         (auth.user?.name ?? 'there').split(' ').first;
@@ -77,8 +79,12 @@ class HomeScreen extends ConsumerWidget {
                     VIconButton(
                       icon: Icons.notifications_outlined,
                       iconSize: 20,
-                      onPressed: () => context.push('/notifications'),
-                      badge: true,
+                      onPressed: () => context
+                          .push('/notifications')
+                          .then((_) => ref
+                              .read(notificationsProvider.notifier)
+                              .refresh()),
+                      badge: unreadCount > 0,
                     ),
                     const SizedBox(width: 8),
                     _Avatar(initials: _initials(auth.user?.name)),

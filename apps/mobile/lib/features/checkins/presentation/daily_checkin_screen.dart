@@ -228,6 +228,7 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
                           const SizedBox(width: 9),
                           SizedBox(
                             height: 54,
+                            width: 110,
                             child: OutlinedButton(
                               onPressed: _submitting
                                   ? null
