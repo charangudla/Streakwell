@@ -17,6 +17,7 @@ import '../../features/my_challenges/presentation/progress_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/onboarding/application/onboarding_provider.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/profile/presentation/achievements_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/faq_screen.dart';
 import '../../features/profile/presentation/health_disclaimer_screen.dart';
@@ -191,6 +192,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/faq',
         builder: (context, state) => const FaqScreen(),
+      ),
+      GoRoute(
+        path: '/achievements',
+        builder: (context, state) => const AchievementsScreen(),
       ),
     ],
   );

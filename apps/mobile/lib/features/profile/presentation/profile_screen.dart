@@ -85,6 +85,11 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.push('/invite'),
               ),
               _SettingsRow(
+                title: 'Achievements',
+                icon: Icons.emoji_events_outlined,
+                onTap: () => context.push('/achievements'),
+              ),
+              _SettingsRow(
                 title: 'Help & FAQ',
                 icon: Icons.help_outline,
                 onTap: () => context.push('/faq'),
