@@ -1,9 +1,60 @@
 # Vital30 MVP Status & Pending Tasks
 
-**Last updated:** 2026-05-26 (after Better Auth migration)
-**Scope:** Mobile (`apps/mobile`) is the active surface. Backend (`services/api`) and admin (`apps/admin`) status noted but not recently audited.
+**Last updated:** 2026-05-26 (after overnight feature expansion)
+**Scope:** Mobile (`apps/mobile`), public website (`apps/web`, new), and backend (`services/api`).
 
 > Read this before starting work. Verify claims against the code before acting on them — items here may have been completed since this was last updated.
+
+---
+
+## 2026-05-26 overnight expansion — quick punch list
+
+User asked for "fully functional" mobile + website, not just MVP. Worked autonomously through these in one session:
+
+**New surface — public website (`apps/web`):** Next.js 16 (App Router, Turbopack) + Tailwind 4 marketing site on port 3001.
+- [x] Landing (hero, How It Works, popular challenges from API, Why Vital30, phone mockup, testimonials, disclaimer, CTA)
+- [x] `/challenges` with client-side search + category + difficulty filters
+- [x] `/challenges/[slug]` SSG (one per active challenge) + per-page dynamic OG image (`opengraph-image.tsx`)
+- [x] `/categories` + `/categories/[slug]` SSG
+- [x] `/about`, `/download` (with phone-frame screenshot gallery), `/contact`, `/faq`
+- [x] `/privacy`, `/terms`, `/health-disclaimer` (rendered from `docs/*.md`)
+- [x] `sitemap.xml`, `robots.txt`, JSON-LD (Organization + WebSite + per-challenge Article), `not-found.tsx`, `error.tsx`
+- [x] Multi-stage Dockerfile (standalone output, non-root user, includes `docs/` for legal pages); `docker-compose.prod.yml` `web` service; nginx vital30.com + www→apex server blocks
+- [x] Vitest setup with 14 tests (Button, ChallengeCard, lib/api fallback paths)
+
+**Backend new surface:**
+- [x] `GET /challenges/slug/:slug` (anonymous)
+- [x] `Notification` model + module: `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/:id/read`, `POST /notifications/read-all`
+- [x] `Favorite` model + module: `GET /favorites`, `POST /favorites`, `DELETE /favorites/:challengeId`
+- [x] `Achievement` model + module: `GET /achievements`. Awarded automatically from `CheckinsService` on FIRST_CHECKIN, 7-day streak, 21-day streak, CHALLENGE_COMPLETED, THREE_CHALLENGES_COMPLETED. Each award also emits an inbox notification.
+- [x] `User.referralCode` + `User.referredById`. Auto-generated 8-char base32 code in Better Auth's `user.create.after` hook. `GET /referrals/me` (lazy mint as safety net), `POST /referrals/redeem` (emits REFERRAL_JOIN notification to the inviter).
+- [x] On day-30 completion, server now marks `UserChallenge.status = COMPLETED` automatically (mobile no longer needs to compute completion locally).
+- [x] Migration `20260526064349_notifications_referrals_favorites_achievements` applied locally.
+- [x] `docker-compose.prod.yml` fixed: replaced stale `JWT_SECRET`/`JWT_EXPIRES_IN` (pre-Better-Auth) with `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`/`EMAIL_*` so prod boot won't fail.
+
+**Mobile wiring:**
+- [x] **Notifications inbox** — fully wired. Replaced hardcoded list with `notificationsProvider` (Riverpod AsyncNotifier). Pull-to-refresh, optimistic mark-read + mark-all, empty/error states.
+- [x] **Invite friends** — referral code now comes from the backend. New "Redeem" tile lets the user input someone else's code. Removed the fake `_FriendsList` hardcoded entries.
+- [x] **In-app FAQ** — new `/faq` route + entry in Profile.
+
+**Pending tonight (deferred to morning testing):**
+- [ ] **M3 favorite challenges UI** — backend done; mobile UI (heart icon on cards, Favorites tab) not added yet.
+- [ ] **M5 achievements screen** — backend done + auto-awarding works; mobile screen to display badges not added yet.
+- [ ] **M4 share card PNG export** — requires RepaintBoundary work + device verification; safer to do with you watching.
+- [ ] **W4/B5 contact form** — rate-limited public endpoint + form on `/contact`; deferred (mailto still works).
+- [ ] **CI workflows** for web (lint + build + test).
+
+**Verification this session:**
+- API: typecheck clean, jest 12/12 pass, lint 0 errors. `/health` 200, `/challenges/slug/daily-10k-steps` 200 against live DB.
+- Web: build green (60+ prerendered routes), vitest 14/14, dev serves all routes 200.
+- Mobile: `flutter analyze` 0 issues, `flutter test` 46/46 pass.
+
+**Owed before public launch (carried over):**
+- Real `BETTER_AUTH_SECRET` (>= 32 chars) in prod env.
+- Resend (or other) API key in prod env.
+- DNS for vital30.com / api. / admin. + Let's Encrypt cert chain.
+- App Store + Play Store assets + submission.
+- Attorney review of `/docs/{privacy,terms,health-disclaimer}.md`.
 
 ---
 
