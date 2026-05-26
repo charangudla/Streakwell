@@ -1,6 +1,6 @@
 # Vital30 MVP Status & Pending Tasks
 
-**Last updated:** 2026-05-25 (after account deletion landing)
+**Last updated:** 2026-05-25 (after on-device end-to-end verification)
 **Scope:** Mobile (`apps/mobile`) is the active surface. Backend (`services/api`) and admin (`apps/admin`) status noted but not recently audited.
 
 > Read this before starting work. Verify claims against the code before acting on them — items here may have been completed since this was last updated.
@@ -83,9 +83,19 @@ Buttons navigate but no API call / no persistence:
 
 **Tests:** `npm test` → 22/22 unit pass. `npm run test:e2e` → 9 passing (auth-flow e2e + app e2e), 9 placeholder `.todo` left in `mvp-contract.e2e-spec.ts` for the contracts that need a real DB to be meaningful (joining, check-in dedupe, cross-user denial). `npm run typecheck` → clean. `npm run lint` → 0 errors (4 pre-existing warnings in `app.e2e-spec.ts`).
 
-**Verification still needed:**
-- Run the API + Postgres + seed locally and confirm each mobile flow round-trips. `prisma/seed.ts` already seeds 6 categories + 42 challenges + one super-admin.
-- Set a real `JWT_SECRET` for any environment that isn't local dev.
+**Verification done on a real iPhone (iOS 26.5):**
+- ✅ Register, persist across app restart, log out.
+- ✅ Challenge list shows real seeded titles ("No Refined Sugar", "Hydration Hero", "Daily 10k Steps").
+- ✅ Join → daily check-in → Day-complete celebration (4.5s).
+- ✅ Edit profile name → Save → restart → new name persists.
+- ✅ Delete account → app returns to Welcome; re-register with same email succeeds (cascade delete works).
+- ✅ Local notification permission prompt fires on first launch with daily reminder on.
+- ✅ Reminder time picker (1-minute steps, legible in dark mode) → notification fires at the chosen time when phone is locked.
+- ✅ Day-30 complete screen + streak milestone modal visuals (via `--dart-define=DEBUG_MENU=true` triggers on Profile).
+
+**Verification still owed for production:**
+- Set a real `JWT_SECRET` and any non-default DB credentials for staging/prod environments.
+- Same flows on a real Android device (notification permission on Android 13+ in particular).
 
 **Gap-fillers that still need new schema (deferred):**
 - Notifications inbox (needs `Notification` model + emit points).
@@ -104,7 +114,7 @@ Has brand color tokens but not restyled to the design package. New admin views f
 
 ## MVP readiness verdict
 
-**Closed beta / internal demo: YES.** App boots, registers, joins challenges, checks in, tracks progress, shares. Visual system is consistent. Caveat to testers: "password reset isn't live, log out/in if you forget."
+**Closed beta / internal demo: YES — verified on iPhone 2026-05-25.** App boots, registers, joins challenges, checks in, tracks progress, edits profile, deletes account, fires local notifications. Caveat to testers: "password reset isn't live, log out/in if you forget."
 
 **Public store submission: NO.** Blockers in priority order:
 
