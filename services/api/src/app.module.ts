@@ -6,6 +6,8 @@ import { AuthModule } from '@thallesp/nestjs-better-auth';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuditLogService } from './audit/audit-log.service';
+import { AuditModule } from './audit/audit.module';
 import { createAuth } from './auth/auth';
 import { CategoriesModule } from './categories/categories.module';
 import { ChallengesModule } from './challenges/challenges.module';
@@ -32,19 +34,21 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     ]),
     PrismaModule,
     EmailModule,
+    AuditModule,
 
     // Better Auth — mounts at /api/auth/* and registers a global AuthGuard
     // that protects every non-/api/auth route by default. Use @AllowAnonymous
     // on individual public handlers (categories list, challenges, health).
     AuthModule.forRootAsync({
-      imports: [EmailModule],
-      inject: [PrismaService, ConfigService, EmailService],
+      imports: [EmailModule, AuditModule],
+      inject: [PrismaService, ConfigService, EmailService, AuditLogService],
       useFactory: (
         prisma: PrismaService,
         config: ConfigService,
         email: EmailService,
+        audit: AuditLogService,
       ) => ({
-        auth: createAuth(prisma, config, email),
+        auth: createAuth(prisma, config, email, audit),
         bodyParser: {
           json: { limit: '2mb' },
           urlencoded: { limit: '2mb', extended: true },

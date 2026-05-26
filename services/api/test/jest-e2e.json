@@ -11,6 +11,7 @@
     "^@thallesp/nestjs-better-auth$": "<rootDir>/mocks/nestjs-better-auth.mock.ts",
     "^better-auth$": "<rootDir>/mocks/better-auth.mock.ts",
     "^better-auth/adapters/prisma$": "<rootDir>/mocks/better-auth-adapters-prisma.mock.ts",
+    "^better-auth/api$": "<rootDir>/mocks/better-auth-api.mock.ts",
     "^better-auth/plugins$": "<rootDir>/mocks/better-auth-plugins.mock.ts"
   }
 }

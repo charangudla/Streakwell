@@ -22,6 +22,12 @@ async function bootstrap() {
   // every request and the rate limit silently no-ops.
   app.set('trust proxy', true);
 
+  // SIGTERM / SIGINT (Ctrl-C, `docker stop`, Hostinger restart, k8s rollout)
+  // drains in-flight requests, runs `OnModuleDestroy` hooks (Prisma
+  // disconnect, etc.), then exits cleanly. Without this the process is
+  // killed mid-request, which corrupts in-flight DB writes.
+  app.enableShutdownHooks();
+
   const configService = app.get(ConfigService);
   const port = Number(
     configService.get<string>('PORT') ??

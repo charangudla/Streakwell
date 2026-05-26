@@ -63,6 +63,7 @@ model User {
 
   sessions       Session[]
   accounts       Account[]
+  auditLogs      AuditLog[]
   userChallenges UserChallenge[]
   shareEvents    ShareEvent[]
 }
@@ -115,6 +116,30 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@index([identifier])
+}
+
+// Append-only audit trail for security-relevant events. One row per
+// event; `action` is a dotted namespace (e.g. "auth.signup",
+// "auth.login.failed", "user.role_changed"). `userId` is nullable so we
+// can record pre-authentication events (signup attempts, password reset
+// requests for unknown emails) and so deleting a user via the cascade
+// chain doesn't erase their audit history — onDelete: SetNull keeps the
+// row but breaks the foreign key cleanly.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String?
+  entityId   String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model ChallengeCategory {

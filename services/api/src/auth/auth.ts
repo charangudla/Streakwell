@@ -2,9 +2,12 @@ import type { ConfigService } from '@nestjs/config';
 import type { PrismaClient } from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { bearer } from 'better-auth/plugins';
 
+import type { AuditLogService } from '../audit/audit-log.service';
 import type { EmailService } from '../email/email.service';
+import { validatePassword } from './password-policy';
 
 /**
  * Builds the Better Auth instance.
@@ -28,6 +31,7 @@ export function createAuth(
   prisma: PrismaClient,
   config: ConfigService,
   email: EmailService,
+  audit: AuditLogService,
 ) {
   const secret = config.get<string>('BETTER_AUTH_SECRET');
   if (!secret) {
@@ -54,6 +58,11 @@ export function createAuth(
       minPasswordLength: 8,
       maxPasswordLength: 128,
       sendResetPassword: async ({ user, url, token }) => {
+        await audit.record({
+          userId: user.id,
+          action: 'auth.password_reset.requested',
+          metadata: { email: user.email },
+        });
         await email.send({
           to: user.email,
           subject: 'Reset your Vital30 password',
@@ -70,6 +79,13 @@ export function createAuth(
             '',
             '— Vital30',
           ].join('\n'),
+        });
+      },
+      onPasswordReset: async ({ user }) => {
+        await audit.record({
+          userId: user.id,
+          action: 'auth.password_reset.completed',
+          metadata: { email: user.email },
         });
       },
     },
@@ -126,6 +142,16 @@ export function createAuth(
       // that's the same level of intent-proof Apple's review expects.
       deleteUser: {
         enabled: true,
+        beforeDelete: async (user) => {
+          // Record before the cascade fires — once the User row is gone,
+          // the audit row's userId becomes null (onDelete: SetNull) but
+          // the email + action survive for compliance review.
+          await audit.record({
+            userId: user.id,
+            action: 'auth.account_deleted',
+            metadata: { email: user.email },
+          });
+        },
       },
     },
 
@@ -135,6 +161,64 @@ export function createAuth(
       database: {
         generateId: false,
       },
+    },
+
+    // Fire-and-forget audit-log entries for the security-relevant lifecycle
+    // events. We don't await these from the request handler because Better
+    // Auth's databaseHooks run inside the same transaction — but our
+    // AuditLogService swallows errors internally so a bad write can't fail
+    // the user-facing request anyway.
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            await audit.record({
+              userId: user.id,
+              action: 'auth.signup',
+              metadata: { email: user.email },
+            });
+          },
+        },
+      },
+      session: {
+        create: {
+          after: async (session) => {
+            await audit.record({
+              userId: session.userId,
+              action: 'auth.login',
+              ipAddress: session.ipAddress ?? null,
+              userAgent: session.userAgent ?? null,
+            });
+          },
+        },
+      },
+    },
+
+    // Enforce Vital30's password policy (upper + lower + number + symbol)
+    // before Better Auth ever hashes the credential. Runs on /sign-up/email
+    // and on /reset-password — the two paths that accept a new password.
+    hooks: {
+      // createAuthMiddleware requires an async handler signature even when
+      // the body has no actual awaits — validatePassword is sync. Disable
+      // the eslint complaint locally.
+      // eslint-disable-next-line @typescript-eslint/require-await
+      before: createAuthMiddleware(async (ctx) => {
+        const path = ctx.path;
+        if (path === '/sign-up/email') {
+          const body = ctx.body as { password?: unknown } | undefined;
+          const result = validatePassword(body?.password);
+          if (!result.ok) {
+            throw new APIError('BAD_REQUEST', { message: result.reason });
+          }
+        }
+        if (path === '/reset-password') {
+          const body = ctx.body as { newPassword?: unknown } | undefined;
+          const result = validatePassword(body?.newPassword);
+          if (!result.ok) {
+            throw new APIError('BAD_REQUEST', { message: result.reason });
+          }
+        }
+      }),
     },
 
     plugins: [bearer()],
