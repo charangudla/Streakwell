@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Container } from "./Container";
 import { ButtonLink } from "./Button";
+import { NotificationBell } from "./NotificationBell";
 import { signOut, useSession } from "@/lib/auth-client";
 
 const PUBLIC_NAV = [
@@ -64,7 +65,10 @@ export function Header() {
           {isPending ? (
             <div className="h-10 w-24 animate-pulse rounded-full bg-slate-100" />
           ) : user ? (
-            <UserMenu name={user.name} onSignOut={handleSignOut} />
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <UserMenu name={user.name} onSignOut={handleSignOut} />
+            </div>
           ) : (
             <div className="flex items-center gap-3">
               <Link
@@ -218,6 +222,27 @@ function UserMenu({
               onClick={() => setOpen(false)}
             >
               My challenges
+            </Link>
+            <Link
+              href="/favorites"
+              className="block px-4 py-2 text-sm text-ink hover:bg-slate-50"
+              onClick={() => setOpen(false)}
+            >
+              Saved challenges
+            </Link>
+            <Link
+              href="/achievements"
+              className="block px-4 py-2 text-sm text-ink hover:bg-slate-50"
+              onClick={() => setOpen(false)}
+            >
+              Achievements
+            </Link>
+            <Link
+              href="/invite"
+              className="block px-4 py-2 text-sm text-ink hover:bg-slate-50"
+              onClick={() => setOpen(false)}
+            >
+              Invite friends
             </Link>
             <Link
               href="/profile"
