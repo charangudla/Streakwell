@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ContactForm } from "@/components/ContactForm";
 import { Container } from "@/components/Container";
 import { CONTACT_EMAIL } from "@/lib/constants";
 
@@ -21,10 +22,14 @@ export default function ContactPage() {
           questions about a challenge.
         </p>
 
-        <div className="mt-10 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+        <div className="mt-10">
+          <ContactForm />
+        </div>
+
+        <div className="mt-12 space-y-4 rounded-2xl border border-slate-200 bg-surface-soft p-6 sm:p-8">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
-              General &amp; support
+              Or email us directly
             </p>
             <a
               href={`mailto:${CONTACT_EMAIL}`}

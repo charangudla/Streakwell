@@ -20,6 +20,7 @@ import { HealthModule } from './health/health.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
+import { PublicContactModule } from './public-contact/public-contact.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { ShareEventsModule } from './share-events/share-events.module';
 import { UserChallengesModule } from './user-challenges/user-challenges.module';
@@ -69,6 +70,7 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     CheckinsModule,
     FavoritesModule,
     ReferralsModule,
+    PublicContactModule,
     ShareEventsModule,
   ],
   controllers: [AppController],
