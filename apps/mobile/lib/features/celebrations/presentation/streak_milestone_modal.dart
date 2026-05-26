@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/v_colors.dart';
 import '../../../core/theme/v_spacing.dart';
@@ -118,7 +119,10 @@ class StreakMilestoneModal extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                _MiniGrid(done: streakDays, total: totalDays.clamp(streakDays, 30)),
+                _SlidingWeekStrip(
+                  currentDay: streakDays,
+                  totalDays: totalDays,
+                ),
                 const SizedBox(height: 22),
                 VButton(
                   label: 'Share milestone',
@@ -231,33 +235,113 @@ class _StreakBadge extends StatelessWidget {
   }
 }
 
-class _MiniGrid extends StatelessWidget {
-  const _MiniGrid({required this.done, required this.total});
-  final int done;
-  final int total;
+/// Pure helper for the sliding-week strip's visible day range. Lives at
+/// top level so the windowing rules can be unit-tested without rendering
+/// the widget.
+class SlidingWeekStripWindow {
+  const SlidingWeekStripWindow._();
+
+  static const int defaultWindowSize = 7;
+
+  /// 1-indexed list of day numbers the strip should display, centred on
+  /// [currentDay] but clamped to `[1, totalDays]`.
+  static List<int> windowFor({
+    required int currentDay,
+    required int totalDays,
+    int windowSize = defaultWindowSize,
+  }) {
+    if (totalDays <= 0) return const [];
+    int start = currentDay - (windowSize ~/ 2);
+    int end = start + windowSize - 1;
+    if (start < 1) {
+      start = 1;
+      end = start + windowSize - 1;
+    }
+    if (end > totalDays) {
+      end = totalDays;
+      start = end - windowSize + 1;
+      if (start < 1) start = 1;
+    }
+    return [for (var i = start; i <= end; i++) i];
+  }
+}
+
+/// 7-cell strip centred on the current streak day, with day numbers visible.
+/// As the user progresses (7 → 14 → 21) the window shifts so the most
+/// recent days stay in view.
+class _SlidingWeekStrip extends StatelessWidget {
+  const _SlidingWeekStrip({
+    required this.currentDay,
+    required this.totalDays,
+  });
+
+  final int currentDay;
+  final int totalDays;
+
   @override
   Widget build(BuildContext context) {
+    final days = SlidingWeekStripWindow.windowFor(
+      currentDay: currentDay,
+      totalDays: totalDays,
+    );
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (var i = 0; i < total; i++)
-          Padding(
-            padding: EdgeInsets.only(right: i == total - 1 ? 0 : 5),
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                color: i < done ? Vital30Colors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-                border: i == done
-                    ? Border.all(color: Vital30Colors.ink, width: 2)
-                    : (i > done
-                        ? Border.all(color: Vital30Colors.hairline)
-                        : null),
-              ),
-            ),
+        for (var i = 0; i < days.length; i++) ...[
+          if (i > 0) const SizedBox(width: 5),
+          _DayCell(
+            day: days[i],
+            state: _stateFor(days[i]),
           ),
+        ],
       ],
+    );
+  }
+
+  _CellState _stateFor(int day) {
+    if (day < currentDay) return _CellState.done;
+    if (day == currentDay) return _CellState.current;
+    return _CellState.upcoming;
+  }
+}
+
+enum _CellState { done, current, upcoming }
+
+class _DayCell extends StatelessWidget {
+  const _DayCell({required this.day, required this.state});
+  final int day;
+  final _CellState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = state == _CellState.done;
+    final isCurrent = state == _CellState.current;
+    final filled = isDone || isCurrent;
+
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: filled ? Vital30Colors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isCurrent
+              ? Vital30Colors.accent
+              : isDone
+                  ? Vital30Colors.primary
+                  : Vital30Colors.hairline,
+          width: isCurrent ? 2.5 : 1,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        day.toString().padLeft(2, '0'),
+        style: GoogleFonts.jetBrainsMono(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: filled ? Vital30Colors.onPrimary : Vital30Colors.muted,
+        ),
+      ),
     );
   }
 }
