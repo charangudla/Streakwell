@@ -7,6 +7,11 @@ class AppConstants {
   static const defaultApiBaseUrl = 'http://localhost:3000';
   static const dartDefineApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
+  /// Enable the in-app Developer section on Profile (milestone modal +
+  /// Day-30 screen triggers). Off by default — pass
+  /// `--dart-define=DEBUG_MENU=true` at build time to enable.
+  static const debugMenuEnabled = bool.fromEnvironment('DEBUG_MENU');
+
   static String get apiBaseUrl {
     if (dartDefineApiBaseUrl.isNotEmpty) {
       return dartDefineApiBaseUrl;

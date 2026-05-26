@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/v_colors.dart';
 import '../../../core/theme/v_spacing.dart';
 import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/screen_header.dart';
 import '../../auth/presentation/auth_provider.dart';
+import '../../celebrations/presentation/streak_milestone_modal.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
 import '../application/notification_settings_provider.dart';
 
@@ -100,6 +102,14 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ]),
           ),
+          if (AppConstants.debugMenuEnabled) ...[
+            const SizedBox(height: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: Vital30Space.screenH),
+              child: _DebugMenuCard(),
+            ),
+          ],
           const SizedBox(height: 18),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
@@ -329,6 +339,129 @@ class _LogoutCard extends StatelessWidget {
                 fontSize: 14,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Developer-only triggers for celebration screens that are hard to exercise
+/// organically (you'd need 7+ consecutive completed check-ins or a 29-day-old
+/// userChallenge). Only rendered when `--dart-define=DEBUG_MENU=true`.
+class _DebugMenuCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Vital30Colors.card,
+        borderRadius: BorderRadius.circular(Vital30Radius.lg),
+        border: Border.all(color: Vital30Colors.hairlineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            child: Text(
+              'DEVELOPER',
+              style: Vital30Text.label.copyWith(
+                color: Vital30Colors.accent,
+                fontSize: 10.5,
+                letterSpacing: 1.4,
+              ),
+            ),
+          ),
+          _DebugRow(
+            label: 'Fire 7-day streak milestone',
+            icon: Icons.local_fire_department_outlined,
+            onTap: () => StreakMilestoneModal.show(
+              context,
+              streakDays: 7,
+              totalDays: 30,
+            ),
+          ),
+          const Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: Vital30Colors.hairlineSoft,
+          ),
+          _DebugRow(
+            label: 'Fire 14-day streak milestone',
+            icon: Icons.local_fire_department_outlined,
+            onTap: () => StreakMilestoneModal.show(
+              context,
+              streakDays: 14,
+              totalDays: 30,
+            ),
+          ),
+          const Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: Vital30Colors.hairlineSoft,
+          ),
+          _DebugRow(
+            label: 'Fire 21-day streak milestone',
+            icon: Icons.local_fire_department_outlined,
+            onTap: () => StreakMilestoneModal.show(
+              context,
+              streakDays: 21,
+              totalDays: 30,
+            ),
+          ),
+          const Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: Vital30Colors.hairlineSoft,
+          ),
+          _DebugRow(
+            label: 'Open Day-30 complete screen',
+            icon: Icons.celebration_outlined,
+            // Any path segment works — ChallengeCompleteScreen falls back to
+            // sample stats when the userChallengeId can't be resolved.
+            onTap: () => context.push('/complete/debug-preview'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DebugRow extends StatelessWidget {
+  const _DebugRow({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: Vital30Colors.inkSoft),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: Vital30Text.body.copyWith(
+                  color: Vital30Colors.ink,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right,
+                size: 18, color: Vital30Colors.muted),
           ],
         ),
       ),
