@@ -119,6 +119,14 @@ export function createAuth(
           input: false,
         },
       },
+      // App Store guideline 5.1.1(v): users must be able to delete their
+      // account from inside the app. Better Auth gates the route off by
+      // default — opt in here. The mobile shows a destructive AlertDialog
+      // before calling this; combined with the session-bearer requirement,
+      // that's the same level of intent-proof Apple's review expects.
+      deleteUser: {
+        enabled: true,
+      },
     },
 
     advanced: {
