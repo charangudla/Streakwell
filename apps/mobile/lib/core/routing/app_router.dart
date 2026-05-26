@@ -12,6 +12,7 @@ import '../../features/auth/presentation/welcome_screen.dart';
 import '../../features/celebrations/presentation/challenge_complete_screen.dart';
 import '../../features/celebrations/presentation/day_complete_screen.dart';
 import '../../features/challenges/presentation/challenge_detail_screen.dart';
+import '../../features/challenges/presentation/favorites_screen.dart';
 import '../../features/checkins/presentation/daily_checkin_screen.dart';
 import '../../features/my_challenges/presentation/progress_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -196,6 +197,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/achievements',
         builder: (context, state) => const AchievementsScreen(),
+      ),
+      GoRoute(
+        path: '/favorites',
+        builder: (context, state) => const FavoritesScreen(),
       ),
     ],
   );

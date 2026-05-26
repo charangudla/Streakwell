@@ -90,6 +90,11 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.push('/achievements'),
               ),
               _SettingsRow(
+                title: 'Saved challenges',
+                icon: Icons.favorite_border,
+                onTap: () => context.push('/favorites'),
+              ),
+              _SettingsRow(
                 title: 'Help & FAQ',
                 icon: Icons.help_outline,
                 onTap: () => context.push('/faq'),
