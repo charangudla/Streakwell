@@ -81,11 +81,17 @@ class _ReminderTimeScreenState extends ConsumerState<ReminderTimeScreen> {
                     SizedBox(
                       height: 220,
                       child: CupertinoTheme(
+                        // Pin to light brightness so the picker text stays
+                        // legible against the cream surface even when the
+                        // phone is in system dark mode.
                         data: const CupertinoThemeData(
+                          brightness: Brightness.light,
+                          primaryColor: Vital30Colors.ink,
                           textTheme: CupertinoTextThemeData(
                             dateTimePickerTextStyle: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w600,
+                              color: Vital30Colors.ink,
                             ),
                           ),
                         ),
@@ -93,7 +99,6 @@ class _ReminderTimeScreenState extends ConsumerState<ReminderTimeScreen> {
                           mode: CupertinoDatePickerMode.time,
                           initialDateTime: _time,
                           use24hFormat: false,
-                          minuteInterval: 5,
                           onDateTimeChanged: (v) => setState(() => _time = v),
                         ),
                       ),
