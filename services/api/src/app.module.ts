@@ -1,20 +1,22 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AuthModule } from '@thallesp/nestjs-better-auth';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
-import { JwtAuthGuard } from './auth/security/jwt-auth.guard';
+import { createAuth } from './auth/auth';
 import { CategoriesModule } from './categories/categories.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { CheckinsModule } from './checkins/checkins.module';
+import { EmailModule } from './email/email.module';
+import { EmailService } from './email/email.service';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PrismaService } from './prisma/prisma.service';
 import { ShareEventsModule } from './share-events/share-events.module';
 import { UserChallengesModule } from './user-challenges/user-challenges.module';
-import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -29,9 +31,28 @@ import { UsersModule } from './users/users.module';
       },
     ]),
     PrismaModule,
+    EmailModule,
+
+    // Better Auth — mounts at /api/auth/* and registers a global AuthGuard
+    // that protects every non-/api/auth route by default. Use @AllowAnonymous
+    // on individual public handlers (categories list, challenges, health).
+    AuthModule.forRootAsync({
+      imports: [EmailModule],
+      inject: [PrismaService, ConfigService, EmailService],
+      useFactory: (
+        prisma: PrismaService,
+        config: ConfigService,
+        email: EmailService,
+      ) => ({
+        auth: createAuth(prisma, config, email),
+        bodyParser: {
+          json: { limit: '2mb' },
+          urlencoded: { limit: '2mb', extended: true },
+        },
+      }),
+    }),
+
     HealthModule,
-    AuthModule,
-    UsersModule,
     CategoriesModule,
     ChallengesModule,
     UserChallengesModule,
@@ -44,10 +65,6 @@ import { UsersModule } from './users/users.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
     },
   ],
 })

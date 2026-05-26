@@ -1,7 +1,30 @@
-import { PrismaClient, UserRole, ChallengeDifficulty } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { ChallengeDifficulty, PrismaClient, UserRole } from '@prisma/client';
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
 
 const prisma = new PrismaClient();
+
+// Minimal Better Auth instance for the seed: same DB, no email side effects.
+// Production wiring lives in src/auth/auth.ts.
+const auth = betterAuth({
+  secret:
+    process.env.BETTER_AUTH_SECRET ??
+    'seed_only_placeholder_secret_replace_in_real_env',
+  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
+  database: prismaAdapter(prisma, { provider: 'postgresql' }),
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: false,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
+  },
+  advanced: {
+    // Same reason as src/auth/auth.ts — let Prisma's @default(uuid()) fire.
+    database: {
+      generateId: false,
+    },
+  },
+});
 
 async function main() {
   console.log('🌱 Starting database seeding...');
@@ -13,20 +36,27 @@ async function main() {
   await prisma.shareEvent.deleteMany();
   await prisma.challenge.deleteMany();
   await prisma.challengeCategory.deleteMany();
+  // Better Auth-owned tables cascade off User, but order them defensively.
+  await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.verification.deleteMany();
   await prisma.user.deleteMany();
   await prisma.appInfo.deleteMany();
 
-  // 2. Create SUPER_ADMIN User
+  // 2. Create SUPER_ADMIN User via Better Auth so the password lands in the
+  // Account table with the algorithm Better Auth verifies against.
   console.log('👤 Seeding super admin user...');
   const adminEmail = 'superadmin@vital30.com';
-  const passwordHash = await bcrypt.hash('Vital30AdminSecured!', 10);
-  const superAdmin = await prisma.user.create({
-    data: {
+  await auth.api.signUpEmail({
+    body: {
       email: adminEmail,
+      password: 'Vital30AdminSecured!',
       name: 'Vital30 Super Admin',
-      passwordHash,
-      role: UserRole.SUPER_ADMIN,
     },
+  });
+  const superAdmin = await prisma.user.update({
+    where: { email: adminEmail },
+    data: { role: UserRole.SUPER_ADMIN, emailVerified: true },
   });
   console.log(`✅ Super admin created: ${superAdmin.email}`);
 

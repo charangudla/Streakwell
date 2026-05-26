@@ -1,12 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+
 import { AppService } from './app.service';
-import { Public } from './auth/security/public.decorator';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Public()
+  @AllowAnonymous()
   @Get()
   getRoot(): { message: string } {
     return this.appService.getRoot();

@@ -1,6 +1,6 @@
 # Vital30 MVP Status & Pending Tasks
 
-**Last updated:** 2026-05-25 (after on-device end-to-end verification)
+**Last updated:** 2026-05-26 (after Better Auth migration)
 **Scope:** Mobile (`apps/mobile`) is the active surface. Backend (`services/api`) and admin (`apps/admin`) status noted but not recently audited.
 
 > Read this before starting work. Verify claims against the code before acting on them — items here may have been completed since this was last updated.
@@ -51,7 +51,72 @@ Buttons navigate but no API call / no persistence:
 
 ---
 
-## Backend (`services/api`) — MVP wired 2026-05-25
+## Backend (`services/api`) — Better Auth, wired 2026-05-26
+
+Auth is now owned by **Better Auth** (`@thallesp/nestjs-better-auth` adapter) instead of the hand-rolled `passport-jwt` + `AuthService` we had on 2026-05-25. Password recovery, email verification, and rate-limited sign-in come out of the box; OAuth (Apple/Google) is a future config change away.
+
+**Registered modules in `app.module.ts`:** `Config`, `Throttler`, `Prisma`, `Email`, `Health`, **`Auth` (Better Auth)**, `Categories`, `Challenges`, `UserChallenges`, `Checkins`, `ShareEvents`.
+
+**Auth routes (under `/api/auth/*`, owned by Better Auth):**
+
+| Route | Notes |
+|---|---|
+| `POST /api/auth/sign-up/email` | Returns `{ token, user }`. Bearer plugin also emits `set-auth-token` header. |
+| `POST /api/auth/sign-in/email` | Same shape. Rate-limited 5/min. |
+| `POST /api/auth/sign-out` | Invalidates the session. |
+| `POST /api/auth/request-password-reset` | Sends an opaque token via email. 204 even if email unknown (anti-enumeration). Rate-limited 3/min. |
+| `POST /api/auth/reset-password` | Consumes the token + sets the new password. |
+| `POST /api/auth/send-verification-email` | Re-sends verification. Rate-limited 3 / 5min. |
+| `POST /api/auth/verify-email` | Marks `emailVerified = true`. |
+| `POST /api/auth/update-user` | Updates name/image. |
+| `POST /api/auth/delete-user` | Hard-deletes; cascades via Prisma. |
+| `GET /api/auth/get-session` | Returns `{ user, session }` for the current Bearer token. |
+
+**Domain routes (Vital30-owned, JWT-protected by the adapter's global `AuthGuard`):**
+
+| Route | Notes |
+|---|---|
+| `GET /` | `@AllowAnonymous()` |
+| `GET /health` | `@AllowAnonymous()` |
+| `GET /categories` | `@AllowAnonymous()`; sorted by name |
+| `GET /challenges` | `@AllowAnonymous()`; filters `isActive=true`; orders by recommended/popular/title |
+| `GET /challenges/:id` | `@AllowAnonymous()` |
+| `POST /user-challenges` | scoped to `session.user.id`; duplicate active joins return the existing record |
+| `GET /user-challenges` | returns the user's challenges with server-computed `progressPercent` |
+| `POST /checkins` | upserts on `(userChallengeId, today UTC)` |
+| `GET /checkins/challenge/:userChallengeId` | ordered ascending by `checkinDate` |
+| `POST /share-events` | attributes to `session.user.id` |
+
+**Security posture:**
+- `AuthGuard` registered globally by the adapter — every route is authenticated by default; only `@AllowAnonymous()` routes opt out.
+- Better Auth's `JwtStrategy` equivalent re-reads the user from Prisma on every request so revoked accounts can't keep using their token.
+- Server-side ownership checks (`UserChallengesService.assertOwnership`) still gate every `userChallenge`-scoped action.
+- `class-validator` whitelist + `forbidNonWhitelisted` is on globally for our DTOs; Better Auth handles validation on its own routes.
+- Per-route rate limits live inside Better Auth's config (`/sign-in/email` 5/min, `/request-password-reset` 3/min, `/send-verification-email` 3 / 5min).
+- bcrypt was removed; Better Auth uses scrypt by default and stores the hash in the `Account.password` column (one row per (user, provider) pair).
+
+**Email** dispatch lives behind `EmailService` with two providers: `mailpit` for local dev (inspect at http://localhost:8025) and `resend` for production (switch via `EMAIL_PROVIDER=resend` + `RESEND_API_KEY`).
+
+**Tests:** `npm test` → 2/2 unit pass (we dropped tests of files we deleted; remaining unit surface is just `progress-calculator`). `npm run test:e2e` → 4 passing (the Better-Auth adapter is ESM-only and incompatible with ts-jest in CJS mode, so e2e mocks the adapter; real flows are exercised against the running server). `npm run typecheck` → clean. `npm run lint` → 0 errors.
+
+**Verification done before the migration (still valid for the unchanged surfaces):**
+- ✅ Local notifications (permission prompt + scheduling).
+- ✅ Reminder time picker.
+- ✅ Day-30 complete screen + streak milestone modal visuals via `--dart-define=DEBUG_MENU=true`.
+
+**Verification still owed (post-migration):**
+- ❗ End-to-end on iPhone with the new Better Auth endpoints — register → check Mailpit for the verification email → sign in → forget password → check Mailpit for the reset code → reset → sign in with new password → edit profile → delete account.
+- Set a real `BETTER_AUTH_SECRET` (≥ 32 chars) and any non-default DB credentials for staging/prod environments.
+- Same flows on a real Android device.
+- Pick + verify a real email provider (Resend recommended) before sending real email to users.
+
+**Gap-fillers that still need new schema (deferred):**
+- Notifications inbox (needs `Notification` model + emit points).
+- Referral codes (needs `referralCode` + `referredById` on `User`).
+
+---
+
+## Backend (`services/api`) — pre-Better-Auth snapshot (2026-05-25, superseded above)
 
 **Registered modules in `app.module.ts`:** `Config`, `Throttler`, `Prisma`, `Health`, **`Auth`, `Users`, `Categories`, `Challenges`, `UserChallenges`, `Checkins`, `ShareEvents`**.
 

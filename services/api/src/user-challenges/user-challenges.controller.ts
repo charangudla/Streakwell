@@ -1,9 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 
-import {
-  type AuthenticatedUser,
-  CurrentUser,
-} from '../auth/security/current-user.decorator';
+import type { Auth } from '../auth/auth';
 import { JoinChallengeDto } from './dto/join-challenge.dto';
 import { UserChallengesService } from './user-challenges.service';
 
@@ -12,12 +10,12 @@ export class UserChallengesController {
   constructor(private readonly userChallenges: UserChallengesService) {}
 
   @Post()
-  join(@CurrentUser() user: AuthenticatedUser, @Body() dto: JoinChallengeDto) {
-    return this.userChallenges.join(user.id, dto.challengeId);
+  join(@Session() session: UserSession<Auth>, @Body() dto: JoinChallengeDto) {
+    return this.userChallenges.join(session.user.id, dto.challengeId);
   }
 
   @Get()
-  listMine(@CurrentUser() user: AuthenticatedUser) {
-    return this.userChallenges.listForUser(user.id);
+  listMine(@Session() session: UserSession<Auth>) {
+    return this.userChallenges.listForUser(session.user.id);
   }
 }

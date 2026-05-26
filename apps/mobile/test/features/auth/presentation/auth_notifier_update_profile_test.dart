@@ -5,8 +5,10 @@ import 'package:vital30/core/storage/secure_storage.dart';
 import 'package:vital30/features/auth/domain/user.dart';
 import 'package:vital30/features/auth/presentation/auth_provider.dart';
 
-/// Wires Dio through an interceptor so we can return canned `/users/me`
-/// responses without touching the real network.
+/// Wires Dio through an interceptor so we can return canned Better Auth
+/// responses without touching the real network. The interceptor matches on
+/// the request path so a single test can cover the two-call sequence
+/// (POST /api/auth/update-user → GET /api/auth/get-session).
 Dio _buildDio({
   required Response<dynamic> Function(RequestOptions options) handler,
 }) {
@@ -14,6 +16,18 @@ Dio _buildDio({
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, h) => h.resolve(handler(options)),
+    ),
+  );
+  return dio;
+}
+
+Dio _buildDioWithError({
+  required DioException Function(RequestOptions options) handler,
+}) {
+  final dio = Dio(BaseOptions(baseUrl: 'http://test.local'));
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, h) => h.reject(handler(options)),
     ),
   );
   return dio;
@@ -57,19 +71,35 @@ void main() {
     };
 
     test('persists the updated user and flips state on success', () async {
-      RequestOptions? captured;
+      final calls = <String>[];
+      final updateRequests = <Map<String, dynamic>>[];
       final dio = _buildDio(handler: (options) {
-        captured = options;
-        return Response<Map<String, dynamic>>(
-          requestOptions: options,
-          statusCode: 200,
-          data: {
-            'id': '11111111-1111-1111-1111-111111111111',
-            'email': 'me@example.com',
-            'name': 'Renamed Person',
-            'role': 'USER',
-          },
-        );
+        calls.add('${options.method} ${options.path}');
+        if (options.path == '/api/auth/update-user') {
+          updateRequests
+              .add(Map<String, dynamic>.from(options.data as Map));
+          return Response<Map<String, dynamic>>(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'status': true},
+          );
+        }
+        if (options.path == '/api/auth/get-session') {
+          return Response<Map<String, dynamic>>(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'session': {'id': 's1', 'token': 'fake-token'},
+              'user': {
+                'id': '11111111-1111-1111-1111-111111111111',
+                'email': 'me@example.com',
+                'name': 'Renamed Person',
+                'role': 'USER',
+              },
+            },
+          );
+        }
+        throw StateError('Unexpected ${options.method} ${options.path}');
       });
       final api = ApiService(dio);
       final storage = _InMemorySecureStorage(
@@ -85,27 +115,28 @@ void main() {
       expect(error, isNull);
       expect(notifier.state.user?.name, 'Renamed Person');
       expect(storage.saveUserCount, 1);
-      expect(await storage.getUser(),
-          containsPair('name', 'Renamed Person'));
-      expect(captured?.path, '/users/me');
-      expect(captured?.method, 'PATCH');
-      expect(captured?.data, {'name': 'Renamed Person'});
+      expect(
+          await storage.getUser(), containsPair('name', 'Renamed Person'));
+      expect(calls, [
+        'POST /api/auth/update-user',
+        'GET /api/auth/get-session',
+      ]);
+      expect(updateRequests.single, {'name': 'Renamed Person'});
     });
 
     test('returns the server error and keeps the prior user on failure',
         () async {
-      final dio = _buildDio(handler: (options) {
-        // Synthesise a 400 with a server-shaped message.
-        throw DioException(
+      final dio = _buildDioWithError(
+        handler: (options) => DioException(
           requestOptions: options,
           response: Response<Map<String, dynamic>>(
             requestOptions: options,
             statusCode: 400,
-            data: {'message': 'name must be longer than or equal to 1'},
+            data: const {'message': 'name must be longer than or equal to 1'},
           ),
           type: DioExceptionType.badResponse,
-        );
-      });
+        ),
+      );
       final api = ApiService(dio);
       final storage = _InMemorySecureStorage(
         token: 'fake-token',
@@ -149,20 +180,31 @@ void main() {
   });
 
   group('ApiService.updateProfile', () {
-    test('parses a partial user payload from the PATCH response', () async {
+    test('POSTs update-user then GETs the refreshed session', () async {
       final dio = _buildDio(handler: (options) {
-        return Response<Map<String, dynamic>>(
-          requestOptions: options,
-          statusCode: 200,
-          data: {
-            'id': 'u1',
-            'email': 'a@b.c',
-            'name': 'Patched',
-            'role': 'USER',
-            'createdAt': '2026-01-01T00:00:00Z',
-            'updatedAt': '2026-01-02T00:00:00Z',
-          },
-        );
+        if (options.path == '/api/auth/update-user') {
+          return Response<Map<String, dynamic>>(
+            requestOptions: options,
+            statusCode: 200,
+            data: const {'status': true},
+          );
+        }
+        if (options.path == '/api/auth/get-session') {
+          return Response<Map<String, dynamic>>(
+            requestOptions: options,
+            statusCode: 200,
+            data: const {
+              'session': {'id': 's1', 'token': 't1'},
+              'user': {
+                'id': 'u1',
+                'email': 'a@b.c',
+                'name': 'Patched',
+                'role': 'USER',
+              },
+            },
+          );
+        }
+        throw StateError('Unexpected ${options.method} ${options.path}');
       });
       final api = ApiService(dio);
 

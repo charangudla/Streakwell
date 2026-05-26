@@ -131,6 +131,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Triggers the backend to email a password-reset code. Returns `null`
+  /// on success or a friendly error on failure. The backend deliberately
+  /// returns 204 even when the email is unknown, so a `null` return does
+  /// NOT prove the email is registered.
+  Future<String?> requestPasswordReset(String email) async {
+    try {
+      await _apiService.requestPasswordReset(email);
+      return null;
+    } catch (e) {
+      return _friendlyError(e);
+    }
+  }
+
+  /// Consumes the reset code from the email and sets the new password.
+  /// Returns `null` on success or a friendly error on failure.
+  Future<String?> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      await _apiService.resetPassword(token: token, newPassword: newPassword);
+      return null;
+    } catch (e) {
+      return _friendlyError(e);
+    }
+  }
+
   String _friendlyError(Object e) {
     if (e is DioException) {
       if (e.response?.data is Map) {

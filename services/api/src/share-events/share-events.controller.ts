@@ -1,9 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 
-import {
-  type AuthenticatedUser,
-  CurrentUser,
-} from '../auth/security/current-user.decorator';
+import type { Auth } from '../auth/auth';
 import { CreateShareEventDto } from './dto/create-share-event.dto';
 import { ShareEventsService } from './share-events.service';
 
@@ -13,9 +11,9 @@ export class ShareEventsController {
 
   @Post()
   create(
-    @CurrentUser() user: AuthenticatedUser,
+    @Session() session: UserSession<Auth>,
     @Body() dto: CreateShareEventDto,
   ) {
-    return this.shareEvents.create(user.id, dto);
+    return this.shareEvents.create(session.user.id, dto);
   }
 }

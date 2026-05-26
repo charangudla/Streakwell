@@ -1,10 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-
-import { Public } from '../auth/security/public.decorator';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 
 @Controller('health')
 export class HealthController {
-  @Public()
+  @AllowAnonymous()
   @Get()
   getHealth(): { status: string; service: string; timestamp: string } {
     return {

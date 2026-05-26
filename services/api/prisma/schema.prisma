@@ -46,17 +46,75 @@ enum ShareType {
   COMPLETION
 }
 
+// Owned by Better Auth — the canonical fields below (name, email,
+// emailVerified, image, createdAt, updatedAt) are required by its Prisma
+// adapter. `role` and the domain relations (userChallenges, shareEvents)
+// are Vital30 extensions.
 model User {
-  id           String        @id @default(uuid()) @db.Uuid
-  email        String        @unique
-  passwordHash String
-  name         String?
-  role         UserRole      @default(USER)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  role UserRole @default(USER)
+
+  sessions       Session[]
+  accounts       Account[]
   userChallenges UserChallenge[]
   shareEvents    ShareEvent[]
+}
+
+// Better Auth — one row per active session. We use bearer tokens (mobile)
+// so the `token` field is what the client sends in Authorization.
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Better Auth — credentials live here (provider='credential', password=hash).
+// Future OAuth providers (Apple, Google) write additional rows per user.
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+// Better Auth — short-lived tokens (password reset, email verify).
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
 }
 
 model ChallengeCategory {

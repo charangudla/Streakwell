@@ -76,42 +76,67 @@ class ApiService {
     );
   }
 
-  // 2. Authentication — errors propagate; no offline fallback for auth.
+  // 2. Authentication — Better Auth backend, errors propagate, no offline
+  // fallback for any mutation. Endpoints live under /api/auth/* and return
+  // `{ token, user }` for sign-in / sign-up.
   Future<AuthResponse> login(String email, String password) async {
-    final response = await _dio.post<Map<String, dynamic>>('/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/auth/sign-in/email',
+      data: {'email': email, 'password': password},
+    );
     return AuthResponse.fromJson(response.data ?? {});
   }
 
   Future<AuthResponse> register(String name, String email, String password) async {
-    final response = await _dio.post<Map<String, dynamic>>('/auth/register', data: {
-      'name': name,
-      'email': email,
-      'password': password,
-    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/auth/sign-up/email',
+      data: {'name': name, 'email': email, 'password': password},
+    );
     return AuthResponse.fromJson(response.data ?? {});
   }
 
-  /// Updates the authenticated user's profile. Errors propagate so callers can
-  /// surface validation problems or auth failures to the UI; no offline
-  /// fallback because we never want to silently "succeed" on a mutation.
+  /// Updates the authenticated user's name. Better Auth's update-user
+  /// endpoint also accepts `image`; we only expose name in MVP.
   Future<User> updateProfile({String? name}) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
-    final response = await _dio.patch<Map<String, dynamic>>(
-      '/users/me',
-      data: body,
+    await _dio.post<Map<String, dynamic>>('/api/auth/update-user', data: body);
+    // Better Auth's update-user returns `{ status: true }`. Re-fetch the
+    // session to get the updated user record.
+    final session = await _dio.get<Map<String, dynamic>>(
+      '/api/auth/get-session',
     );
-    return User.fromJson(response.data ?? {});
+    final userJson =
+        session.data?['user'] as Map<String, dynamic>? ?? const {};
+    return User.fromJson(userJson);
   }
 
-  /// Hard-deletes the authenticated user and all owned data. Errors propagate
-  /// so the UI can surface them; the JWT becomes invalid the moment the
-  /// server returns 204.
+  /// Hard-deletes the authenticated user and all owned data. Cascade in
+  /// Prisma removes the user's challenges, check-ins, and share events.
   Future<void> deleteAccount() async {
-    await _dio.delete<void>('/users/me');
+    await _dio.post<void>('/api/auth/delete-user', data: const {});
+  }
+
+  /// Kicks off the password-reset flow — backend emails a reset code via
+  /// Mailpit (dev) or Resend (prod). Always returns 204 even for unknown
+  /// emails so attackers can't probe whether an account exists.
+  Future<void> requestPasswordReset(String email) async {
+    await _dio.post<void>(
+      '/api/auth/request-password-reset',
+      data: {'email': email},
+    );
+  }
+
+  /// Consumes the reset token (the code from the email) and sets the new
+  /// password. Errors propagate (invalid/expired token, weak password).
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _dio.post<void>(
+      '/api/auth/reset-password',
+      data: {'token': token, 'newPassword': newPassword},
+    );
   }
 
   // 3. Challenge Catalog

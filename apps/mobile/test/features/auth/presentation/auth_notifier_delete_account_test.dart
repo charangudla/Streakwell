@@ -94,8 +94,8 @@ void main() {
       expect(storage.deleteUserCount, 1);
       expect(await storage.getToken(), isNull);
       expect(await storage.getUser(), isNull);
-      expect(captured?.method, 'DELETE');
-      expect(captured?.path, '/users/me');
+      expect(captured?.method, 'POST');
+      expect(captured?.path, '/api/auth/delete-user');
     });
 
     test('on server error keeps the user signed in and returns a message',

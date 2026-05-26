@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/v_colors.dart';
@@ -6,19 +7,25 @@ import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/widgets/v_icon_button.dart';
 import '../../../core/widgets/v_text_field.dart';
+import 'auth_provider.dart';
 import 'widgets/recovery_step_pips.dart';
 
-class NewPasswordScreen extends StatefulWidget {
-  const NewPasswordScreen({super.key});
+class NewPasswordScreen extends ConsumerStatefulWidget {
+  const NewPasswordScreen({super.key, required this.resetToken});
+
+  /// The opaque reset code the user pasted on the previous screen — passed
+  /// straight through to Better Auth's /reset-password endpoint.
+  final String resetToken;
 
   @override
-  State<NewPasswordScreen> createState() => _NewPasswordScreenState();
+  ConsumerState<NewPasswordScreen> createState() => _NewPasswordScreenState();
 }
 
-class _NewPasswordScreenState extends State<NewPasswordScreen> {
+class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
   final _pw = TextEditingController();
   final _confirm = TextEditingController();
   bool _obscure = true;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -41,6 +48,27 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
     if (_hasMixedCase) s++;
     if (_pw.text.length >= 12) s++;
     return s;
+  }
+
+  Future<void> _submit() async {
+    if (widget.resetToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reset code missing — start over.')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    final error = await ref.read(authProvider.notifier).resetPassword(
+          token: widget.resetToken,
+          newPassword: _pw.text,
+        );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    context.go('/reset-success');
   }
 
   @override
@@ -106,10 +134,10 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                 ),
                 const SizedBox(height: 22),
                 VButton(
-                  label: 'Update password',
+                  label: _submitting ? 'Updating…' : 'Update password',
                   fullWidth: true,
-                  onPressed: _matches && _isLong && _hasNumber
-                      ? () => context.go('/reset-success')
+                  onPressed: (_matches && _isLong && _hasNumber && !_submitting)
+                      ? _submit
                       : null,
                 ),
               ],

@@ -97,7 +97,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/new-password',
-        builder: (context, state) => const NewPasswordScreen(),
+        builder: (context, state) => NewPasswordScreen(
+          resetToken: state.uri.queryParameters['token'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/reset-success',
