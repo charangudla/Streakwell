@@ -10,86 +10,199 @@ import '../../../core/theme/v_spacing.dart';
 import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/widgets/v_icon_button.dart';
-import '../../../core/widgets/v_pill.dart';
-import '../../auth/presentation/auth_provider.dart';
+import '../application/referral_provider.dart';
 
 class InviteFriendsScreen extends ConsumerWidget {
   const InviteFriendsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
-    final code = '${(user?.name ?? 'YOU').split(' ').first.toUpperCase()}-30';
+    final referral = ref.watch(referralProvider);
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(0, 12, 0, 32),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Row(
+        child: referral.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  VIconButton(
-                    icon: Icons.arrow_back_ios_new,
-                    iconSize: 16,
-                    onPressed: () => context.pop(),
+                  Text('Could not load your invite code.',
+                      style: Vital30Text.body, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () =>
+                        ref.read(referralProvider.notifier).refresh(),
+                    child: const Text('Try again'),
                   ),
-                  const SizedBox(width: 14),
-                  Text('Invite friends',
-                      style: Vital30Text.h3.copyWith(fontSize: 16)),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
-              child: _HeroCard(),
-            ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
-              child: _CodeTile(
-                code: code,
-                onCopy: () {
-                  Clipboard.setData(ClipboardData(text: code));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Copied $code')),
-                  );
-                },
+          ),
+          data: (info) => ListView(
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 32),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: Row(
+                  children: [
+                    VIconButton(
+                      icon: Icons.arrow_back_ios_new,
+                      iconSize: 16,
+                      onPressed: () => context.pop(),
+                    ),
+                    const SizedBox(width: 14),
+                    Text('Invite friends',
+                        style: Vital30Text.h3.copyWith(fontSize: 16)),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
-              child: _PlatformGrid(code: code),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
-              child: VButton(
-                label: 'Share invite link',
-                fullWidth: true,
-                icon: Icons.ios_share,
-                onPressed: () => SharePlus.instance.share(ShareParams(
-                  text:
-                      'Try Vital30 with me — 30-day wellness challenges. Use code $code to get started.',
-                )),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Vital30Space.screenH),
+                child: _HeroCard(referredCount: info.referredCount),
               ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
-              child: _FriendsList(),
-            ),
-          ],
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Vital30Space.screenH),
+                child: _CodeTile(
+                  code: info.code,
+                  onCopy: () {
+                    Clipboard.setData(ClipboardData(text: info.code));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Copied ${info.code}')),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Vital30Space.screenH),
+                child: _PlatformGrid(code: info.code, shareText: info.shareText),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Vital30Space.screenH),
+                child: VButton(
+                  label: 'Share invite link',
+                  fullWidth: true,
+                  icon: Icons.ios_share,
+                  onPressed: () => SharePlus.instance
+                      .share(ShareParams(text: info.shareText)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Vital30Space.screenH),
+                child: _RedeemTile(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+class _RedeemTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_RedeemTile> createState() => _RedeemTileState();
+}
+
+class _RedeemTileState extends ConsumerState<_RedeemTile> {
+  final _controller = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final code = _controller.text.trim();
+    if (code.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final err = await ref.read(referralProvider.notifier).redeem(code);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = err;
+    });
+    if (err == null) {
+      _controller.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Referral code redeemed.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Vital30Colors.card,
+        borderRadius: BorderRadius.circular(Vital30Radius.lg),
+        border: Border.all(color: Vital30Colors.hairlineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('HAVE A CODE?', style: Vital30Text.label),
+          const SizedBox(height: 8),
+          Text(
+            'Enter a friend\'s code to credit them as your referrer.',
+            style: Vital30Text.body.copyWith(fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: 'ABCD1234',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
+                    errorText: _error,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              VButton(
+                label: _busy ? 'Redeeming…' : 'Redeem',
+                kind: VButtonKind.primary,
+                size: VButtonSize.sm,
+                onPressed: _busy ? null : _submit,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.referredCount});
+  final int referredCount;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -122,7 +235,9 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Friends who start a challenge together are 2x more likely to finish.',
+            referredCount == 0
+                ? 'Friends who start a challenge together are 2x more likely to finish.'
+                : '$referredCount ${referredCount == 1 ? "friend has" : "friends have"} joined with your code.',
             style: TextStyle(
               fontSize: 13.5,
               color: Vital30Colors.surface.withValues(alpha: 0.7),
@@ -183,8 +298,9 @@ class _CodeTile extends StatelessWidget {
 }
 
 class _PlatformGrid extends StatelessWidget {
-  const _PlatformGrid({required this.code});
+  const _PlatformGrid({required this.code, required this.shareText});
   final String code;
+  final String shareText;
   @override
   Widget build(BuildContext context) {
     final platforms = [
@@ -198,9 +314,8 @@ class _PlatformGrid extends StatelessWidget {
         for (var i = 0; i < platforms.length; i++) ...[
           Expanded(
             child: GestureDetector(
-              onTap: () => SharePlus.instance.share(ShareParams(
-                text: 'Try Vital30 with code $code.',
-              )),
+              onTap: () =>
+                  SharePlus.instance.share(ShareParams(text: shareText)),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
@@ -232,76 +347,3 @@ class _PlatformGrid extends StatelessWidget {
   }
 }
 
-class _FriendsList extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final friends = [
-      ('Priya R.', 'Joined Day 3', true),
-      ('Arjun N.', 'Joined Day 1', true),
-      ('Meera S.', 'Invite pending', false),
-      ('Rohan K.', 'Invite pending', false),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text('YOUR INVITES', style: Vital30Text.label),
-        ),
-        const SizedBox(height: 8),
-        for (final f in friends) ...[
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Vital30Colors.card,
-              borderRadius: BorderRadius.circular(Vital30Radius.lg),
-              border: Border.all(color: Vital30Colors.hairlineSoft),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: f.$3
-                        ? Vital30Colors.primaryTint
-                        : Vital30Colors.surfaceAlt,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    f.$1.substring(0, 1),
-                    style: TextStyle(
-                      color: f.$3
-                          ? Vital30Colors.primaryDeep
-                          : Vital30Colors.inkSoft,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(f.$1, style: Vital30Text.title.copyWith(fontSize: 14)),
-                      Text(f.$2,
-                          style: Vital30Text.caption.copyWith(fontSize: 12)),
-                    ],
-                  ),
-                ),
-                VPill(
-                  label: f.$3 ? 'Joined' : 'Invited',
-                  tone: f.$3 ? VPillTone.primary : VPillTone.outline,
-                  size: VPillSize.sm,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}

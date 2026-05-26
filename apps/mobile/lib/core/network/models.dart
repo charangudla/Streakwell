@@ -231,3 +231,112 @@ class AuthResponse {
     );
   }
 }
+
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    this.readAt,
+    this.data,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final Map<String, dynamic>? data;
+
+  bool get isUnread => readAt == null;
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
+      id: json['id'] as String,
+      type: json['type'] as String,
+      title: json['title'] as String,
+      body: json['body'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      readAt: json['readAt'] == null
+          ? null
+          : DateTime.parse(json['readAt'] as String),
+      data: json['data'] as Map<String, dynamic>?,
+    );
+  }
+}
+
+class ReferralInfo {
+  const ReferralInfo({
+    required this.code,
+    required this.referredCount,
+    required this.shareText,
+  });
+
+  final String code;
+  final int referredCount;
+  final String shareText;
+
+  factory ReferralInfo.fromJson(Map<String, dynamic> json) {
+    return ReferralInfo(
+      code: json['code'] as String,
+      referredCount: json['referredCount'] as int? ?? 0,
+      shareText: json['shareText'] as String? ?? '',
+    );
+  }
+}
+
+class FavoriteEntry {
+  const FavoriteEntry({
+    required this.id,
+    required this.challengeId,
+    required this.title,
+    required this.shortDescription,
+    required this.difficulty,
+    required this.durationDays,
+  });
+
+  final String id;
+  final String challengeId;
+  final String title;
+  final String shortDescription;
+  final String difficulty;
+  final int durationDays;
+
+  factory FavoriteEntry.fromJson(Map<String, dynamic> json) {
+    final challenge = json['challenge'] as Map<String, dynamic>? ?? {};
+    return FavoriteEntry(
+      id: json['id'] as String,
+      challengeId: challenge['id'] as String? ?? json['challengeId'] as String,
+      title: challenge['title'] as String? ?? '',
+      shortDescription: challenge['shortDescription'] as String? ?? '',
+      difficulty: challenge['difficulty'] as String? ?? 'EASY',
+      durationDays: challenge['durationDays'] as int? ?? 30,
+    );
+  }
+}
+
+class AchievementEntry {
+  const AchievementEntry({
+    required this.id,
+    required this.kind,
+    required this.earnedAt,
+    this.data,
+  });
+
+  final String id;
+  final String kind;
+  final DateTime earnedAt;
+  final Map<String, dynamic>? data;
+
+  factory AchievementEntry.fromJson(Map<String, dynamic> json) {
+    return AchievementEntry(
+      id: json['id'] as String,
+      kind: json['kind'] as String,
+      earnedAt: DateTime.parse(json['earnedAt'] as String),
+      data: json['data'] as Map<String, dynamic>?,
+    );
+  }
+}

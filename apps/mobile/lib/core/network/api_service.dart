@@ -294,4 +294,97 @@ class ApiService {
       },
     );
   }
+
+  // 7. Notifications inbox
+  Future<List<AppNotification>> getNotifications() async {
+    return _apiCall(
+      () async {
+        final response = await _dio.get<List<dynamic>>('/notifications');
+        return (response.data ?? [])
+            .map((j) => AppNotification.fromJson(j as Map<String, dynamic>))
+            .toList();
+      },
+      () => const <AppNotification>[],
+    );
+  }
+
+  Future<int> getUnreadNotificationCount() async {
+    return _apiCall(
+      () async {
+        final response =
+            await _dio.get<Map<String, dynamic>>('/notifications/unread-count');
+        return (response.data?['count'] as int?) ?? 0;
+      },
+      () => 0,
+    );
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _apiCall(
+      () => _dio.post('/notifications/$id/read'),
+      () {},
+    );
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _apiCall(
+      () => _dio.post('/notifications/read-all'),
+      () {},
+    );
+  }
+
+  // 8. Referrals
+  Future<ReferralInfo> getMyReferral() async {
+    return _apiCall(
+      () async {
+        final response = await _dio.get<Map<String, dynamic>>('/referrals/me');
+        return ReferralInfo.fromJson(response.data ?? {});
+      },
+      () => const ReferralInfo(
+        code: 'OFFLINE',
+        referredCount: 0,
+        shareText:
+            'Try Vital30 with me — 30-day wellness challenges. https://vital30.com/download',
+      ),
+    );
+  }
+
+  Future<void> redeemReferralCode(String code) async {
+    // Mutation — propagate errors so the UI can show "Invalid code" etc.
+    await _dio.post('/referrals/redeem', data: {'code': code});
+  }
+
+  // 9. Favorites
+  Future<List<FavoriteEntry>> getFavorites() async {
+    return _apiCall(
+      () async {
+        final response = await _dio.get<List<dynamic>>('/favorites');
+        return (response.data ?? [])
+            .map((j) => FavoriteEntry.fromJson(j as Map<String, dynamic>))
+            .toList();
+      },
+      () => const <FavoriteEntry>[],
+    );
+  }
+
+  Future<void> addFavorite(String challengeId) async {
+    await _dio.post('/favorites', data: {'challengeId': challengeId});
+  }
+
+  Future<void> removeFavorite(String challengeId) async {
+    await _dio.delete('/favorites/$challengeId');
+  }
+
+  // 10. Achievements
+  Future<List<AchievementEntry>> getAchievements() async {
+    return _apiCall(
+      () async {
+        final response = await _dio.get<List<dynamic>>('/achievements');
+        return (response.data ?? [])
+            .map((j) => AchievementEntry.fromJson(j as Map<String, dynamic>))
+            .toList();
+      },
+      () => const <AchievementEntry>[],
+    );
+  }
 }

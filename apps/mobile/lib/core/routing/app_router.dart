@@ -18,6 +18,7 @@ import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/onboarding/application/onboarding_provider.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/profile/presentation/faq_screen.dart';
 import '../../features/profile/presentation/health_disclaimer_screen.dart';
 import '../../features/profile/presentation/invite_friends_screen.dart';
 import '../../features/profile/presentation/notification_settings_screen.dart';
@@ -186,6 +187,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/health-disclaimer',
         builder: (context, state) => const HealthDisclaimerScreen(),
+      ),
+      GoRoute(
+        path: '/faq',
+        builder: (context, state) => const FaqScreen(),
       ),
     ],
   );

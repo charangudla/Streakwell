@@ -82,23 +82,17 @@ class ProfileScreen extends ConsumerWidget {
               _SettingsRow(
                 title: 'Invite friends',
                 icon: Icons.share_outlined,
-                trailing: '2 joined',
                 onTap: () => context.push('/invite'),
               ),
               _SettingsRow(
-                title: 'Privacy',
-                icon: Icons.shield_outlined,
-                onTap: () {},
+                title: 'Help & FAQ',
+                icon: Icons.help_outline,
+                onTap: () => context.push('/faq'),
               ),
               _SettingsRow(
                 title: 'Health disclaimer',
                 icon: Icons.health_and_safety_outlined,
                 onTap: () => context.push('/health-disclaimer'),
-              ),
-              _SettingsRow(
-                title: 'Terms of service',
-                icon: Icons.menu_book_outlined,
-                onTap: () {},
               ),
             ]),
           ),
