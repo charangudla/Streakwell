@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
+import { JoinChallengeButton } from "@/components/JoinChallengeButton";
 import { JsonLd } from "@/components/JsonLd";
 import { fetchChallengeBySlug, fetchChallenges } from "@/lib/api";
 import { APP_NAME, HEALTH_DISCLAIMER, SITE_URL } from "@/lib/constants";
@@ -112,19 +113,21 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-ink">
-                Join this challenge in the Vital30 app
+                Join this challenge
               </p>
               <p className="mt-2 text-sm text-ink-muted">
-                Create a free account, check in daily, and track your active
-                days for 30 days.
+                Free, no credit card. Check in daily, track your active days,
+                share with friends.
               </p>
-              <ButtonLink
-                href="/download"
-                size="md"
-                className="mt-4 w-full"
-              >
-                Get the app
-              </ButtonLink>
+              <div className="mt-4">
+                <JoinChallengeButton challengeId={challenge.id} />
+              </div>
+              <p className="mt-3 text-xs text-ink-muted">
+                Prefer the mobile app?{" "}
+                <a href="/download" className="font-semibold text-brand-700">
+                  Download Vital30 →
+                </a>
+              </p>
             </div>
           </div>
         </Container>
