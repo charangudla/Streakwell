@@ -104,8 +104,15 @@ Auth is now owned by **Better Auth** (`@thallesp/nestjs-better-auth` adapter) in
 - ✅ Reminder time picker.
 - ✅ Day-30 complete screen + streak milestone modal visuals via `--dart-define=DEBUG_MENU=true`.
 
-**Verification still owed (post-migration):**
-- ❗ End-to-end on iPhone with the new Better Auth endpoints — register → check Mailpit for the verification email → sign in → forget password → check Mailpit for the reset code → reset → sign in with new password → edit profile → delete account.
+**Verification done on iPhone after migration (2026-05-26):**
+- ✅ Register → Mailpit caught the verification email.
+- ✅ Forgot password full round-trip — Mailpit caught the reset email, paste-code flow on the OTP screen worked, new password saved, sign-in with new password succeeded.
+- ✅ Edit profile → Save → restart → name persists.
+- ✅ Delete account (after enabling `user.deleteUser.enabled` — commit 177632f).
+- ✅ Browse + join + check-in still work against the new auth chain.
+- ✅ Local notifications still fire.
+
+**Verification still owed (production):**
 - Set a real `BETTER_AUTH_SECRET` (≥ 32 chars) and any non-default DB credentials for staging/prod environments.
 - Same flows on a real Android device.
 - Pick + verify a real email provider (Resend recommended) before sending real email to users.
