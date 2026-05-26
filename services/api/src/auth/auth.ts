@@ -48,9 +48,12 @@ export function createAuth(
     baseURL,
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
 
-    trustedOrigins: [
-      config.get<string>('CORS_ORIGIN') ?? 'http://localhost:5173',
-    ],
+    trustedOrigins:
+      config
+        .get<string>('CORS_ORIGIN')
+        ?.split(',')
+        .map((o) => o.trim())
+        .filter(Boolean) ?? ['http://localhost:5173'],
 
     emailAndPassword: {
       enabled: true,
@@ -162,6 +165,22 @@ export function createAuth(
       database: {
         generateId: false,
       },
+      // Cross-subdomain cookie config — only kicks in when COOKIE_DOMAIN
+      // is set (i.e. in production where the API and website share a
+      // parent domain, e.g. `.vital30.com`). In dev the website proxies
+      // through Next.js so cookies are first-party and this isn't needed.
+      ...(config.get<string>('COOKIE_DOMAIN')
+        ? {
+            crossSubDomainCookies: {
+              enabled: true,
+              domain: config.get<string>('COOKIE_DOMAIN')!,
+            },
+            defaultCookieAttributes: {
+              sameSite: 'lax' as const,
+              secure: true,
+            },
+          }
+        : {}),
     },
 
     // Fire-and-forget audit-log entries for the security-relevant lifecycle

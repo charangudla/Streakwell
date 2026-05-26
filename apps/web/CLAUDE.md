@@ -4,62 +4,101 @@
 
 ## Scope
 
-This is the public marketing site at `vital30.com`. **Marketing only — no auth, no check-in, no user state.** All account features live in the Flutter mobile app (`apps/mobile`).
+**UPDATED 2026-05-26 PM: scope expanded from marketing-only to full app parity.**
 
-If a feature requires a logged-in user, it does not belong here.
+This is the public site at `vital30.com`. Users can sign up + use Vital30
+fully in the browser, then optionally download the mobile app and sign in
+with the same account. Marketing pages stay public + indexable; the
+authenticated app surface is gated behind `<AuthGuard>`.
 
 ## Stack
 
-- Next.js 16 (App Router) + React 19
+- Next.js 16 (App Router, Turbopack)
+- React 19
 - TypeScript
 - Tailwind CSS v4 (theme tokens live in `src/app/globals.css` under `@theme`, not a JS config)
 - `marked` for rendering legal docs from `../../docs/*.md`
+- `better-auth@1.6.11` — matches the API version. Cookie sessions.
 
 ## Routes
 
+### Public
 | Path | Source | Notes |
 |---|---|---|
-| `/` | static + ISR | Hero, how it works, popular challenges (from API, falls back to `lib/fallback-challenges.ts`), why, disclaimer, CTA |
-| `/challenges` | ISR | Grouped by category from the API |
-| `/challenges/[slug]` | SSG | `generateStaticParams` from `GET /challenges`; slug lookup is client of `fetchChallengeBySlug` which filters the list (no slug-based API route yet) |
-| `/about` | static |
-| `/download` | static | "Coming soon" — no real store links yet |
-| `/contact` | static | mailto links |
+| `/` | static | Hero, How It Works, popular challenges (from API, falls back to `lib/fallback-challenges.ts`), why, disclaimer, CTA |
+| `/challenges` | ISR | Grouped by category from the API; client-side search + filter |
+| `/challenges/[slug]` | SSG | `generateStaticParams` from `GET /challenges`; per-slug OG image |
+| `/categories`, `/categories/[slug]` | static + SSG | One landing page per category |
+| `/about`, `/download`, `/contact`, `/faq` | static | `/contact` has a working form (POST /public/contact) |
 | `/privacy`, `/terms`, `/health-disclaimer` | static | Rendered from `/docs/*.md` via `lib/markdown.ts` |
 | `/sitemap.xml`, `/robots.txt` | auto | `app/sitemap.ts`, `app/robots.ts` |
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | static | Better Auth client |
+
+### Authenticated (wrapped in `<AuthGuard>`)
+| Path | What |
+|---|---|
+| `/dashboard` | Greeting, active challenges with check-in link, quick links |
+| `/my-challenges` | Active / Completed / Abandoned groups |
+| `/my-challenges/[id]/checkin` | Yes / Missed / Skip → backend awards achievements + notifications |
+| `/my-challenges/[id]/progress` | 30-day grid + stat cards + Web Share API |
+| `/notifications` | Inbox; optimistic mark-read + mark-all |
+| `/achievements` | All 5 badge slots with earned/locked state |
+| `/favorites` | Saved challenges with per-row remove |
+| `/invite` | Referral code + Copy/Share + Redeem form |
+| `/profile` | Edit name, delete account |
+
+## Auth architecture
+
+- `src/lib/auth-client.ts` — Better Auth React client. baseURL is the
+  website's own origin (`http://localhost:3001/api/auth` in dev,
+  `https://api.vital30.com/api/auth` in prod).
+- Dev: Next.js rewrites in `next.config.ts` proxy `/api/auth/*` →
+  `http://localhost:3000/api/auth/*` and `/api/proxy/*` →
+  `http://localhost:3000/*`. Browser sees same-origin requests → session
+  cookie is first-party, no CORS preflight, no SameSite=None.
+- Prod: API sets cookie with `Domain=.vital30.com; SameSite=Lax; Secure`
+  via Better Auth's `crossSubDomainCookies` config (gated on the API's
+  `COOKIE_DOMAIN` env var). Browser at `vital30.com` sends the cookie to
+  `api.vital30.com` naturally.
+- `<AuthGuard>` wraps every authenticated page. Checks `useSession()`,
+  redirects unauthed users to `/login?next=<current>`.
 
 ## Data fetching
 
-`src/lib/api.ts` wraps `fetch(API_BASE_URL + path, { next: { revalidate: 3600 } })`. All endpoints used are `@AllowAnonymous()` on the NestJS side:
-- `GET /challenges`
-- `GET /categories`
-
-Failures fall through to empty arrays — the UI handles empty state gracefully and the landing page falls back to a hardcoded popular-challenges list so the site renders even if the API is down.
-
-**Do not add `fetch` calls to authenticated endpoints from this app.** If you need that, the user wants the mobile app, not the website.
+- **Server-side** (SSG / ISR / server components): `src/lib/api.ts`
+  hits `NEXT_PUBLIC_API_BASE_URL` directly. Used only for
+  `@AllowAnonymous()` endpoints (challenges, categories) where cookies
+  don't matter.
+- **Client-side** (any `'use client'` component): `src/lib/api-client.ts`.
+  Routes through `/api/proxy/*` in dev (same-origin, cookie attached),
+  hits `NEXT_PUBLIC_API_BASE_URL` directly in prod. Always
+  `credentials: include`. Throws `ApiClientError` on non-2xx.
 
 ## Local dev
 
 ```bash
-# 1. From repo root, start API + Postgres
+# 1. From repo root, start Postgres + Mailpit
 docker compose up -d
 cd services/api && npm run start:dev
 
 # 2. In another terminal:
 cd apps/web
-cp .env.example .env.local   # only if you need to override
 npm install
 npm run dev                   # http://localhost:3001
 ```
 
-The website hits the API at `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:3000`). The API must include `http://localhost:3001` in its `CORS_ORIGIN` (already in root `.env.example`).
+> The website hits the API through Next.js rewrites in dev. The API
+> must include `http://localhost:3001` in its `CORS_ORIGIN` — which
+> means BOTH the repo-root `.env` AND `services/api/.env` (the latter
+> shadows the former — see `docs/local-development.md`).
 
 ## Build + verify
 
 ```bash
-npm run build         # full prod build, includes typecheck
-npm run typecheck     # tsc --noEmit only
-npm run lint          # eslint
+npm run build       # full prod build, includes typecheck
+npm run typecheck   # tsc --noEmit only
+npm run test        # vitest
+npm run lint        # eslint
 ```
 
 ## Design tokens
@@ -76,10 +115,12 @@ Tailwind utilities use these directly: `bg-brand-500`, `text-ink-muted`, `bg-sur
 
 The Markdown source of truth is `/docs/{privacy-policy,terms-of-service,health-disclaimer}.md`. `lib/markdown.ts` reads them at request/build time, strips GFM alert blocks (since Tailwind prose doesn't style them), and emits HTML. Update the docs, not the TSX.
 
-## Deploy (future)
+## Deploy
 
 - Production domain: `vital30.com` (+ `www.` redirect)
-- Container in the prod docker-compose; nginx at `deploy/nginx/prod.conf` should proxy to `apps/web` on its internal port
-- SSL via Let's Encrypt — must be on day 1 of any public domain
-- `NEXT_PUBLIC_SITE_URL=https://vital30.com` and `NEXT_PUBLIC_API_BASE_URL=https://api.vital30.com` in production env
-- API CORS must include the production website origin
+- Container in `docker-compose.prod.yml`; nginx in `deploy/nginx/prod.conf` proxies vital30.com to the web container.
+- SSL via Let's Encrypt — issue **one SAN cert** for `vital30.com`, `www.vital30.com`, `api.vital30.com`, `admin.vital30.com`.
+- Env vars to set in production `.env`:
+  - `NEXT_PUBLIC_SITE_URL=https://vital30.com`
+  - `NEXT_PUBLIC_API_BASE_URL=https://api.vital30.com`
+  - On the API side, `COOKIE_DOMAIN=.vital30.com` and CORS_ORIGIN include all three subdomains
