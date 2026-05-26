@@ -53,10 +53,21 @@ if [ ! -f .env ]; then
     fi
 fi
 
-# Basic check for default placeholder values
-if grep -q "<STRONG_SECURE_JWT_SECRET_RANDOM_HEX>" .env || grep -q "<STRONG_RANDOM_DATABASE_PASSWORD_KEY>" .env; then
-    echo -e "${RED}❌ Error: Your .env file contains default security placeholders.${NC}"
-    echo -e "${YELLOW}Please edit .env and replace all placeholders with strong random keys before deploying.${NC}"
+# Refuse to deploy while any <REPLACE_ME_*> placeholders remain. Also
+# catches the stale pre-Better-Auth JWT placeholder from older templates.
+if grep -q "<REPLACE_ME_" .env || grep -q "<STRONG_SECURE_JWT_SECRET_RANDOM_HEX>" .env || grep -q "<STRONG_RANDOM_DATABASE_PASSWORD_KEY>" .env; then
+    echo -e "${RED}❌ Error: Your .env file contains unset placeholder values:${NC}"
+    grep -n "<REPLACE_ME_\|<STRONG_SECURE_\|<STRONG_RANDOM_" .env | sed 's/^/  /' || true
+    echo -e "${YELLOW}Replace every placeholder with a real secret before deploying.${NC}"
+    exit 1
+fi
+
+# Hard-fail if BETTER_AUTH_SECRET is short (< 32 chars). Better Auth will
+# happily start with a short secret but token security is compromised.
+BETTER_AUTH_SECRET_VAL=$(grep -E "^BETTER_AUTH_SECRET=" .env | head -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+if [ ${#BETTER_AUTH_SECRET_VAL} -lt 32 ]; then
+    echo -e "${RED}❌ Error: BETTER_AUTH_SECRET must be at least 32 characters (got ${#BETTER_AUTH_SECRET_VAL}).${NC}"
+    echo -e "${YELLOW}Generate one with: openssl rand -base64 32${NC}"
     exit 1
 fi
 
@@ -107,8 +118,9 @@ echo -e "\n${GREEN}=============================================================
 echo -e "${GREEN}🎉 Vital30 MVP Production Stack Successfully Deployed!${NC}"
 echo -e "${GREEN}======================================================================${NC}"
 echo -e "${YELLOW}Verify public URLs: ${NC}"
-echo -e " - API Gateway:      ${BLUE}http://api.vital30.com/health${NC}"
-echo -e " - Admin Dashboard:  ${BLUE}http://admin.vital30.com${NC}"
-echo -e "\n${YELLOW}Next Step:${NC} Set up SSL certificate using Let's Encrypt / Certbot by running:"
-echo -e "           ${BLUE}sudo certbot --nginx -d api.vital30.com -d admin.vital30.com${NC}"
+echo -e " - Public site:      ${BLUE}https://vital30.com${NC}"
+echo -e " - API health:       ${BLUE}https://api.vital30.com/health${NC}"
+echo -e " - Admin dashboard:  ${BLUE}https://admin.vital30.com${NC}"
+echo -e "\n${YELLOW}First-deploy SSL:${NC} run Certbot for all four hostnames"
+echo -e "           ${BLUE}sudo certbot certonly --standalone -d vital30.com -d www.vital30.com -d api.vital30.com -d admin.vital30.com${NC}"
 echo -e "${GREEN}======================================================================${NC}"

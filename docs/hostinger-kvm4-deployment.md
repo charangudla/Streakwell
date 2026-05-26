@@ -9,9 +9,15 @@ This guide provides a comprehensive, step-by-step walkthrough to deploy and secu
 Our architecture isolates database layers and exposes only static and reverse-proxy ports to the internet:
 
 - **Reverse Proxy**: Nginx container handling SSL termination and reverse proxy upstreams on ports `80` and `443`.
-- **API Server**: NestJS API container exposing internal port `3000` solely inside the private Docker network.
-- **Admin App**: React SPA container compiled as static assets, served on port `80` inside the private Docker network.
+- **API Server**: NestJS API + Better Auth, container exposes internal port `3000` only on the private Docker network.
+- **Public Website**: Next.js standalone server (apps/web), internal port `3000` only.
+- **Admin App**: React SPA (apps/admin) compiled as static assets, served on port `80` internally.
 - **Databases**: PostgreSQL (`5432`) and Redis (`6379`) do **not** map any public ports and are completely isolated.
+
+Four subdomains are served by the same VPS:
+- `vital30.com` + `www.vital30.com` → Next.js public site
+- `api.vital30.com` → NestJS API (with `/api/auth/*` owned by Better Auth)
+- `admin.vital30.com` → React admin SPA
 
 ---
 
@@ -128,22 +134,42 @@ docker compose version
    ```
 
    > [!IMPORTANT]
-   > Configure secure environment variables:
-   > - Generate a secure 256-bit `JWT_SECRET` by running: `openssl rand -base64 32`
-   > - Set a strong, unique `POSTGRES_PASSWORD` (minimum 24 characters).
-   > - Update `DATABASE_URL` to match the custom password:
-   >   `DATABASE_URL=postgresql://vital30_prod_admin:<your_password>@postgres:5432/vital30_prod_db?schema=public`
+   > Replace **every** `<REPLACE_ME_*>` placeholder. The deploy script
+   > refuses to run while any remain.
+   >
+   > - **`BETTER_AUTH_SECRET`** — `openssl rand -base64 32`. Must be ≥ 32 chars.
+   > - **`POSTGRES_PASSWORD`** — `openssl rand -base64 24`. Update **both**
+   >   `POSTGRES_PASSWORD` and the password embedded in `DATABASE_URL`.
+   > - **`RESEND_API_KEY`** — get from https://resend.com/api-keys.
+   >   Verify your sending domain (`vital30.com`) in the Resend dashboard
+   >   before sending production email.
+   > - **`BETTER_AUTH_URL`** — leave as `https://api.vital30.com` once DNS
+   >   + SSL are live. Password-reset email links use this.
+   > - **`CORS_ORIGIN`** — must include every public origin (web, www, admin).
+   > - **`NEXT_PUBLIC_*`** + **`VITE_API_BASE_URL`** — baked into the web
+   >   and admin builds; changing later requires a rebuild.
 
 ---
 
 ## 🌐 4. DNS Configuration
 
-Point your domains to your Hostinger VPS public IP. Add two **A Records** in your domain registrar's DNS settings panel:
+Point your domains to your Hostinger VPS public IP. Add **four** A records in your domain registrar's DNS settings panel:
 
 | Type | Hostname | Destination IP | TTL |
 | :--- | :--- | :--- | :--- |
-| **A** | `api` | `<YOUR_VPS_PUBLIC_IP>` | `3600` |
-| **A** | `admin` | `<YOUR_VPS_PUBLIC_IP>` | `3600` |
+| **A** | `@` (root)  | `<YOUR_VPS_PUBLIC_IP>` | `3600` |
+| **A** | `www`       | `<YOUR_VPS_PUBLIC_IP>` | `3600` |
+| **A** | `api`       | `<YOUR_VPS_PUBLIC_IP>` | `3600` |
+| **A** | `admin`     | `<YOUR_VPS_PUBLIC_IP>` | `3600` |
+
+Wait for DNS to propagate (often a few minutes; up to 1 hour). Verify with:
+```bash
+dig +short vital30.com
+dig +short www.vital30.com
+dig +short api.vital30.com
+dig +short admin.vital30.com
+```
+All four should return your VPS IP before continuing to SSL.
 
 ---
 
@@ -158,11 +184,11 @@ chmod +x ./scripts/deploy-prod.sh
 
 ### What the deployment script does:
 1. Validates Docker and Compose installations.
-2. Checks that a production `.env` exists and contains no default placeholders.
-3. Builds/Pulls production container images.
-4. Starts postgres, redis, api, admin, and Nginx containers in background.
-5. Runs safe database migrations: `npx prisma migrate deploy` inside the API container.
-6. Seeds the database with the 42 starter challenges.
+2. Checks that a production `.env` exists, has no `<REPLACE_ME_*>` placeholders, and that `BETTER_AUTH_SECRET` is ≥ 32 chars.
+3. Builds production container images (`postgres`, `redis`, `api`, `admin`, `web`, `nginx`).
+4. Starts the stack in detached mode.
+5. Runs `npx prisma migrate deploy` inside the API container.
+6. Seeds the database with the starter categories + challenges.
 
 ---
 
@@ -180,11 +206,24 @@ Once DNS has propagated, obtain a secure, free SSL certificate using Let's Encry
    docker compose -f docker-compose.prod.yml stop nginx
    ```
 
-3. Obtain the certificates:
+3. Obtain certificates for **all four** hostnames in one shot (single cert covers everything):
    ```bash
-   sudo certbot certonly --standalone -d api.vital30.com -d admin.vital30.com
+   sudo certbot certonly --standalone \
+     -d vital30.com -d www.vital30.com \
+     -d api.vital30.com -d admin.vital30.com
    ```
-   *Your certificates will be saved under `/etc/letsencrypt/live/api.vital30.com/` on the host.*
+   *Certificates will be saved under `/etc/letsencrypt/live/vital30.com/` (the cert path uses the first `-d` value as the lineage name).*
+
+4. Add cert auto-renewal cron (Certbot installs a systemd timer on Ubuntu by default; verify with `systemctl list-timers | grep certbot`).
+
+5. Mount the cert directory into the Nginx container by adding to the `nginx` service in `docker-compose.prod.yml`:
+   ```yaml
+   nginx:
+     volumes:
+       - /etc/letsencrypt:/etc/letsencrypt:ro
+       # ... existing mounts
+   ```
+   Then update each server block in `deploy/nginx/prod.conf` to listen on `443 ssl http2` and reference the cert paths (see SSL example below).
 
 4. Mount the host certificates into the Nginx container by editing Nginx reverse proxy configurations, or update `nginx` service in `docker-compose.prod.yml` to mount SSL folders. Let's document how to redirect and configure HTTPS within Nginx.
 
