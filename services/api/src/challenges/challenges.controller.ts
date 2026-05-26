@@ -14,6 +14,12 @@ export class ChallengesController {
   }
 
   @AllowAnonymous()
+  @Get('slug/:slug')
+  findBySlug(@Param('slug') slug: string) {
+    return this.challenges.findBySlug(slug);
+  }
+
+  @AllowAnonymous()
   @Get(':id')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.challenges.findById(id);

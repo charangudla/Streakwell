@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChallengesBrowser } from "@/components/ChallengesBrowser";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
 import { fetchCategories, fetchChallenges } from "@/lib/api";
@@ -8,7 +9,7 @@ import { FALLBACK_POPULAR_CHALLENGES } from "@/lib/fallback-challenges";
 export const metadata: Metadata = {
   title: "Browse challenges",
   description:
-    "Explore Vital30's 30-day wellness challenges across diet, fitness, sleep, mental wellness, and more.",
+    "Explore Vital30's 30-day wellness challenges across diet, fitness, sleep, mental wellness, and more. Search by name or filter by category and difficulty.",
   alternates: { canonical: "/challenges" },
 };
 
@@ -17,13 +18,6 @@ export default async function ChallengesPage() {
     fetchChallenges(),
     fetchCategories(),
   ]);
-
-  const challengesByCategory = categories
-    .map((category) => ({
-      category,
-      challenges: allChallenges.filter((c) => c.categoryId === category.id),
-    }))
-    .filter((g) => g.challenges.length > 0);
 
   const usingFallback = allChallenges.length === 0;
 
@@ -53,51 +47,15 @@ export default async function ChallengesPage() {
               </p>
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {FALLBACK_POPULAR_CHALLENGES.map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.slug}
-                    challenge={challenge}
-                  />
+                  <ChallengeCard key={challenge.slug} challenge={challenge} />
                 ))}
               </div>
             </>
           ) : (
-            <div className="space-y-16">
-              {challengesByCategory.map(({ category, challenges }) => (
-                <section
-                  key={category.id}
-                  id={category.slug}
-                  aria-labelledby={`heading-${category.slug}`}
-                >
-                  <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
-                    <div>
-                      <h2
-                        id={`heading-${category.slug}`}
-                        className="text-2xl font-bold tracking-tight text-ink sm:text-3xl"
-                      >
-                        {category.name}
-                      </h2>
-                      {category.description ? (
-                        <p className="mt-2 max-w-2xl text-base text-ink-muted">
-                          {category.description}
-                        </p>
-                      ) : null}
-                    </div>
-                    <span className="text-sm font-medium text-ink-muted">
-                      {challenges.length}{" "}
-                      {challenges.length === 1 ? "challenge" : "challenges"}
-                    </span>
-                  </div>
-                  <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {challenges.map((challenge) => (
-                      <ChallengeCard
-                        key={challenge.id}
-                        challenge={challenge}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <ChallengesBrowser
+              challenges={allChallenges}
+              categories={categories}
+            />
           )}
 
           <div className="mt-16 rounded-2xl border border-slate-200 bg-surface-soft p-6 text-center sm:p-8">

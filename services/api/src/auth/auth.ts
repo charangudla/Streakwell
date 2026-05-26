@@ -7,6 +7,7 @@ import { bearer } from 'better-auth/plugins';
 
 import type { AuditLogService } from '../audit/audit-log.service';
 import type { EmailService } from '../email/email.service';
+import { generateReferralCode } from '../referrals/referral-code';
 import { validatePassword } from './password-policy';
 
 /**
@@ -172,6 +173,26 @@ export function createAuth(
       user: {
         create: {
           after: async (user) => {
+            // Auto-assign a referral code on signup. P2002 = unique conflict;
+            // retry with a fresh code. After 6 attempts the space is so
+            // saturated something is wrong — bail rather than block signup.
+            for (let attempt = 0; attempt < 6; attempt += 1) {
+              const code = generateReferralCode();
+              try {
+                await prisma.user.update({
+                  where: { id: user.id },
+                  data: { referralCode: code },
+                });
+                break;
+              } catch (err: unknown) {
+                const code = (err as { code?: string }).code;
+                if (code !== 'P2002') {
+                  // eslint-disable-next-line no-console
+                  console.error('Failed to assign referral code', err);
+                  break;
+                }
+              }
+            }
             await audit.record({
               userId: user.id,
               action: 'auth.signup',

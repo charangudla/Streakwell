@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { JsonLd } from "@/components/JsonLd";
 import { APP_NAME, APP_TAGLINE, SITE_URL } from "@/lib/constants";
 
 const inter = Inter({
@@ -36,12 +37,38 @@ export const metadata: Metadata = {
   },
 };
 
+const ORGANIZATION_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: APP_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon.svg`,
+  sameAs: [] as string[],
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      email: "hello@vital30.com",
+      contactType: "customer support",
+      availableLanguage: ["English"],
+    },
+  ],
+};
+
+const WEBSITE_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: APP_NAME,
+  url: SITE_URL,
+  description: `${APP_NAME} — ${APP_TAGLINE}`,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-surface text-ink">
+        <JsonLd data={[ORGANIZATION_LD, WEBSITE_LD]} />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

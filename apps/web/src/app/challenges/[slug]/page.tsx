@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
+import { JsonLd } from "@/components/JsonLd";
 import { fetchChallengeBySlug, fetchChallenges } from "@/lib/api";
-import { APP_NAME, HEALTH_DISCLAIMER } from "@/lib/constants";
+import { APP_NAME, HEALTH_DISCLAIMER, SITE_URL } from "@/lib/constants";
 import type { Challenge } from "@/lib/types";
 
 const DIFFICULTY_LABEL: Record<Challenge["difficulty"], string> = {
@@ -52,8 +53,33 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
     ? challenge.benefits
     : [];
 
+  const articleLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: challenge.title,
+    description: challenge.shortDescription,
+    url: `${SITE_URL}/challenges/${challenge.slug}`,
+    image: `${SITE_URL}/challenges/${challenge.slug}/opengraph-image`,
+    author: { "@type": "Organization", name: APP_NAME },
+    publisher: {
+      "@type": "Organization",
+      name: APP_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon.svg` },
+    },
+    articleSection: challenge.category?.name,
+    keywords: [
+      "wellness challenge",
+      "30 days",
+      challenge.title,
+      challenge.category?.name,
+    ]
+      .filter(Boolean)
+      .join(", "),
+  };
+
   return (
     <>
+      <JsonLd data={articleLd} />
       <section className="bg-gradient-to-b from-brand-50 via-white to-white pb-12 pt-12 sm:pt-16">
         <Container>
           <Link

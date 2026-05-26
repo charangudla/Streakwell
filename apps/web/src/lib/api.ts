@@ -24,11 +24,19 @@ export async function fetchChallenges(): Promise<Challenge[]> {
 export async function fetchChallengeBySlug(
   slug: string,
 ): Promise<Challenge | null> {
-  const all = await fetchChallenges();
-  return all.find((c) => c.slug === slug) ?? null;
+  return safeFetch<Challenge>(
+    `/challenges/slug/${encodeURIComponent(slug)}`,
+  );
 }
 
 export async function fetchCategories(): Promise<Category[]> {
   const data = await safeFetch<Category[]>("/categories");
   return data ?? [];
+}
+
+export async function fetchCategoryBySlug(
+  slug: string,
+): Promise<Category | null> {
+  const all = await fetchCategories();
+  return all.find((c) => c.slug === slug) ?? null;
 }

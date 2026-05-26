@@ -45,4 +45,15 @@ export class ChallengesService {
     }
     return challenge;
   }
+
+  async findBySlug(slug: string) {
+    const challenge = await this.prisma.challenge.findUnique({
+      where: { slug },
+      select: challengeSelect,
+    });
+    if (!challenge || !challenge.isActive) {
+      throw new NotFoundException('Challenge not found.');
+    }
+    return challenge;
+  }
 }

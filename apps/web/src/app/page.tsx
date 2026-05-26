@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/Button";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
+import { PhoneMockup } from "@/components/PhoneMockup";
+import { Testimonials } from "@/components/Testimonials";
 import { fetchChallenges } from "@/lib/api";
 import { APP_NAME, APP_TAGLINE, HEALTH_DISCLAIMER } from "@/lib/constants";
 import { FALLBACK_POPULAR_CHALLENGES } from "@/lib/fallback-challenges";
@@ -159,27 +161,12 @@ export default async function HomePage() {
                 ))}
               </ul>
             </div>
-            <div className="rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700 p-8 text-white shadow-xl sm:p-10">
-              <p className="text-sm font-semibold uppercase tracking-wide text-brand-100">
-                Today, day 14
-              </p>
-              <p className="mt-4 text-3xl font-bold sm:text-4xl">
-                12 of 14 active days
-              </p>
-              <div className="mt-6 h-3 w-full overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full rounded-full bg-streak"
-                  style={{ width: "85%" }}
-                />
-              </div>
-              <p className="mt-6 text-sm text-brand-100">
-                Recovery-friendly: missing a day breaks your current streak but
-                never erases your active days.
-              </p>
-            </div>
+            <PhoneMockup />
           </div>
         </Container>
       </section>
+
+      <Testimonials />
 
       <section className="bg-surface-soft py-12">
         <Container>

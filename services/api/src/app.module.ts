@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from '@thallesp/nestjs-better-auth';
 
+import { AchievementsModule } from './achievements/achievements.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuditLogService } from './audit/audit-log.service';
@@ -14,9 +15,12 @@ import { ChallengesModule } from './challenges/challenges.module';
 import { CheckinsModule } from './checkins/checkins.module';
 import { EmailModule } from './email/email.module';
 import { EmailService } from './email/email.service';
+import { FavoritesModule } from './favorites/favorites.module';
 import { HealthModule } from './health/health.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
+import { ReferralsModule } from './referrals/referrals.module';
 import { ShareEventsModule } from './share-events/share-events.module';
 import { UserChallengesModule } from './user-challenges/user-challenges.module';
 
@@ -60,7 +64,11 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     CategoriesModule,
     ChallengesModule,
     UserChallengesModule,
+    NotificationsModule,
+    AchievementsModule,
     CheckinsModule,
+    FavoritesModule,
+    ReferralsModule,
     ShareEventsModule,
   ],
   controllers: [AppController],
