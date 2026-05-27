@@ -24,7 +24,13 @@ export default async function ChallengesPage() {
 
   return (
     <>
-      <section className="bg-gradient-to-b from-brand-50 via-white to-white py-16 sm:py-20">
+      {/* Hero + content used to be `py-16 sm:py-20` + `py-12 sm:py-16` —
+          112-144px of dead space between the hero text and the first
+          content section. Trimmed both so the visual rhythm is hairline,
+          not gulf: hero `pt-12 pb-8 sm:pt-16 sm:pb-10`, content
+          `pt-6 pb-12 sm:pt-8 sm:pb-16`. Net gap ~14-18px, enough that
+          the bg-gradient boundary still reads as a section divider. */}
+      <section className="bg-gradient-to-b from-brand-50 via-white to-white pt-12 pb-8 sm:pt-16 sm:pb-10">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="text-4xl font-bold tracking-tight text-ink sm:text-5xl">
@@ -38,7 +44,7 @@ export default async function ChallengesPage() {
         </Container>
       </section>
 
-      <section className="py-12 sm:py-16">
+      <section className="pt-6 pb-12 sm:pt-8 sm:pb-16">
         <Container>
           {/* "Your challenges" carousel. Client component — renders
               nothing for signed-out visitors or while the
