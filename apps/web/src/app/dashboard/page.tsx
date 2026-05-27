@@ -121,7 +121,11 @@ function DashboardInner() {
           )}
         </div>
 
-        {/* Stat row: active days across active challenges */}
+        {/* Stat row: counts of active / completed challenges + an
+            average-progress KPI. Active + Completed are tappable —
+            anchored deep-links into the matching section of
+            /my-challenges. Avg progress is a derived number with no
+            list to drill into, so it stays a plain tile. */}
         {activeList.length > 0 ? (
           <div className="mt-4 grid grid-cols-3 gap-3 sm:gap-4">
             <Stat
@@ -130,6 +134,7 @@ function DashboardInner() {
               subtitle={
                 activeList.length === 1 ? "challenge" : "challenges"
               }
+              href="/my-challenges#active"
             />
             <Stat
               label="Avg progress"
@@ -143,6 +148,7 @@ function DashboardInner() {
               value={String(
                 (ucs ?? []).filter((u) => u.status === "COMPLETED").length,
               )}
+              href="/my-challenges#completed"
             />
           </div>
         ) : null}
@@ -293,13 +299,22 @@ function Stat({
   label,
   value,
   subtitle,
+  href,
 }: {
   label: string;
   value: string;
   subtitle?: string;
+  /**
+   * Optional destination. When set the tile renders as a Link with a
+   * brand-tinted hover so the user reads it as tappable. Used for
+   * Active / Completed counts so a tap drills straight into the
+   * matching section of /my-challenges. Avg progress stays a plain
+   * <div> since it's a derived number with no list to point at.
+   */
+  href?: string;
 }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center sm:p-5">
+  const inner = (
+    <>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted sm:text-xs">
         {label}
       </p>
@@ -307,6 +322,21 @@ function Stat({
       {subtitle ? (
         <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p>
       ) : null}
+    </>
+  );
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group block rounded-2xl border border-slate-200 bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md sm:p-5"
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center sm:p-5">
+      {inner}
     </div>
   );
 }

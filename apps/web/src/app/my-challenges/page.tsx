@@ -105,8 +105,13 @@ type GroupProps = {
 };
 
 function Group({ heading, items, primary }: GroupProps) {
+  // Lowercase the heading to derive the URL hash so dashboard tiles can
+  // deep-link straight to "Active" / "Completed" / "Abandoned" via
+  // /my-challenges#active etc. Adding scroll-mt so the hash-target lands
+  // BELOW the sticky header rather than tucked behind it.
+  const anchorId = heading.toLowerCase();
   return (
-    <section>
+    <section id={anchorId} className="scroll-mt-24">
       <h2 className="text-xl font-bold text-ink">{heading}</h2>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {items.map((uc) => {
