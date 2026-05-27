@@ -184,8 +184,12 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
 
   // Backend orders DESC for the "newest first" wire format; chat reads
   // best ASC so chronology runs top → bottom like every messaging app
-  // the user is used to.
-  const ordered = [...channel.messages].reverse();
+  // the user is used to. CELEBRATION cards are filtered out per the
+  // current product call — server still writes them so we can revive
+  // the surface later without a schema change.
+  const ordered = [...channel.messages]
+    .reverse()
+    .filter((m) => m.kind !== "CELEBRATION");
 
   // Outer container is h-full so the parent picks the height — a
   // dedicated /chat page can fill the viewport, while an embed could
@@ -217,12 +221,10 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
           ))
         )}
 
-        {/* Today's poll lives at the BOTTOM of the thread so it stays
-            visible when new chatter scrolls older messages off the
-            top — what's "live right now" is naturally the user's
-            anchor. */}
-        <PollInline poll={channel.poll} />
-
+        {/* PollInline + CELEBRATION cards intentionally removed —
+            the chat now reads as a pure conversation thread. The
+            poll data is still in `channel.poll` if we want to
+            re-surface it elsewhere (e.g. the channel header) later. */}
         <div ref={bottomRef} />
       </div>
 
@@ -259,32 +261,7 @@ function ChannelHeader({ poll }: { poll: ChatChannel["poll"] }) {
           {poll.total} {poll.total === 1 ? "member" : "members"}
         </p>
       </div>
-      <div className="flex items-center gap-1 text-xs">
-        <Tally label="✓" value={poll.completed} cls="text-brand-700" />
-        <Tally label="✗" value={poll.missed} cls="text-rose-700" />
-        <Tally label="⌀" value={poll.skipped} cls="text-slate-600" />
-        <Tally label="◯" value={poll.pending} cls="text-ink-muted" />
-      </div>
     </div>
-  );
-}
-
-function Tally({
-  label,
-  value,
-  cls,
-}: {
-  label: string;
-  value: number;
-  cls: string;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2 py-0.5 font-semibold ${cls}`}
-    >
-      <span aria-hidden="true">{label}</span>
-      {value}
-    </span>
   );
 }
 
@@ -334,6 +311,12 @@ function ChatRow({
   );
 }
 
+/**
+ * Per the current product call, side mapping is OWN=LEFT / OTHERS=RIGHT
+ * — opposite of WhatsApp/Instagram convention. Keeps a clear visual
+ * split between "what I said" and "what everyone else said" without
+ * matching any specific app's chrome.
+ */
 function OwnBubble({
   text,
   time,
@@ -348,16 +331,17 @@ function OwnBubble({
   onReact: (code: string) => void;
 }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex justify-start">
       <div className="max-w-[80%]">
-        <div className="rounded-2xl rounded-br-md bg-brand-500 px-4 py-2.5 text-white shadow-sm">
+        <div className="rounded-2xl rounded-bl-md bg-brand-500 px-4 py-2.5 text-white shadow-sm">
           <p className="text-sm">{text}</p>
         </div>
-        <div className="mt-1 flex items-center justify-end gap-2 text-[11px] text-ink-muted">
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-muted">
+          <span>You</span>
+          <span>·</span>
           <span>{formatRelative(time)}</span>
-          <span>· You</span>
         </div>
-        <div className="mt-1 flex justify-end">
+        <div className="mt-1 flex">
           <ReactionRow
             counts={reactions.counts}
             mine={reactions.mine}
@@ -392,16 +376,13 @@ function OtherBubble({
   // visually flat — same colour language as the on-screen card tones.
   const toneCls = tone ? OTHER_BUBBLE_TONE[tone] : "bg-white text-ink";
   return (
-    <div className="flex items-end gap-2">
-      <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-brand-700 text-[11px] font-bold text-white">
-        {initials}
-      </span>
-      <div className="max-w-[80%]">
+    <div className="flex items-end justify-end gap-2">
+      <div className="flex max-w-[80%] flex-col items-end">
         <p className="mb-0.5 text-[11px] font-semibold text-ink-muted">
           {name}
         </p>
         <div
-          className={`rounded-2xl rounded-bl-md px-4 py-2.5 shadow-sm ${toneCls}`}
+          className={`rounded-2xl rounded-br-md px-4 py-2.5 shadow-sm ${toneCls}`}
         >
           <p className="text-sm">{text}</p>
         </div>
@@ -417,6 +398,9 @@ function OtherBubble({
           />
         </div>
       </div>
+      <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-brand-700 text-[11px] font-bold text-white">
+        {initials}
+      </span>
     </div>
   );
 }
@@ -457,73 +441,6 @@ function CelebrationCard({
             variant="celebration"
           />
         </div>
-      </div>
-    </div>
-  );
-}
-
-// =========================================================================
-// Inline poll card (lives at the bottom of the thread)
-// =========================================================================
-
-function PollInline({ poll }: { poll: ChatChannel["poll"] }) {
-  const denom = Math.max(1, poll.total);
-  const rows: Array<{
-    label: string;
-    count: number;
-    bar: string;
-  }> = [
-    { label: "Completed", count: poll.completed, bar: "bg-brand-500" },
-    { label: "Missed", count: poll.missed, bar: "bg-rose-400" },
-    { label: "Skipped", count: poll.skipped, bar: "bg-slate-400" },
-    { label: "Not in yet", count: poll.pending, bar: "bg-slate-300" },
-  ];
-  return (
-    <div className="flex justify-center">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-brand-700">
-              Today&rsquo;s check-in
-            </p>
-            <p className="mt-0.5 text-xs text-ink-muted">
-              Updates live as people log in
-            </p>
-          </div>
-          {poll.yourStatus ? (
-            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700">
-              You: {poll.yourStatus.toLowerCase()}
-            </span>
-          ) : (
-            <span className="rounded-full bg-streak/15 px-2.5 py-0.5 text-[11px] font-semibold text-streak">
-              You: not in yet
-            </span>
-          )}
-        </div>
-        <ul className="mt-3 space-y-1.5">
-          {rows.map((row) => {
-            const pct = Math.round((row.count / denom) * 100);
-            return (
-              <li key={row.label} className="text-xs">
-                <div className="flex items-center justify-between text-ink">
-                  <span>{row.label}</span>
-                  <span className="font-mono font-semibold">
-                    {row.count}
-                    <span className="ml-1 font-normal text-ink-muted">
-                      ({pct}%)
-                    </span>
-                  </span>
-                </div>
-                <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full ${row.bar}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
       </div>
     </div>
   );
