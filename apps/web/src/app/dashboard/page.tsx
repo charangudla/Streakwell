@@ -6,6 +6,10 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { ButtonLink } from "@/components/Button";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
+import {
+  CarouselCard,
+  HorizontalCardRow,
+} from "@/components/HorizontalCardRow";
 import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import { dayNumber } from "@/lib/progress";
@@ -166,9 +170,9 @@ function DashboardInner() {
             />
             <HorizontalCardRow>
               {recommended.map((c) => (
-                <CarouselCardWrapper key={c.id}>
+                <CarouselCard key={c.id}>
                   <ChallengeCard challenge={c} />
-                </CarouselCardWrapper>
+                </CarouselCard>
               ))}
             </HorizontalCardRow>
           </section>
@@ -182,25 +186,22 @@ function DashboardInner() {
             <SectionHeader title="Popular this week" seeAllHref="/challenges" />
             <HorizontalCardRow>
               {popular.map((c) => (
-                <CarouselCardWrapper key={c.id}>
+                <CarouselCard key={c.id}>
                   <ChallengeCard challenge={c} />
-                </CarouselCardWrapper>
+                </CarouselCard>
               ))}
             </HorizontalCardRow>
           </section>
         ) : null}
 
-        {/* Browse + create CTAs */}
-        <section className="mt-12 grid gap-4 sm:grid-cols-3">
+        {/* Browse + history quick links. "Create your own" now lives on
+            the /challenges page where users go specifically to find or
+            start a challenge. */}
+        <section className="mt-12 grid gap-4 sm:grid-cols-2">
           <QuickLink
             href="/challenges"
             title="Browse all challenges"
             body="Find a new 30-day challenge to start."
-          />
-          <QuickLink
-            href="/create-challenge"
-            title="Create your own"
-            body="Set custom days and invite friends."
           />
           <QuickLink
             href="/my-challenges"
@@ -386,29 +387,3 @@ function useGreeting(): string {
   return "Good evening";
 }
 
-/**
- * Horizontally-scrollable card row on phone + tablet, grid on desktop —
- * matches the mobile app's home screen "Recommended for you" lane.
- *
- * Mobile: the row bleeds to viewport edges (`-mx-4`) and uses scroll-snap
- * so each card snaps into place on swipe. Scrollbar hidden for a native
- * feel. Desktop (`md:`+): becomes a normal 2/3-column grid.
- */
-function HorizontalCardRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-4 -mx-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 md:mx-0 md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden">
-      <div className="flex snap-x snap-mandatory gap-4 px-4 sm:px-6 md:grid md:snap-none md:grid-cols-2 md:px-0 lg:grid-cols-3">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/** Fixed-width carousel cell on phone, auto width inside the grid on desktop. */
-function CarouselCardWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="w-72 flex-none snap-start md:w-auto md:flex-initial">
-      {children}
-    </div>
-  );
-}

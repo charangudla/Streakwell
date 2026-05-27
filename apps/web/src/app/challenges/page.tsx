@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ButtonLink } from "@/components/Button";
 import { ChallengesBrowser } from "@/components/ChallengesBrowser";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
@@ -39,6 +40,37 @@ export default async function ChallengesPage() {
 
       <section className="py-12 sm:py-16">
         <Container>
+          {/* "Create your own" CTA. Lives here (not on /dashboard)
+              because /challenges is where users come specifically to
+              find or start a challenge — the home screen is for the
+              one they're already doing. Authed users land on the
+              create form; anonymous users get bounced to register with
+              a redirect-back. */}
+          <div className="mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700 p-6 text-white shadow-lg sm:mb-12 sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-100">
+                  Build your own
+                </p>
+                <h2 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">
+                  Don&apos;t see what you want?
+                </h2>
+                <p className="mt-2 max-w-xl text-sm text-brand-50 sm:text-base">
+                  Create a custom 30-day challenge — pick the duration,
+                  difficulty, and daily task. Invite friends by email or
+                  share a join link.
+                </p>
+              </div>
+              <ButtonLink
+                href="/create-challenge"
+                size="md"
+                className="flex-none bg-white text-brand-700 hover:bg-brand-50"
+              >
+                Create your own
+              </ButtonLink>
+            </div>
+          </div>
+
           {usingFallback ? (
             <>
               <p className="mb-6 text-sm text-ink-muted">
