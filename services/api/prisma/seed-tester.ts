@@ -96,7 +96,7 @@ const PLANS: MilestonePlan[] = [
   {
     day: 30,
     expectation:
-      'Month milestone — banner: "Challenge complete!" · all 30 cells filled',
+      'Month milestone — banner: "Challenge complete!" · all 30 cells filled · lives under Completed (not Active)',
   },
 ];
 
@@ -182,15 +182,23 @@ async function main() {
     //   startDate  = todayUtc - (plan.day - 1) * DAY_MS
     const startDate = new Date(todayUtc.getTime() - (plan.day - 1) * DAY_MS);
 
-    // No progressPercent column — the API derives it at read time from
-    // completedDays / durationDays. So the dashboard / carousel bars
-    // will look right as soon as the user opens the page.
+    // The 30-day plan represents a FINISHED challenge — flip its
+    // status to COMPLETED with endDate set so it lands in the
+    // "Completed" section of /my-challenges (instead of staying in
+    // Active). The other tiers (Day 7 / 14 / 21) stay ACTIVE so the
+    // user can still tap their calendar cells to test the
+    // edit-decision flow. No progressPercent column — the API
+    // derives it at read time from completedDays / durationDays.
+    const isFinalDay = plan.day === 30;
     const uc = await prisma.userChallenge.create({
       data: {
         userId: user.id,
         challengeId: challenge.id,
-        status: UserChallengeStatus.ACTIVE,
+        status: isFinalDay
+          ? UserChallengeStatus.COMPLETED
+          : UserChallengeStatus.ACTIVE,
         startDate,
+        endDate: isFinalDay ? new Date() : null,
       },
     });
 
@@ -215,9 +223,15 @@ async function main() {
   console.log(`   password: ${TEST_PASSWORD}`);
   console.log('');
   console.log('Where to look:');
-  console.log('   /dashboard         → carousel of all four challenges');
-  console.log('   /challenges        → "Your challenges" carousel at top');
-  console.log('   /my-challenges     → grid of all four under Active');
+  console.log(
+    '   /dashboard         → carousel of the 3 ACTIVE challenges (hero + 2 in "other")',
+  );
+  console.log(
+    '   /challenges        → "Your challenges" carousel of the 3 active',
+  );
+  console.log(
+    '   /my-challenges     → 3 under Active (Day 7 / 14 / 21) · 1 under Completed (Day 30, "Early Bird Bedtime")',
+  );
   console.log(
     '   /my-challenges/[id]/progress → calendar + share card (one per challenge)',
   );

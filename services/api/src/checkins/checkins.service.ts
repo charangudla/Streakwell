@@ -82,7 +82,22 @@ export class CheckinsService {
       );
     }
 
-    return checkin;
+    // Count completed days AFTER the upsert so the response can tell the
+    // client "this check-in completed the challenge" — used by the web
+    // CheckinModal to swap its result panel for a celebratory variant
+    // and by mobile to trigger the day-30 celebration screen. Mirrors
+    // the same `completedDays >= durationDays` trigger the achievement
+    // evaluator uses for the COMPLETED flip.
+    const completedCount = await this.prisma.dailyCheckin.count({
+      where: {
+        userChallengeId: dto.userChallengeId,
+        status: CheckinStatus.COMPLETED,
+      },
+    });
+    const challengeComplete =
+      completedCount >= uc.challenge.durationDays;
+
+    return { ...checkin, challengeComplete };
   }
 
   async listForUserChallenge(userId: string, userChallengeId: string) {

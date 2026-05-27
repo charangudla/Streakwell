@@ -69,6 +69,11 @@ export function CheckinModal({
 }: Props) {
   const [submitting, setSubmitting] = useState<CheckinStatus | null>(null);
   const [result, setResult] = useState<CheckinStatus | null>(null);
+  // `challengeComplete` is true when the just-submitted COMPLETED
+  // check-in pushed the user over the durationDays threshold — used
+  // to swap the routine "Nice work" result panel for a bigger
+  // "Challenge complete!" celebration. Comes from the API response.
+  const [challengeComplete, setChallengeComplete] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const firstButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -79,6 +84,7 @@ export function CheckinModal({
     if (open) {
       setSubmitting(null);
       setResult(null);
+      setChallengeComplete(false);
       setErr(null);
     }
   }, [open]);
@@ -122,10 +128,18 @@ export function CheckinModal({
       // For "today" we could omit it (backend would default), but
       // sending it explicitly keeps the wire format consistent and
       // sidesteps any client/server clock drift.
-      await apiClient("/checkins", {
-        method: "POST",
-        body: { userChallengeId, status, checkinDate: checkinDateIso },
-      });
+      const res = await apiClient<{ challengeComplete?: boolean }>(
+        "/checkins",
+        {
+          method: "POST",
+          body: { userChallengeId, status, checkinDate: checkinDateIso },
+        },
+      );
+      // `challengeComplete` is true when this check-in pushed the
+      // user over their durationDays. Backend also flips the
+      // userChallenge.status to COMPLETED in the background; the
+      // /progress page picks that up on next refetch.
+      setChallengeComplete(!!res?.challengeComplete);
       setResult(status);
       onSubmitted(status);
     } catch (e) {
@@ -193,7 +207,12 @@ export function CheckinModal({
             firstButtonRef={firstButtonRef}
           />
         ) : (
-          <CheckinResult result={result} day={day} onClose={onClose} />
+          <CheckinResult
+            result={result}
+            day={day}
+            challengeComplete={challengeComplete}
+            onClose={onClose}
+          />
         )}
       </div>
     </div>
@@ -346,12 +365,33 @@ function CheckinForm({
 function CheckinResult({
   result,
   day,
+  challengeComplete,
   onClose,
 }: {
   result: CheckinStatus;
   day: number;
+  challengeComplete: boolean;
   onClose: () => void;
 }) {
+  // Final-day celebration takes precedence over the routine "Nice
+  // work" panel — only fires when the COMPLETED check-in just pushed
+  // the user over their durationDays threshold.
+  if (result === "COMPLETED" && challengeComplete) {
+    return (
+      <ResultPanel
+        accent="from-amber-400 via-amber-500 to-amber-600"
+        textTone="text-amber-950"
+        subTone="text-amber-900"
+        iconBg="bg-white/30"
+        icon={<TrophyGlyph className="h-9 w-9 text-amber-950" />}
+        eyebrow="Challenge complete"
+        title="You did it!"
+        body={`Day ${day} logged. That's the whole challenge — every cell on your calendar is yours. Take a moment to be proud of this.`}
+        onClose={onClose}
+        closeStyle="bg-amber-950 text-amber-50 hover:bg-amber-900"
+      />
+    );
+  }
   if (result === "COMPLETED") {
     return (
       <ResultPanel
@@ -488,6 +528,28 @@ function HeartGlyph({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M12 21s-7-4.5-9.5-9.5C.5 7 4 3 7.5 4.5 9.5 5.3 11 7 12 8.5 13 7 14.5 5.3 16.5 4.5 20 3 23.5 7 21.5 11.5 19 16.5 12 21 12 21z" />
+    </svg>
+  );
+}
+
+function TrophyGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M8 21h8" />
+      <path d="M12 17v4" />
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
+      <path d="M17 6h2a2 2 0 0 1 0 4h-2" />
+      <path d="M7 6H5a2 2 0 0 0 0 4h2" />
     </svg>
   );
 }
