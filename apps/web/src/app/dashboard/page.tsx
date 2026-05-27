@@ -8,7 +8,6 @@ import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import { dayNumber } from "@/lib/progress";
-import type { Challenge } from "@/lib/types";
 import type { UserChallenge } from "@/lib/web-types";
 
 export default function DashboardPage() {
@@ -24,22 +23,15 @@ function DashboardInner() {
   const firstName = session?.user.name?.split(" ")[0] ?? "there";
 
   const [active, setActive] = useState<UserChallenge[] | null>(null);
-  const [challenges, setChallenges] = useState<Record<string, Challenge>>({});
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [ucs, all] = await Promise.all([
-          apiClient<UserChallenge[]>("/user-challenges"),
-          apiClient<Challenge[]>("/challenges"),
-        ]);
+        const ucs = await apiClient<UserChallenge[]>("/user-challenges");
         if (cancelled) return;
-        const byId: Record<string, Challenge> = {};
-        for (const c of all) byId[c.id] = c;
         setActive(ucs);
-        setChallenges(byId);
       } catch (e) {
         if (!cancelled) setErr((e as Error).message);
       }
@@ -72,8 +64,7 @@ function DashboardInner() {
         ) : (
           <div className="mt-8 grid gap-5 sm:grid-cols-2">
             {activeList.map((uc) => {
-              const c = challenges[uc.challengeId];
-              if (!c) return null;
+              const c = uc.challenge;
               const day = dayNumber(uc.startDate, c.durationDays);
               return (
                 <Link

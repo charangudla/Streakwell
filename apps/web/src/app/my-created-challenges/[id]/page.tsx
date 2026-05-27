@@ -9,6 +9,7 @@ import { apiClient, ApiClientError } from "@/lib/api-client";
 import { SITE_URL } from "@/lib/constants";
 import type {
   ChallengeInvite,
+  ChallengeJoiner,
   CustomChallenge,
 } from "@/lib/web-types";
 
@@ -28,6 +29,7 @@ function Inner({ params }: PageProps) {
 
   const [challenge, setChallenge] = useState<CustomChallenge | null>(null);
   const [invites, setInvites] = useState<ChallengeInvite[]>([]);
+  const [joiners, setJoiners] = useState<ChallengeJoiner[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState("");
@@ -38,9 +40,10 @@ function Inner({ params }: PageProps) {
 
   async function refresh() {
     try {
-      const [list, inv] = await Promise.all([
+      const [list, inv, j] = await Promise.all([
         apiClient<CustomChallenge[]>("/custom-challenges/mine"),
         apiClient<ChallengeInvite[]>(`/custom-challenges/${id}/invites`),
+        apiClient<ChallengeJoiner[]>(`/custom-challenges/${id}/joiners`),
       ]);
       const found = list.find((c) => c.id === id);
       if (!found) {
@@ -49,6 +52,7 @@ function Inner({ params }: PageProps) {
       }
       setChallenge(found);
       setInvites(inv);
+      setJoiners(j);
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -253,6 +257,51 @@ function Inner({ params }: PageProps) {
                     className={`rounded-full px-2 py-0.5 text-xs font-semibold ${i.status === "ACCEPTED" ? "bg-brand-50 text-brand-700" : i.status === "DECLINED" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-ink-muted"}`}
                   >
                     {i.status.toLowerCase()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Participants ({joiners.length})
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            People who joined — including via the share link, even if you
+            didn&rsquo;t invite them by email.
+          </p>
+          {joiners.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-muted">
+              No one has joined yet.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-slate-100">
+              {joiners.map((j) => (
+                <li
+                  key={j.userChallengeId}
+                  className="flex items-center justify-between gap-3 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink">
+                      {j.name}{" "}
+                      {j.isCreator ? (
+                        <span className="ml-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                          creator
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      {j.activeDays} active day{j.activeDays === 1 ? "" : "s"} ·{" "}
+                      {j.progressPercent.toFixed(0)}% · joined{" "}
+                      {new Date(j.joinedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${j.status === "COMPLETED" ? "bg-brand-50 text-brand-700" : j.status === "ABANDONED" ? "bg-slate-100 text-ink-muted" : "bg-streak/10 text-amber-700"}`}
+                  >
+                    {j.status.toLowerCase()}
                   </span>
                 </li>
               ))}

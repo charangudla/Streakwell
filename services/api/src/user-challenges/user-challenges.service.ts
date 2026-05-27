@@ -23,6 +23,25 @@ export type UserChallengeView = {
   startDate: Date;
   endDate: Date | null;
   progressPercent: number;
+  /**
+   * Embedded challenge fields the mobile + web UIs need to render the
+   * card (title, daily task, etc.) without an extra round-trip per row.
+   * Critical for PRIVATE custom challenges since `/challenges` filters
+   * those out — without this embed, joiners couldn't see them in
+   * `/my-challenges` after joining.
+   */
+  challenge: {
+    id: string;
+    title: string;
+    slug: string;
+    shortDescription: string;
+    dailyTask: string;
+    durationDays: number;
+    difficulty: string;
+    categoryId: string;
+    visibility: string;
+    createdById: string | null;
+  };
 };
 
 @Injectable()
@@ -146,6 +165,20 @@ export class UserChallengesService {
       status: true,
       startDate: true,
       endDate: true,
+      challenge: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          shortDescription: true,
+          dailyTask: true,
+          durationDays: true,
+          difficulty: true,
+          categoryId: true,
+          visibility: true,
+          createdById: true,
+        },
+      },
     } satisfies Prisma.UserChallengeSelect;
   }
 
@@ -187,6 +220,18 @@ export class UserChallengesService {
       status: UserChallengeStatus;
       startDate: Date;
       endDate: Date | null;
+      challenge: {
+        id: string;
+        title: string;
+        slug: string;
+        shortDescription: string;
+        dailyTask: string;
+        durationDays: number;
+        difficulty: string;
+        categoryId: string;
+        visibility: string;
+        createdById: string | null;
+      };
     },
     completedDates: Date[],
   ): UserChallengeView {

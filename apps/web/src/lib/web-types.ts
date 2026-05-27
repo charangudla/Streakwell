@@ -8,6 +8,31 @@ export type UserChallenge = {
   startDate: string;
   endDate: string | null;
   progressPercent: number;
+  /** Embedded so PRIVATE custom challenges render without a second fetch. */
+  challenge: {
+    id: string;
+    title: string;
+    slug: string;
+    shortDescription: string;
+    dailyTask: string;
+    durationDays: number;
+    difficulty: "BEGINNER" | "EASY" | "MEDIUM" | "HARD";
+    categoryId: string;
+    visibility: "PRIVATE" | "PUBLIC";
+    createdById: string | null;
+  };
+};
+
+export type ChallengeJoiner = {
+  userChallengeId: string;
+  userId: string;
+  name: string;
+  status: "ACTIVE" | "COMPLETED" | "ABANDONED";
+  joinedAt: string;
+  endDate: string | null;
+  activeDays: number;
+  progressPercent: number;
+  isCreator: boolean;
 };
 
 export type CheckinStatus = "COMPLETED" | "MISSED" | "SKIPPED";

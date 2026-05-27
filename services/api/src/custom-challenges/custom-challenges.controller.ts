@@ -76,4 +76,12 @@ export class CustomChallengesController {
   ) {
     return this.svc.listInvites(id, session.user.id);
   }
+
+  @Get(':id/joiners')
+  listJoiners(
+    @Session() session: UserSession<Auth>,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.svc.listJoiners(id, session.user.id);
+  }
 }

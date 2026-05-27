@@ -7,7 +7,6 @@ import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import { dayNumber } from "@/lib/progress";
-import type { Challenge } from "@/lib/types";
 import type { UserChallenge } from "@/lib/web-types";
 
 export default function MyChallengesPage() {
@@ -20,22 +19,15 @@ export default function MyChallengesPage() {
 
 function MyChallengesInner() {
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
-  const [byId, setById] = useState<Record<string, Challenge>>({});
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [list, all] = await Promise.all([
-          apiClient<UserChallenge[]>("/user-challenges"),
-          apiClient<Challenge[]>("/challenges"),
-        ]);
+        const list = await apiClient<UserChallenge[]>("/user-challenges");
         if (cancelled) return;
         setUcs(list);
-        const map: Record<string, Challenge> = {};
-        for (const c of all) map[c.id] = c;
-        setById(map);
       } catch (e) {
         if (!cancelled) setErr((e as Error).message);
       }
@@ -82,7 +74,6 @@ function MyChallengesInner() {
               <Group
                 heading="Active"
                 items={active}
-                byId={byId}
                 primary="checkin"
               />
             ) : null}
@@ -90,7 +81,6 @@ function MyChallengesInner() {
               <Group
                 heading="Completed"
                 items={completed}
-                byId={byId}
                 primary="progress"
               />
             ) : null}
@@ -98,7 +88,6 @@ function MyChallengesInner() {
               <Group
                 heading="Abandoned"
                 items={abandoned}
-                byId={byId}
                 primary="progress"
               />
             ) : null}
@@ -112,18 +101,16 @@ function MyChallengesInner() {
 type GroupProps = {
   heading: string;
   items: UserChallenge[];
-  byId: Record<string, Challenge>;
   primary: "checkin" | "progress";
 };
 
-function Group({ heading, items, byId, primary }: GroupProps) {
+function Group({ heading, items, primary }: GroupProps) {
   return (
     <section>
       <h2 className="text-xl font-bold text-ink">{heading}</h2>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {items.map((uc) => {
-          const c = byId[uc.challengeId];
-          if (!c) return null;
+          const c = uc.challenge;
           const day = dayNumber(uc.startDate, c.durationDays);
           const primaryHref =
             primary === "checkin"

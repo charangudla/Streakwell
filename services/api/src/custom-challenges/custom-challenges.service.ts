@@ -138,6 +138,48 @@ export class CustomChallengesService {
     }));
   }
 
+  /**
+   * Joiners list for the creator: who joined, when, and current progress.
+   * Deliberately excludes email — name + id + joinedAt + status + active
+   * days is enough for the creator to see participation without dumping
+   * member PII.
+   */
+  async listJoiners(challengeId: string, ownerId: string) {
+    const challenge = await this.assertOwnership(challengeId, ownerId);
+    const ucs = await this.prisma.userChallenge.findMany({
+      where: { challengeId: challenge.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        userId: true,
+        user: { select: { id: true, name: true } },
+        checkins: {
+          where: { status: 'COMPLETED' },
+          select: { id: true },
+        },
+      },
+    });
+    return ucs.map((uc) => ({
+      userChallengeId: uc.id,
+      userId: uc.user.id,
+      name: uc.user.name,
+      status: uc.status,
+      joinedAt: uc.startDate,
+      endDate: uc.endDate,
+      activeDays: uc.checkins.length,
+      progressPercent:
+        challenge.durationDays === 0
+          ? 0
+          : Math.round(
+              (uc.checkins.length / challenge.durationDays) * 100 * 10,
+            ) / 10,
+      isCreator: uc.userId === ownerId,
+    }));
+  }
+
   async invite(
     inviterId: string,
     challengeId: string,
