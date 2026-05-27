@@ -343,7 +343,13 @@ function ProgressInner({ params }: PageProps) {
             </div>
             <ShareIcon />
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {/* 3-up grid at every viewport so all formats are visible at
+              once without scrolling — the buttons are short enough to
+              fit side by side on a 360px phone. Inside each card the
+              thumbnail + label + dimensions stay visible; the longer
+              "Instagram post · X · Facebook" hint hides below sm so
+              the card can sit comfortably in ~100px. */}
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
             {(Object.keys(SHARE_FORMATS) as ShareFormat[]).map((fmt) => {
               const spec = SHARE_FORMATS[fmt];
               const busy = sharingFormat === fmt;
@@ -354,25 +360,26 @@ function ProgressInner({ params }: PageProps) {
                   type="button"
                   onClick={() => onShare(fmt)}
                   disabled={disabled}
-                  className="group flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-surface-soft p-4 text-left transition-all hover:border-brand-300 hover:bg-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface-soft disabled:hover:shadow-none"
+                  className="group flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-surface-soft p-3 text-left transition-all hover:border-brand-300 hover:bg-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface-soft disabled:hover:shadow-none sm:p-4"
                 >
                   <FormatThumb format={fmt} />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-ink group-hover:text-brand-700">
+                    <p className="text-xs font-bold text-ink group-hover:text-brand-700 sm:text-sm">
                       {spec.label}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-medium text-ink-muted">
-                      {spec.w} × {spec.h}
+                    <p className="mt-0.5 text-[10px] font-medium text-ink-muted sm:text-[11px]">
+                      {spec.w}×{spec.h}
                     </p>
-                    <p className="mt-1 text-xs text-ink-muted">
+                    <p className="mt-1 hidden text-xs text-ink-muted sm:block">
                       {spec.hint}
                     </p>
                   </div>
-                  <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+                  <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-700 sm:text-xs">
                     {busy ? (
                       <>
                         <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-700" />
-                        Generating…
+                        <span className="hidden sm:inline">Generating…</span>
+                        <span className="sm:hidden">…</span>
                       </>
                     ) : (
                       <>Generate →</>
