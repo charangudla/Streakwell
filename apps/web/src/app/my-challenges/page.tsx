@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
@@ -49,22 +50,50 @@ function refDate(uc: UserChallenge): Date {
 export default function MyChallengesPage() {
   return (
     <AuthGuard>
-      <MyChallengesInner />
+      {/* Suspense gates useSearchParams() per Next.js 16 — without it
+          the page bails out of static rendering and emits a build
+          warning. */}
+      <Suspense fallback={null}>
+        <MyChallengesInner />
+      </Suspense>
     </AuthGuard>
   );
 }
 
+/**
+ * Map a `?status=` query value to one of our StatusFilter values.
+ * Accepts case-insensitive input so `?status=active`, `?status=ACTIVE`,
+ * etc. all work. Anything else falls through to "ALL".
+ */
+function parseStatusParam(raw: string | null): StatusFilter {
+  switch (raw?.toUpperCase()) {
+    case "ACTIVE":
+      return "ACTIVE";
+    case "COMPLETED":
+      return "COMPLETED";
+    case "ABANDONED":
+      return "ABANDONED";
+    default:
+      return "ALL";
+  }
+}
+
 function MyChallengesInner() {
+  const searchParams = useSearchParams();
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   // Year / month / status filters. Default ALL = no filter — Year gets
   // pre-loaded options from whatever years appear in the user's data
   // so we never offer an empty year. Status maps 1:1 to UserChallenge
-  // statuses + an "all" sentinel.
+  // statuses + an "all" sentinel. Status seed-loads from `?status=` so
+  // /profile (and any other surface) can deep-link straight into the
+  // scoped view.
   const [year, setYear] = useState<string>(ALL);
   const [month, setMonth] = useState<string>(ALL);
-  const [status, setStatus] = useState<StatusFilter>("ALL");
+  const [status, setStatus] = useState<StatusFilter>(() =>
+    parseStatusParam(searchParams.get("status")),
+  );
 
   useEffect(() => {
     let cancelled = false;

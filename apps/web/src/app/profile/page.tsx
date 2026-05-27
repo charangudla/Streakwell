@@ -134,12 +134,22 @@ function ProfileInner() {
           </div>
         </div>
 
-        {/* Stats — Active + Completed challenge counts. */}
+        {/* Stats — Active + Completed challenge counts. Each tile deep-
+            links into the matching status-scoped view of /my-challenges,
+            where the user can see month/year bucketing for the completed
+            list and tap any card to enter that challenge's progress
+            page. The query param pre-applies the existing Status filter
+            on /my-challenges (year/month dropdowns stay default). */}
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <StatTile label="ACTIVE" value={ucs === null ? "—" : `${activeCount}`} />
+          <StatTile
+            label="ACTIVE"
+            value={ucs === null ? "—" : `${activeCount}`}
+            href="/my-challenges?status=active"
+          />
           <StatTile
             label="COMPLETED"
             value={ucs === null ? "—" : `${completedCount}`}
+            href="/my-challenges?status=completed"
           />
         </div>
 
@@ -348,15 +358,48 @@ function Divider() {
   return <div className="ml-[60px] border-t border-slate-100" />;
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+function StatTile({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  /**
+   * Optional destination. When set the tile becomes a Link with a
+   * brand-tinted hover affordance so the user reads it as tappable.
+   * Used for Active / Completed counts on /profile so a tap drills
+   * straight into the matching scoped view of /my-challenges (with
+   * year/month buckets already laid out by that page).
+   */
+  href?: string;
+}) {
+  const inner = (
+    <>
       <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
         {label}
       </p>
       <p className="mt-1 font-mono text-2xl font-semibold text-ink sm:text-3xl">
         {value}
       </p>
+    </>
+  );
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group block rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md sm:p-5"
+      >
+        {inner}
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-700 opacity-0 transition-opacity group-hover:opacity-100">
+          View →
+        </p>
+      </Link>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      {inner}
     </div>
   );
 }
