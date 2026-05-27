@@ -154,30 +154,39 @@ function DashboardInner() {
           </section>
         ) : null}
 
-        {/* Recommended for you */}
+        {/* Recommended for you — horizontal swipe carousel on phone +
+            tablet (mirrors the mobile app's home screen), grid on
+            desktop. The outer wrapper bleeds to the viewport edges so
+            cards can swipe past the page padding for that native feel. */}
         {recommended.length > 0 ? (
           <section className="mt-10">
             <SectionHeader
               title="Recommended for you"
               seeAllHref="/challenges"
             />
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <HorizontalCardRow>
               {recommended.map((c) => (
-                <ChallengeCard key={c.id} challenge={c} />
+                <CarouselCardWrapper key={c.id}>
+                  <ChallengeCard challenge={c} />
+                </CarouselCardWrapper>
               ))}
-            </div>
+            </HorizontalCardRow>
           </section>
         ) : null}
 
-        {/* Popular this week */}
+        {/* Popular this week — same horizontal swipe pattern. The
+            mobile app stacks Popular vertically; on web we use the
+            carousel for both so the home page feels app-consistent. */}
         {popular.length > 0 ? (
           <section className="mt-10">
             <SectionHeader title="Popular this week" seeAllHref="/challenges" />
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <HorizontalCardRow>
               {popular.map((c) => (
-                <ChallengeCard key={c.id} challenge={c} />
+                <CarouselCardWrapper key={c.id}>
+                  <ChallengeCard challenge={c} />
+                </CarouselCardWrapper>
               ))}
-            </div>
+            </HorizontalCardRow>
           </section>
         ) : null}
 
@@ -375,4 +384,31 @@ function useGreeting(): string {
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
+}
+
+/**
+ * Horizontally-scrollable card row on phone + tablet, grid on desktop —
+ * matches the mobile app's home screen "Recommended for you" lane.
+ *
+ * Mobile: the row bleeds to viewport edges (`-mx-4`) and uses scroll-snap
+ * so each card snaps into place on swipe. Scrollbar hidden for a native
+ * feel. Desktop (`md:`+): becomes a normal 2/3-column grid.
+ */
+function HorizontalCardRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-4 -mx-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 md:mx-0 md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden">
+      <div className="flex snap-x snap-mandatory gap-4 px-4 sm:px-6 md:grid md:snap-none md:grid-cols-2 md:px-0 lg:grid-cols-3">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Fixed-width carousel cell on phone, auto width inside the grid on desktop. */
+function CarouselCardWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-72 flex-none snap-start md:w-auto md:flex-initial">
+      {children}
+    </div>
+  );
 }
