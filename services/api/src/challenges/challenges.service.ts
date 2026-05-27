@@ -48,7 +48,17 @@ export class ChallengesService {
     });
   }
 
-  async findById(id: string) {
+  /**
+   * `userId` is set when the caller is authenticated. PRIVATE challenges
+   * are exposed by id only when:
+   *   - the caller created the challenge, OR
+   *   - the caller has a UserChallenge for it (they joined via the
+   *     share link or an accepted invite).
+   * Anonymous callers + authenticated callers without an existing join
+   * see a 404 for private challenges so we don't leak metadata about
+   * private challenges to URL guessers.
+   */
+  async findById(id: string, userId?: string) {
     const challenge = await this.prisma.challenge.findUnique({
       where: { id },
       select: challengeSelect,
@@ -56,15 +66,27 @@ export class ChallengesService {
     if (!challenge) {
       throw new NotFoundException('Challenge not found.');
     }
-    // PRIVATE challenges are reachable by id only if you already know
-    // the id (e.g. you're the creator or you're joining via the share
-    // link). The visibility gate on join() handles the permission check;
-    // here we just refuse anonymous prying for unauthenticated callers
-    // by hiding them from the public-by-id endpoint.
     if (challenge.visibility === ChallengeVisibility.PRIVATE) {
-      throw new NotFoundException('Challenge not found.');
+      const allowed = userId
+        ? challenge.createdById === userId ||
+          (await this.userHasJoined(id, userId))
+        : false;
+      if (!allowed) {
+        throw new NotFoundException('Challenge not found.');
+      }
     }
     return challenge;
+  }
+
+  private async userHasJoined(
+    challengeId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const uc = await this.prisma.userChallenge.findUnique({
+      where: { userId_challengeId: { userId, challengeId } },
+      select: { id: true },
+    });
+    return !!uc;
   }
 
   async findBySlug(slug: string) {
