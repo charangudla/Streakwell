@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
-import { ChallengeChat } from "@/components/ChallengeChat";
 import { CheckinModal } from "@/components/CheckinModal";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
@@ -42,10 +41,6 @@ function ProgressInner({ params }: PageProps) {
   // that day — today's day for the primary CTA, the tapped day for a
   // calendar-cell edit.
   const [editingDay, setEditingDay] = useState<number | null>(null);
-  // Bumped after a successful check-in so the chat panel's poll counts
-  // refetch — keeps the "Today's check-in poll" in sync with the
-  // user's just-saved status without waiting for next mount.
-  const [chatRefreshNonce, setChatRefreshNonce] = useState(0);
 
   // Refetch just the checkins (cheap — one endpoint, no challenge
   // hydration needed) so the calendar + stats update without a page
@@ -330,29 +325,44 @@ function ProgressInner({ params }: PageProps) {
           </div>
         ) : null}
 
-        {/* Community chat — shared across everyone on this Challenge.
-            Daily check-in poll auto-syncs with the user's own check-in
-            (chatRefreshNonce bumps on submit above). Preset-only posts
-            + reactions on the daily celebration card. */}
-        <section className="mt-10" aria-labelledby="chat-heading">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2
-              id="chat-heading"
-              className="text-xl font-bold tracking-tight text-ink sm:text-2xl"
+        {/* Community chat now lives in its own page (/chat/[id]) so it
+            opens as a dedicated full-window experience — link to it
+            from here rather than embed. The chat panel's poll picks
+            up the user's check-in on its own mount; no refreshNonce
+            wiring needed across the page boundary. */}
+        <Link
+          href={`/chat/${challenge.id}`}
+          className="mt-8 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md sm:p-6"
+        >
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="grid h-10 w-10 flex-none place-items-center rounded-full bg-brand-50 text-brand-700"
             >
-              Community chat
-            </h2>
-            <p className="text-xs text-ink-muted">
-              Visible to everyone on this challenge
-            </p>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-ink">Community chat</p>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                Daily check-in poll, status updates, reactions
+              </p>
+            </div>
           </div>
-          <div className="mt-4">
-            <ChallengeChat
-              challengeId={challenge.id}
-              refreshNonce={chatRefreshNonce}
-            />
-          </div>
-        </section>
+          <span className="text-xs font-semibold text-brand-700">
+            Open →
+          </span>
+        </Link>
 
         {/* Share-to-social card. Picker → user taps the format that
             matches the surface they'll post to. Each button generates a
@@ -464,9 +474,6 @@ function ProgressInner({ params }: PageProps) {
                   // By the time the user taps "Done" the new data
                   // has almost certainly landed.
                   void refetchCheckins();
-                  // And bump the chat's refresh nonce so the poll
-                  // counts pick up this check-in too.
-                  setChatRefreshNonce((n) => n + 1);
                 }}
               />
             );

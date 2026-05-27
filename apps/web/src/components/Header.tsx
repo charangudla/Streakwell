@@ -74,6 +74,7 @@ export function Header() {
             <div className="h-10 w-24 animate-pulse rounded-full bg-slate-100" />
           ) : user ? (
             <div className="flex items-center gap-2">
+              <ChatIconLink />
               <NotificationBell />
               <UserMenu name={user.name} onSignOut={handleSignOut} />
             </div>
@@ -99,7 +100,8 @@ export function Header() {
             utilities like `inline-flex` and `hidden` on the same element
             is order-dependent and the wrong one can win. */}
         {slimMobile ? (
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center gap-1 md:hidden">
+            <ChatIconLink />
             <NotificationBell />
           </div>
         ) : (
@@ -300,5 +302,34 @@ function UserMenu({
         </>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Header chat link — speech-bubble glyph in a hoverable square tile,
+ * sized to match the NotificationBell next to it. Links to the chat
+ * inbox where the user picks which challenge channel to open.
+ */
+function ChatIconLink() {
+  return (
+    <Link
+      href="/chat"
+      aria-label="Community chat"
+      className="grid h-10 w-10 place-items-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-5 w-5"
+        aria-hidden="true"
+      >
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      </svg>
+    </Link>
   );
 }

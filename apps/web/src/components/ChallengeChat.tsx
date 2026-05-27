@@ -187,8 +187,12 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
   // the user is used to.
   const ordered = [...channel.messages].reverse();
 
+  // Outer container is h-full so the parent picks the height — a
+  // dedicated /chat page can fill the viewport, while an embed could
+  // still constrain via a wrapping fixed-height div. Width fills
+  // whatever's given.
   return (
-    <div className="flex h-[600px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-[680px]">
+    <div className="flex h-full min-h-[400px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <ChannelHeader poll={channel.poll} />
 
       <div
