@@ -1,13 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Container } from "@/components/Container";
 import { signUp } from "@/lib/auth-client";
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterInner />
+    </Suspense>
+  );
+}
+
+function RegisterInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  // Where to send the user after a successful signup. The share-link
+  // landing (`/c/<token>`) sends them here with `?next=/c/<token>` so we
+  // bounce them straight back to complete the join. Default to /dashboard.
+  const next = safeNext(params.get("next")) ?? "/dashboard";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +45,7 @@ export default function RegisterPage() {
     }
     // Better Auth's autoSignIn:true (in services/api/src/auth/auth.ts) means
     // we land authenticated immediately.
-    router.replace("/dashboard");
+    router.replace(next);
   }
 
   return (
@@ -165,4 +178,14 @@ function Field({
       {hint ? <p className="text-xs text-ink-muted">{hint}</p> : null}
     </div>
   );
+}
+
+// Only honor `next` values that look like a local app path. Reject
+// scheme-qualified URLs and protocol-relative paths — belt-and-braces
+// against open-redirect even though the link is from our own UI.
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/")) return null;
+  if (raw.startsWith("//")) return null;
+  return raw;
 }

@@ -17,7 +17,7 @@ export default function LoginPage() {
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/dashboard";
+  const next = safeNext(params.get("next")) ?? "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -151,4 +151,13 @@ function Field({
       />
     </div>
   );
+}
+
+// Only honor local paths so a malicious `?next=https://...` can't turn
+// the login page into an open-redirect.
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/")) return null;
+  if (raw.startsWith("//")) return null;
+  return raw;
 }
