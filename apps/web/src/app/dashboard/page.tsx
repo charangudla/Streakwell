@@ -205,21 +205,12 @@ function DashboardInner() {
           </section>
         ) : null}
 
-        {/* Browse + history quick links. "Create your own" now lives on
-            the /challenges page where users go specifically to find or
-            start a challenge. */}
-        <section className="mt-12 grid gap-4 sm:grid-cols-2">
-          <QuickLink
-            href="/challenges"
-            title="Browse all challenges"
-            body="Find a new 30-day challenge to start."
-          />
-          <QuickLink
-            href="/my-challenges"
-            title="My challenges"
-            body="See active + completed history."
-          />
-        </section>
+        {/* Browse + My-challenges quick-link cards used to live here.
+            Removed: the top header already links to /challenges, the
+            "Your challenges" carousel above links to /my-challenges via
+            its "See all →", and the bottom tab bar puts both within
+            one tap on phone. The cards were redundant duplication that
+            stretched the page out for no extra utility. */}
       </Container>
     </section>
   );
@@ -339,26 +330,6 @@ function SectionHeader({
         </Link>
       ) : null}
     </div>
-  );
-}
-
-function QuickLink({
-  href,
-  title,
-  body,
-}: {
-  href: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-surface-soft p-5 transition-colors hover:border-brand-300 hover:bg-white"
-    >
-      <p className="text-sm font-semibold text-ink">{title}</p>
-      <p className="mt-1 text-xs text-ink-muted">{body}</p>
-    </Link>
   );
 }
 
