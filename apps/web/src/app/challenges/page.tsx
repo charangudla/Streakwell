@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChallengesBrowser } from "@/components/ChallengesBrowser";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
+import { MyChallengesCarousel } from "@/components/MyChallengesCarousel";
 import { fetchCategories, fetchChallenges } from "@/lib/api";
 import { FALLBACK_POPULAR_CHALLENGES } from "@/lib/fallback-challenges";
 
@@ -39,6 +40,12 @@ export default async function ChallengesPage() {
 
       <section className="py-12 sm:py-16">
         <Container>
+          {/* "Your challenges" carousel. Client component — renders
+              nothing for signed-out visitors or while the
+              /user-challenges fetch is in flight, so SSR-cached HTML
+              for anonymous visitors stays unchanged. */}
+          <MyChallengesCarousel />
+
           {/* "Create your own" CTA. Lives here (not on /dashboard)
               because /challenges is where users come specifically to
               find or start a challenge — the home screen is for the
