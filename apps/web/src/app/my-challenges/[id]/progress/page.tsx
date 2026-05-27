@@ -230,7 +230,11 @@ function ProgressInner({ params }: PageProps) {
           Day {today} of {totalDays} · {uc.status.toLowerCase()}
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        {/* 2-up on phone (~360px wide leaves ~150px per card, room for
+            "23 / 30" or "5 days"), 4-up from sm+ so the four numbers
+            read as a single row of summary stats rather than a vertical
+            list. */}
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Stat label="Active days" value={`${stats.activeDays} / ${totalDays}`} />
           <Stat label="Current streak" value={`${stats.currentStreak} days`} />
           <Stat label="Longest streak" value={`${stats.longestStreak} days`} />
@@ -490,12 +494,16 @@ function ShareIcon() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+  // Type sizes step down on phone so the 2-up grid stays readable at
+  // ~150px-wide cards (labels like "LONGEST STREAK" still fit on a
+  // single line) and step back up on sm+ where the 4-up row has the
+  // breathing room for full text-xs labels + text-2xl values.
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted sm:text-xs">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold text-ink">{value}</p>
+      <p className="mt-1 text-xl font-bold text-ink sm:text-2xl">{value}</p>
     </div>
   );
 }
