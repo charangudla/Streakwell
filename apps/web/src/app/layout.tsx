@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { JsonLd } from "@/components/JsonLd";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { APP_NAME, APP_TAGLINE, SITE_URL } from "@/lib/constants";
 
 const inter = Inter({
@@ -83,9 +84,14 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-surface text-ink">
         <JsonLd data={[ORGANIZATION_LD, WEBSITE_LD]} />
         <Header />
-        <main className="flex-1">{children}</main>
+        {/* Bottom padding accommodates the MobileTabBar on phone-sized
+            app routes (the tab bar is fixed and ~60px tall, plus a safe-
+            area inset). Desktop ignores via md:pb-0. The tab bar itself
+            decides whether to render based on route + auth. */}
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
         <Footer />
         <InstallPrompt />
+        <MobileTabBar />
       </body>
     </html>
   );

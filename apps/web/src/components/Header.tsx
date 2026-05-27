@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Container } from "./Container";
 import { ButtonLink } from "./Button";
+import { isAppRoute } from "./MobileTabBar";
 import { NotificationBell } from "./NotificationBell";
 import { signOut, useSession } from "@/lib/auth-client";
 
@@ -24,9 +25,14 @@ const AUTHED_NAV = [
 export function Header() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session, isPending } = useSession();
   const user = session?.user ?? null;
   const nav = user ? AUTHED_NAV : PUBLIC_NAV;
+  // On phone-sized viewports + an authenticated app route, the bottom
+  // tab bar carries navigation, so we collapse the top header to just
+  // brand + bell. Desktop and marketing pages keep the full header.
+  const slimMobile = !!user && isAppRoute(pathname);
 
   async function handleSignOut() {
     setOpen(false);
@@ -37,7 +43,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-      <Container className="flex h-16 items-center justify-between">
+      <Container
+        className={`flex h-16 items-center justify-between ${slimMobile ? "" : ""}`}
+      >
         <Link
           href={user ? "/dashboard" : "/"}
           className="flex items-center gap-2 text-lg font-bold tracking-tight text-ink"
@@ -84,11 +92,20 @@ export function Header() {
           )}
         </div>
 
+        {/* On phone-sized authenticated app pages, the bottom tab bar
+            carries navigation, so we show JUST a notification bell on the
+            right instead of the hamburger menu. */}
+        {slimMobile ? (
+          <div className="flex items-center md:hidden">
+            <NotificationBell />
+          </div>
+        ) : null}
+
         <button
           type="button"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-slate-100 md:hidden"
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-slate-100 md:hidden ${slimMobile ? "hidden" : ""}`}
           onClick={() => setOpen((prev) => !prev)}
         >
           <svg
@@ -118,7 +135,7 @@ export function Header() {
         </button>
       </Container>
 
-      {open && (
+      {open && !slimMobile && (
         <div className="border-t border-slate-200 bg-white md:hidden">
           <Container className="flex flex-col gap-1 py-3">
             {nav.map((link) => (
