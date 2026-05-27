@@ -87,10 +87,15 @@ function ProgressInner({ params }: PageProps) {
     number,
     "COMPLETED" | "MISSED" | "SKIPPED"
   >();
+  // Normalize both inputs to start-of-day UTC before subtracting. Without
+  // this, `uc.startDate` (a full timestamp) is hours ahead of the same
+  // day's `checkinDate` (`@db.Date`, midnight UTC), so a same-day check-in
+  // yields idx = -1 and gets dropped — leaving every cell uncoloured even
+  // when the user has completed days.
+  const startMs = startOfUtcDayMs(uc.startDate);
   for (const c of checkins) {
     const idx = Math.floor(
-      (new Date(c.checkinDate).getTime() - new Date(uc.startDate).getTime()) /
-        (24 * 60 * 60 * 1000),
+      (startOfUtcDayMs(c.checkinDate) - startMs) / (24 * 60 * 60 * 1000),
     );
     if (idx >= 0 && idx < totalDays) statusByDayIdx.set(idx, c.status);
   }
@@ -264,4 +269,14 @@ function DayCell({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Floor a Date (or ISO string) to midnight UTC. Lets us compare
+ * `uc.startDate` (timestamp) against `checkin.checkinDate` (Prisma
+ * @db.Date, already midnight UTC) by whole days.
+ */
+function startOfUtcDayMs(d: Date | string): number {
+  const x = new Date(d);
+  return Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate());
 }
