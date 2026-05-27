@@ -120,10 +120,13 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
         `/challenges/${challengeId}/chat`,
         { method: "POST", body: { presetCode } },
       );
-      // API returns backend-fresh row; append so it lands at the
-      // bottom (since we render chronologically ascending below).
+      // The wire format is DESC (newest first); we .reverse() for
+      // ASC display below. So to land the new message at the BOTTOM
+      // of the visible thread, it has to go at the FRONT (newest
+      // slot) of the wire array. Appending to the end would put it
+      // at the oldest slot — which becomes the top after reversal.
       setChannel((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, msg] } : prev,
+        prev ? { ...prev, messages: [msg, ...prev.messages] } : prev,
       );
       setPickerOpen(false);
       // Sender always wants to see their own post — force the auto-
