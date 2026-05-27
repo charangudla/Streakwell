@@ -112,14 +112,20 @@ function Group({ heading, items, primary }: GroupProps) {
         {items.map((uc) => {
           const c = uc.challenge;
           const day = dayNumber(uc.startDate, c.durationDays);
-          const primaryHref =
-            primary === "checkin"
-              ? `/my-challenges/${uc.id}/checkin`
-              : `/my-challenges/${uc.id}/progress`;
+          // Every card → progress page. From there the user opens the
+          // check-in modal (for ACTIVE) or just reviews the calendar
+          // (for COMPLETED / ABANDONED). One destination keeps the
+          // mental model simple — "tap any challenge to see how it's
+          // going" — and means we can make the whole card clickable
+          // instead of having two competing inline links.
+          const href = `/my-challenges/${uc.id}/progress`;
+          const cta =
+            primary === "checkin" ? "Check in today →" : "View progress →";
           return (
-            <article
+            <Link
               key={uc.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5"
+              href={href}
+              className="group block rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {uc.status === "ACTIVE"
@@ -128,7 +134,9 @@ function Group({ heading, items, primary }: GroupProps) {
                     ? "Completed"
                     : "Abandoned"}
               </p>
-              <h3 className="mt-1 text-lg font-bold text-ink">{c.title}</h3>
+              <h3 className="mt-1 text-lg font-bold text-ink group-hover:text-brand-700">
+                {c.title}
+              </h3>
               <p className="mt-1 text-sm text-ink-muted line-clamp-2">
                 {c.shortDescription}
               </p>
@@ -140,21 +148,8 @@ function Group({ heading, items, primary }: GroupProps) {
                   }}
                 />
               </div>
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-                <Link
-                  href={primaryHref}
-                  className="font-semibold text-brand-700 hover:text-brand-800"
-                >
-                  {primary === "checkin" ? "Check in today" : "View progress"} →
-                </Link>
-                <Link
-                  href={`/my-challenges/${uc.id}/progress`}
-                  className="text-ink-muted hover:text-ink"
-                >
-                  Progress
-                </Link>
-              </div>
-            </article>
+              <p className="mt-4 text-sm font-semibold text-brand-700">{cta}</p>
+            </Link>
           );
         })}
       </div>

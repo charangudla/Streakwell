@@ -49,7 +49,10 @@ export default function ShareLandingPage({ params }: PageProps) {
         method: "POST",
         body: { challengeId: challenge.id, inviteToken: token },
       });
-      router.replace(`/my-challenges/${uc.id}/checkin`);
+      // Land on the progress page (not /checkin) so the join lands on
+      // an overview surface — Day 1, daily task, empty calendar —
+      // rather than dropping the user straight into a check-in form.
+      router.replace(`/my-challenges/${uc.id}/progress`);
     } catch (e) {
       setErr((e as Error).message);
       setJoining(false);

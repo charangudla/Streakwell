@@ -18,7 +18,7 @@ export function ActiveChallengeCard({ uc }: { uc: UserChallenge }) {
   const pct = Math.min(100, Math.max(0, uc.progressPercent));
   return (
     <Link
-      href={`/my-challenges/${uc.id}/checkin`}
+      href={`/my-challenges/${uc.id}/progress`}
       className="group block h-full rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg"
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">

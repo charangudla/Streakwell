@@ -227,7 +227,7 @@ function HeroCheckinCard({
   const pct = Math.min(100, Math.max(0, uc.progressPercent));
   return (
     <Link
-      href={`/my-challenges/${uc.id}/checkin`}
+      href={`/my-challenges/${uc.id}/progress`}
       className="group block overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700 p-6 text-white shadow-lg transition-transform hover:-translate-y-0.5 sm:p-8"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

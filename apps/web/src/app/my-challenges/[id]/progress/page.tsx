@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { CheckinModal } from "@/components/CheckinModal";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import { computeProgress, dayNumber } from "@/lib/progress";
@@ -35,6 +36,24 @@ function ProgressInner({ params }: PageProps) {
   // a render is in flight.
   const [sharingFormat, setSharingFormat] = useState<ShareFormat | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
+  const [checkinOpen, setCheckinOpen] = useState(false);
+
+  // Refetch just the checkins (cheap — one endpoint, no challenge
+  // hydration needed) so the calendar + stats update without a page
+  // reload. Called from the CheckinModal's onSubmitted so the change
+  // lands before the user closes the modal.
+  async function refetchCheckins() {
+    try {
+      const cks = await apiClient<DailyCheckin[]>(
+        `/checkins/challenge/${id}`,
+      );
+      setCheckins(cks);
+    } catch {
+      // Silent — the next mount/refresh will reconcile. Showing an
+      // error here would step on the celebratory result state in the
+      // modal which is poor UX.
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -262,12 +281,33 @@ function ProgressInner({ params }: PageProps) {
 
         {uc.status === "ACTIVE" ? (
           <div className="mt-8">
-            <Link
-              href={`/my-challenges/${id}/checkin`}
-              className="inline-flex h-12 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600"
-            >
-              Check in today
-            </Link>
+            {(() => {
+              // If today already has a check-in, swap the CTA to a
+              // disabled "Already logged" pill — re-opening the modal
+              // would let the user POST a duplicate which the API
+              // rejects with a confusing error.
+              const todayStatus = statusByDayIdx.get(today - 1);
+              if (todayStatus) {
+                return (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex h-12 cursor-not-allowed items-center justify-center gap-2 rounded-full bg-brand-50 px-6 text-sm font-semibold text-brand-700"
+                  >
+                    ✓ Day {today} logged as {todayStatus.toLowerCase()}
+                  </button>
+                );
+              }
+              return (
+                <button
+                  type="button"
+                  onClick={() => setCheckinOpen(true)}
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600"
+                >
+                  Check in today
+                </button>
+              );
+            })()}
           </div>
         ) : null}
 
@@ -338,6 +378,26 @@ function ProgressInner({ params }: PageProps) {
           ) : null}
         </div>
       </Container>
+
+      {/* In-page check-in modal — pops up from the "Check in today"
+          button above and refetches checkins on success so the
+          calendar + stats are up to date the moment the user closes
+          it. Mounted unconditionally so the open/close animation
+          framework can hook in cleanly. */}
+      <CheckinModal
+        open={checkinOpen}
+        onClose={() => setCheckinOpen(false)}
+        userChallengeId={id}
+        challengeTitle={challengeTitle}
+        dailyTask={challengeDailyTask}
+        dayNumber={today}
+        onSubmitted={() => {
+          // Fire-and-forget — the modal stays open showing the result
+          // panel while the refetch runs underneath. By the time the
+          // user taps "Done" the new data has almost certainly landed.
+          void refetchCheckins();
+        }}
+      />
     </section>
   );
 }

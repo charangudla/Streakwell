@@ -49,7 +49,10 @@ function Inner() {
         body: { decision },
       });
       if (res.status === "ACCEPTED" && res.userChallengeId) {
-        router.push(`/my-challenges/${res.userChallengeId}/checkin`);
+        // Land on the progress page so the user sees what they just
+        // joined — Day 1, empty calendar, daily task — and can opt
+        // into today's check-in via the modal from there.
+        router.push(`/my-challenges/${res.userChallengeId}/progress`);
         return;
       }
       await load();

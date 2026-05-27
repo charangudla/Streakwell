@@ -91,10 +91,10 @@ export function JoinChallengeButton({ challengeId }: Props) {
   if (existing) {
     return (
       <Link
-        href={`/my-challenges/${existing.id}/checkin`}
+        href={`/my-challenges/${existing.id}/progress`}
         className="inline-flex h-11 w-full items-center justify-center rounded-full bg-brand-500 px-5 text-sm font-semibold text-white hover:bg-brand-600"
       >
-        Check in today →
+        Open challenge →
       </Link>
     );
   }
@@ -108,7 +108,9 @@ export function JoinChallengeButton({ challengeId }: Props) {
         method: "POST",
         body: { challengeId },
       });
-      router.push(`/my-challenges/${uc.id}/checkin`);
+      // Land on the progress page so the user sees what they just
+      // joined and can opt into today's check-in via the modal.
+      router.push(`/my-challenges/${uc.id}/progress`);
     } catch (e) {
       setErr((e as Error).message);
       setJoining(false);
