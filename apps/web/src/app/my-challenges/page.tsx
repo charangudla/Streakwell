@@ -28,6 +28,19 @@ const MONTH_OPTIONS: SelectOption<string>[] = [
   { value: "12", label: "December" },
 ];
 
+// Status filter values map 1:1 to UserChallenge.status strings, with
+// "ALL" as the show-everything sentinel. "Active (in progress)" spells
+// it out because users tend to think of this section as "in progress",
+// not the database status name.
+type StatusFilter = "ALL" | "ACTIVE" | "COMPLETED" | "ABANDONED";
+
+const STATUS_OPTIONS: SelectOption<StatusFilter>[] = [
+  { value: "ALL", label: "All statuses" },
+  { value: "ACTIVE", label: "Active (in progress)" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "ABANDONED", label: "Abandoned" },
+];
+
 /** The date that "bucket" a UserChallenge — endDate when present, else startDate. */
 function refDate(uc: UserChallenge): Date {
   return new Date(uc.endDate ?? uc.startDate);
@@ -45,11 +58,13 @@ function MyChallengesInner() {
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Year/month filters. Default ALL = no filter — Year gets pre-loaded
-  // options from whatever years appear in the user's data so we never
-  // offer an empty year.
+  // Year / month / status filters. Default ALL = no filter — Year gets
+  // pre-loaded options from whatever years appear in the user's data
+  // so we never offer an empty year. Status maps 1:1 to UserChallenge
+  // statuses + an "all" sentinel.
   const [year, setYear] = useState<string>(ALL);
   const [month, setMonth] = useState<string>(ALL);
+  const [status, setStatus] = useState<StatusFilter>("ALL");
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +115,13 @@ function MyChallengesInner() {
     });
   }, [ucs, year, month]);
 
-  const filterActive = year !== ALL || month !== ALL;
+  const filterActive = year !== ALL || month !== ALL || status !== "ALL";
+  // Status filter is applied at render time (hide/show sections) rather
+  // than baked into filteredUcs — keeps the year/month "Showing N of M"
+  // count meaningful regardless of which section the user is looking at.
+  const showActive = status === "ALL" || status === "ACTIVE";
+  const showCompleted = status === "ALL" || status === "COMPLETED";
+  const showAbandoned = status === "ALL" || status === "ABANDONED";
   const active = (filteredUcs ?? []).filter((u) => u.status === "ACTIVE");
   const completed = (filteredUcs ?? []).filter(
     (u) => u.status === "COMPLETED",
@@ -108,11 +129,13 @@ function MyChallengesInner() {
   const abandoned = (filteredUcs ?? []).filter(
     (u) => u.status === "ABANDONED",
   );
-  const noMatches =
-    filterActive &&
-    active.length === 0 &&
-    completed.length === 0 &&
-    abandoned.length === 0;
+  // Count what's actually visible after BOTH date + status filters so
+  // "Showing N of M" matches the cards on screen.
+  const visibleCount =
+    (showActive ? active.length : 0) +
+    (showCompleted ? completed.length : 0) +
+    (showAbandoned ? abandoned.length : 0);
+  const noMatches = filterActive && visibleCount === 0;
 
   return (
     <section className="py-10 sm:py-12">
@@ -127,12 +150,27 @@ function MyChallengesInner() {
           </p>
         ) : null}
 
-        {/* Year + month filter card. Hidden when the user has no
-            challenges yet — the empty-state CTA below covers that
-            scenario more usefully than dead dropdowns. */}
+        {/* Filter card. Hidden when the user has no challenges yet —
+            the empty-state CTA below covers that scenario more
+            usefully than dead dropdowns. */}
         {ucs && ucs.length > 0 ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-            <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
+            <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="filter-status"
+                  className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+                >
+                  Status
+                </label>
+                <Select<StatusFilter>
+                  id="filter-status"
+                  value={status}
+                  options={STATUS_OPTIONS}
+                  onChange={setStatus}
+                  aria-label="Filter by status"
+                />
+              </div>
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="filter-year"
@@ -169,7 +207,7 @@ function MyChallengesInner() {
                 <span>
                   Showing{" "}
                   <span className="font-semibold text-ink">
-                    {(filteredUcs ?? []).length}
+                    {visibleCount}
                   </span>{" "}
                   of {ucs.length}
                 </span>
@@ -178,6 +216,7 @@ function MyChallengesInner() {
                   onClick={() => {
                     setYear(ALL);
                     setMonth(ALL);
+                    setStatus("ALL");
                   }}
                   className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                 >
@@ -216,6 +255,7 @@ function MyChallengesInner() {
               onClick={() => {
                 setYear(ALL);
                 setMonth(ALL);
+                setStatus("ALL");
               }}
               className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600"
             >
@@ -224,7 +264,7 @@ function MyChallengesInner() {
           </div>
         ) : (
           <div className="mt-8 space-y-12">
-            {active.length > 0 ? (
+            {showActive && active.length > 0 ? (
               <Group
                 heading="Active"
                 items={active}
@@ -234,7 +274,7 @@ function MyChallengesInner() {
                 // overkill for so few cards.
               />
             ) : null}
-            {completed.length > 0 ? (
+            {showCompleted && completed.length > 0 ? (
               <Group
                 heading="Completed"
                 items={completed}
@@ -242,7 +282,7 @@ function MyChallengesInner() {
                 bucketByMonth
               />
             ) : null}
-            {abandoned.length > 0 ? (
+            {showAbandoned && abandoned.length > 0 ? (
               <Group
                 heading="Abandoned"
                 items={abandoned}
