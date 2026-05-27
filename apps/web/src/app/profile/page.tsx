@@ -143,7 +143,12 @@ function ProfileInner() {
           />
         </div>
 
-        {/* Account — edit name, change password, email (read-only). */}
+        {/* Account — edit name, change password, email (read-only).
+            Input + Save are stacked vertically (input owns its full row,
+            button below) so the textbox gets the same breathing room
+            the /challenges search input has. Inline Save next to the
+            input made the box feel cramped — both fields have the same
+            Tailwind classes, only the layout changed. */}
         <SectionCard title="Account">
           <form onSubmit={onSaveName} noValidate className="px-5 py-4 sm:px-6">
             <label
@@ -152,23 +157,15 @@ function ProfileInner() {
             >
               Display name
             </label>
-            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-              <input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                disabled={saving}
-                className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
-              />
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-brand-500 px-5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
+            <input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={saving}
+              placeholder="e.g. Alex Rivera"
+              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
+            />
             {error ? (
               <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
                 {error}
@@ -179,6 +176,13 @@ function ProfileInner() {
                 {savedMessage}
               </p>
             ) : null}
+            <button
+              type="submit"
+              disabled={saving}
+              className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
           </form>
           <Divider />
           <RowItem
