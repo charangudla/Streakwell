@@ -36,7 +36,11 @@ function ProgressInner({ params }: PageProps) {
   // a render is in flight.
   const [sharingFormat, setSharingFormat] = useState<ShareFormat | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
-  const [checkinOpen, setCheckinOpen] = useState(false);
+  // Tracks the day the modal is editing (1-based) AND whether the modal
+  // is open. null = closed. Set to a day index to open the modal for
+  // that day — today's day for the primary CTA, the tapped day for a
+  // calendar-cell edit.
+  const [editingDay, setEditingDay] = useState<number | null>(null);
 
   // Refetch just the checkins (cheap — one endpoint, no challenge
   // hydration needed) so the calendar + stats update without a page
@@ -237,20 +241,35 @@ function ProgressInner({ params }: PageProps) {
         </div>
 
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
-          <p className="text-sm font-semibold text-ink">
-            {totalDays}-day calendar
-          </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-semibold text-ink">
+              {totalDays}-day calendar
+            </p>
+            <p className="text-xs text-ink-muted">
+              Tap a day to log or change it.
+            </p>
+          </div>
           <div className="mt-4 grid grid-cols-6 gap-2 sm:grid-cols-10 sm:gap-2.5">
             {Array.from({ length: totalDays }).map((_, i) => {
               const s = statusByDayIdx.get(i);
               const dayNum = i + 1;
               const isToday = dayNum === today && uc.status === "ACTIVE";
+              // Past + today cells are editable; future cells aren't —
+              // the backend rejects future-date check-ins and clicking
+              // an upcoming cell would just open a modal that errors
+              // on submit.
+              const isEditable =
+                uc.status === "ACTIVE" && dayNum <= today;
               return (
                 <DayCell
                   key={i}
                   day={dayNum}
                   status={s}
                   isToday={isToday}
+                  isEditable={isEditable}
+                  onClick={
+                    isEditable ? () => setEditingDay(dayNum) : undefined
+                  }
                 />
               );
             })}
@@ -282,29 +301,20 @@ function ProgressInner({ params }: PageProps) {
         {uc.status === "ACTIVE" ? (
           <div className="mt-8">
             {(() => {
-              // If today already has a check-in, swap the CTA to a
-              // disabled "Already logged" pill — re-opening the modal
-              // would let the user POST a duplicate which the API
-              // rejects with a confusing error.
               const todayStatus = statusByDayIdx.get(today - 1);
-              if (todayStatus) {
-                return (
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex h-12 cursor-not-allowed items-center justify-center gap-2 rounded-full bg-brand-50 px-6 text-sm font-semibold text-brand-700"
-                  >
-                    ✓ Day {today} logged as {todayStatus.toLowerCase()}
-                  </button>
-                );
-              }
+              // Single button regardless of whether today is already
+              // logged — the modal handles both new check-in and
+              // edit-existing internally (backend upserts on the
+              // (userChallengeId, checkinDate) key).
               return (
                 <button
                   type="button"
-                  onClick={() => setCheckinOpen(true)}
+                  onClick={() => setEditingDay(today)}
                   className="inline-flex h-12 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600"
                 >
-                  Check in today
+                  {todayStatus
+                    ? `Change today’s check-in (${todayStatus.toLowerCase()})`
+                    : "Check in today"}
                 </button>
               );
             })()}
@@ -379,25 +389,46 @@ function ProgressInner({ params }: PageProps) {
         </div>
       </Container>
 
-      {/* In-page check-in modal — pops up from the "Check in today"
-          button above and refetches checkins on success so the
-          calendar + stats are up to date the moment the user closes
-          it. Mounted unconditionally so the open/close animation
-          framework can hook in cleanly. */}
-      <CheckinModal
-        open={checkinOpen}
-        onClose={() => setCheckinOpen(false)}
-        userChallengeId={id}
-        challengeTitle={challengeTitle}
-        dailyTask={challengeDailyTask}
-        dayNumber={today}
-        onSubmitted={() => {
-          // Fire-and-forget — the modal stays open showing the result
-          // panel while the refetch runs underneath. By the time the
-          // user taps "Done" the new data has almost certainly landed.
-          void refetchCheckins();
-        }}
-      />
+      {/* In-page check-in modal — fires from the "Check in today"
+          button OR from any tappable calendar cell. The day we're
+          editing comes from `editingDay`; from that we derive the
+          checkinDate (challenge startDate + (day-1) days) and pull
+          the existing status (if any) so the modal can pre-highlight
+          the current choice. Refetches on submit so the calendar +
+          stats reflect the change before the user closes it. */}
+      {editingDay !== null
+        ? (() => {
+            const editingDayIdx = editingDay - 1;
+            const dateMs = startMs + editingDayIdx * 24 * 60 * 60 * 1000;
+            // YYYY-MM-DD — the backend's @IsDateString validator
+            // accepts both this and full ISO timestamps; the date-
+            // only form avoids any tz ambiguity since startMs is
+            // already start-of-UTC-day.
+            const checkinDateIso = new Date(dateMs)
+              .toISOString()
+              .slice(0, 10);
+            return (
+              <CheckinModal
+                open
+                onClose={() => setEditingDay(null)}
+                userChallengeId={id}
+                challengeTitle={challengeTitle}
+                dailyTask={challengeDailyTask}
+                dayNumber={editingDay}
+                checkinDateIso={checkinDateIso}
+                isToday={editingDay === today}
+                currentStatus={statusByDayIdx.get(editingDayIdx)}
+                onSubmitted={() => {
+                  // Fire-and-forget — modal stays open showing the
+                  // result panel while the refetch runs underneath.
+                  // By the time the user taps "Done" the new data
+                  // has almost certainly landed.
+                  void refetchCheckins();
+                }}
+              />
+            );
+          })()
+        : null}
     </section>
   );
 }
@@ -474,15 +505,24 @@ function Stat({ label, value }: { label: string; value: string }) {
  * a square coloured by status. Today gets a streak-coloured dot below
  * the cell so the user can spot "you are here" at a glance — same
  * convention the mobile ThirtyDayGrid widget uses.
+ *
+ * Clickable for today + past days (the editable window) — the parent
+ * passes an onClick; we render as a <button> in that case so the cell
+ * is keyboard-focusable and has the right semantics. Future days are
+ * rendered as inert <div>s.
  */
 function DayCell({
   day,
   status,
   isToday,
+  isEditable,
+  onClick,
 }: {
   day: number;
   status: "COMPLETED" | "MISSED" | "SKIPPED" | undefined;
   isToday: boolean;
+  isEditable: boolean;
+  onClick?: () => void;
 }) {
   let bg = "bg-slate-100";
   let fg = "text-ink-muted";
@@ -501,16 +541,32 @@ function DayCell({
     border = "";
   }
   if (isToday) {
-    border = `ring-2 ring-streak ${status ? "" : ""}`;
+    border = "ring-2 ring-streak";
   }
+
+  const label = `Day ${day}${status ? ` · ${status.toLowerCase()}` : ""}${
+    isToday ? " (today)" : ""
+  }${isEditable ? " — tap to change" : ""}`;
+
+  const cellClasses = `flex aspect-square w-full items-center justify-center rounded-lg font-mono text-xs font-semibold sm:text-sm ${bg} ${fg} ${border}`;
+
   return (
     <div className="relative flex flex-col items-center">
-      <div
-        className={`flex aspect-square w-full items-center justify-center rounded-lg font-mono text-xs font-semibold sm:text-sm ${bg} ${fg} ${border}`}
-        title={`Day ${day}${status ? ` · ${status.toLowerCase()}` : ""}${isToday ? " (today)" : ""}`}
-      >
-        {day}
-      </div>
+      {isEditable && onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={label}
+          title={label}
+          className={`${cellClasses} cursor-pointer transition-transform hover:scale-105 hover:ring-2 hover:ring-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500`}
+        >
+          {day}
+        </button>
+      ) : (
+        <div className={cellClasses} title={label}>
+          {day}
+        </div>
+      )}
       {isToday ? (
         <span
           aria-hidden="true"

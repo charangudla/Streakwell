@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CheckinStatus, UserChallengeStatus } from '@prisma/client';
 
 import { AchievementsService } from '../achievements/achievements.service';
@@ -6,6 +6,8 @@ import { calculateChallengeProgress } from '../challenges/domain/progress-calcul
 import { PrismaService } from '../prisma/prisma.service';
 import { UserChallengesService } from '../user-challenges/user-challenges.service';
 import { CreateCheckinDto } from './dto/create-checkin.dto';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class CheckinsService {
@@ -18,17 +20,48 @@ export class CheckinsService {
   async create(userId: string, dto: CreateCheckinDto) {
     await this.userChallenges.assertOwnership(dto.userChallengeId, userId);
 
-    const today = startOfUtcDay(new Date());
+    // Determine the date this check-in belongs to. Default = today UTC;
+    // clients can override with `checkinDate` to backfill or correct a
+    // past day from the progress calendar. We validate the chosen date
+    // sits INSIDE the challenge window and isn't in the future before
+    // letting it through — otherwise a malicious client could log a
+    // check-in for an unrelated day or pre-claim tomorrow's streak.
+    const checkinDate = dto.checkinDate
+      ? startOfUtcDay(new Date(dto.checkinDate))
+      : startOfUtcDay(new Date());
+
+    const todayMs = startOfUtcDay(new Date()).getTime();
+    if (checkinDate.getTime() > todayMs) {
+      throw new BadRequestException('Cannot check in for a future day.');
+    }
+
+    const uc = await this.prisma.userChallenge.findUnique({
+      where: { id: dto.userChallengeId },
+      select: {
+        startDate: true,
+        challenge: { select: { durationDays: true } },
+      },
+    });
+    if (!uc) throw new NotFoundException('Challenge not found.');
+
+    const startMs = startOfUtcDay(uc.startDate).getTime();
+    const dayIdx = Math.floor((checkinDate.getTime() - startMs) / DAY_MS);
+    if (dayIdx < 0 || dayIdx >= uc.challenge.durationDays) {
+      throw new BadRequestException(
+        'Check-in date is outside the challenge window.',
+      );
+    }
+
     const checkin = await this.prisma.dailyCheckin.upsert({
       where: {
         userChallengeId_checkinDate: {
           userChallengeId: dto.userChallengeId,
-          checkinDate: today,
+          checkinDate,
         },
       },
       create: {
         userChallengeId: dto.userChallengeId,
-        checkinDate: today,
+        checkinDate,
         status: dto.status,
         notes: dto.notes ?? null,
       },

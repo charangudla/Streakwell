@@ -11,7 +11,25 @@ interface Props {
   userChallengeId: string;
   challengeTitle: string;
   dailyTask: string;
+  /** The day number being checked in (1-based). Today by default; any
+   *  past day if the user is editing from the calendar. */
   dayNumber: number;
+  /**
+   * ISO date (YYYY-MM-DD) for the day being checked in. The backend
+   * upserts on (userChallengeId, checkinDate) so passing the right
+   * date is what makes "edit Day 3" work — without it every submit
+   * would write to today.
+   */
+  checkinDateIso: string;
+  /** True when the modal represents today. Drives copy ("today's
+   *  task" vs "Day 3"). */
+  isToday: boolean;
+  /**
+   * Existing status for this day, if any. When set the modal
+   * pre-highlights the matching button and switches copy to "Change
+   * Day N status" so the user sees they're editing, not creating.
+   */
+  currentStatus?: CheckinStatus;
   /**
    * Fires after a successful POST /checkins. The progress page uses
    * this to refetch checkins so the calendar + stats update before
@@ -44,6 +62,9 @@ export function CheckinModal({
   challengeTitle,
   dailyTask,
   dayNumber: day,
+  checkinDateIso,
+  isToday,
+  currentStatus,
   onSubmitted,
 }: Props) {
   const [submitting, setSubmitting] = useState<CheckinStatus | null>(null);
@@ -97,9 +118,13 @@ export function CheckinModal({
     setSubmitting(status);
     setErr(null);
     try {
+      // Always pass checkinDate so backend upserts on the right day.
+      // For "today" we could omit it (backend would default), but
+      // sending it explicitly keeps the wire format consistent and
+      // sidesteps any client/server clock drift.
       await apiClient("/checkins", {
         method: "POST",
-        body: { userChallengeId, status },
+        body: { userChallengeId, status, checkinDate: checkinDateIso },
       });
       setResult(status);
       onSubmitted(status);
@@ -158,8 +183,10 @@ export function CheckinModal({
         {result === null ? (
           <CheckinForm
             day={day}
+            isToday={isToday}
             challengeTitle={challengeTitle}
             dailyTask={dailyTask}
+            currentStatus={currentStatus}
             submitting={submitting}
             err={err}
             onPick={checkin}
@@ -179,21 +206,33 @@ export function CheckinModal({
 
 function CheckinForm({
   day,
+  isToday,
   challengeTitle,
   dailyTask,
+  currentStatus,
   submitting,
   err,
   onPick,
   firstButtonRef,
 }: {
   day: number;
+  isToday: boolean;
   challengeTitle: string;
   dailyTask: string;
+  currentStatus?: CheckinStatus;
   submitting: CheckinStatus | null;
   err: string | null;
   onPick: (s: CheckinStatus) => void;
   firstButtonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
+  // Heading switches between three modes — today new, today edit, past
+  // day edit — so the user always understands what surface they're on.
+  const heading = currentStatus
+    ? `Change Day ${day} status`
+    : isToday
+      ? "Did you complete today’s task?"
+      : `Log Day ${day}`;
+
   return (
     <div className="px-6 pb-6 sm:px-8 sm:pb-8">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
@@ -203,9 +242,25 @@ function CheckinForm({
         id="checkin-modal-title"
         className="mt-2 text-2xl font-bold text-ink sm:text-3xl"
       >
-        Did you complete today&rsquo;s task?
+        {heading}
       </h2>
       <p className="mt-3 text-base text-ink-muted">{dailyTask}</p>
+
+      {currentStatus ? (
+        <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <span
+            className={`inline-block h-2 w-2 rounded-full ${
+              currentStatus === "COMPLETED"
+                ? "bg-brand-500"
+                : currentStatus === "MISSED"
+                  ? "bg-rose-400"
+                  : "bg-slate-400"
+            }`}
+            aria-hidden="true"
+          />
+          Currently: {currentStatus.toLowerCase()}
+        </p>
+      ) : null}
 
       {err ? (
         <div
@@ -222,33 +277,63 @@ function CheckinForm({
           type="button"
           onClick={() => onPick("COMPLETED")}
           disabled={submitting !== null}
-          className="inline-flex h-14 w-full items-center justify-center rounded-2xl bg-brand-500 px-5 text-base font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
+          aria-pressed={currentStatus === "COMPLETED"}
+          className={`inline-flex h-14 w-full items-center justify-center rounded-2xl px-5 text-base font-semibold transition-colors disabled:opacity-50 ${
+            currentStatus === "COMPLETED"
+              ? "bg-brand-700 text-white ring-2 ring-brand-700 ring-offset-2 hover:bg-brand-700"
+              : "bg-brand-500 text-white hover:bg-brand-600"
+          }`}
         >
-          {submitting === "COMPLETED" ? "Saving…" : "Yes, completed ✓"}
+          {submitting === "COMPLETED"
+            ? "Saving…"
+            : currentStatus === "COMPLETED"
+              ? "Completed ✓ (current)"
+              : "Yes, completed ✓"}
         </button>
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => onPick("MISSED")}
             disabled={submitting !== null}
-            className="inline-flex h-12 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
+            aria-pressed={currentStatus === "MISSED"}
+            className={`inline-flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors disabled:opacity-50 ${
+              currentStatus === "MISSED"
+                ? "border-rose-400 bg-rose-100 text-rose-800 ring-2 ring-rose-400 ring-offset-2"
+                : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+            }`}
           >
-            {submitting === "MISSED" ? "Saving…" : "No, missed today"}
+            {submitting === "MISSED"
+              ? "Saving…"
+              : currentStatus === "MISSED"
+                ? "Missed (current)"
+                : isToday
+                  ? "No, missed today"
+                  : "Mark as missed"}
           </button>
           <button
             type="button"
             onClick={() => onPick("SKIPPED")}
             disabled={submitting !== null}
-            className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-slate-50 disabled:opacity-50"
+            aria-pressed={currentStatus === "SKIPPED"}
+            className={`inline-flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors disabled:opacity-50 ${
+              currentStatus === "SKIPPED"
+                ? "border-slate-400 bg-slate-100 text-ink ring-2 ring-slate-400 ring-offset-2"
+                : "border-slate-200 bg-white text-ink-muted hover:bg-slate-50"
+            }`}
           >
-            {submitting === "SKIPPED" ? "Saving…" : "Skip"}
+            {submitting === "SKIPPED"
+              ? "Saving…"
+              : currentStatus === "SKIPPED"
+                ? "Skipped (current)"
+                : "Skip"}
           </button>
         </div>
       </div>
 
       <p className="mt-5 text-xs text-ink-muted">
-        Missing a day breaks your current streak — but never erases your
-        active days.
+        {currentStatus
+          ? "Pick a new status to overwrite this day."
+          : "Missing a day breaks your current streak — but never erases your active days."}
       </p>
     </div>
   );
