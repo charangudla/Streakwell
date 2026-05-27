@@ -150,12 +150,15 @@ function MyChallengesInner() {
           </p>
         ) : null}
 
-        {/* Filter card. Hidden when the user has no challenges yet —
-            the empty-state CTA below covers that scenario more
-            usefully than dead dropdowns. */}
+        {/* Filter card. Three dropdowns sit side by side at every
+            viewport — at phone width each gets ~100px which is enough
+            for the trigger to show its value (Select truncates with
+            ellipsis if needed; tap reveals full text). Stacking
+            vertically on phone wasted a lot of vertical space above
+            the actual content. */}
         {ucs && ucs.length > 0 ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-            <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-3 sm:p-5">
+            <div className="grid grid-cols-3 items-end gap-2 sm:gap-3">
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="filter-status"
