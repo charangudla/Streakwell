@@ -256,6 +256,20 @@ export type FriendCounts = {
   incoming: number;
 };
 
+export type ProfileChallengeSummary = {
+  challengeId: string;
+  title: string;
+  durationDays: number;
+  startDate: string;
+  endDate: string | null;
+  progressPercent: number;
+};
+
+export type ProfileAchievement = {
+  kind: AchievementKind;
+  earnedAt: string;
+};
+
 export type UserProfile = {
   id: string;
   name: string;
@@ -267,4 +281,8 @@ export type UserProfile = {
   // Friend-only — present only when isFriend === true.
   sharedChallengeCount?: number;
   achievementsCount?: number;
+  activeChallenges?: ProfileChallengeSummary[];
+  completedChallenges?: ProfileChallengeSummary[];
+  sharedChallenges?: Array<{ challengeId: string; title: string }>;
+  achievements?: ProfileAchievement[];
 };

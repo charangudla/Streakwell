@@ -33,14 +33,13 @@ export default function FriendsPage() {
  * DECLINED rows are filtered server-side — neither party sees them.
  */
 /**
- * Which profile-modal flavour is open (if any) — drives the action
- * buttons shown inside the modal. `incoming` reuses the row's Accept/
- * Decline/Block handlers; `accepted` reuses Unfriend/Block.
+ * Pending request entry the user is currently previewing (or null if
+ * the modal is closed). Accepted friends no longer use a modal — they
+ * navigate to the full /users/[id] profile page instead. The modal
+ * stays for pending rows where "decide whether to accept" is the
+ * job and a quick preview-then-act flow is what you want.
  */
-type ViewedProfile =
-  | { kind: "incoming"; entry: FriendListEntry }
-  | { kind: "accepted"; entry: FriendListEntry }
-  | null;
+type ViewedProfile = { entry: FriendListEntry } | null;
 
 function FriendsInner() {
   const router = useRouter();
@@ -214,7 +213,7 @@ function FriendsInner() {
                     onAccept={() => respond(fr.friendshipId, "ACCEPTED")}
                     onDecline={() => respond(fr.friendshipId, "DECLINED")}
                     onBlock={() => block(fr.user.id)}
-                    onView={() => setViewing({ kind: "incoming", entry: fr })}
+                    onView={() => setViewing({ entry: fr })}
                   />
                 ))}
               </Section>
@@ -229,7 +228,12 @@ function FriendsInner() {
                     busy={busyId === fr.friendshipId || busyId === fr.user.id}
                     onUnfriend={() => unfriend(fr.friendshipId)}
                     onBlock={() => block(fr.user.id)}
-                    onView={() => setViewing({ kind: "accepted", entry: fr })}
+                    // Accepted friends get the full /users/[id] page —
+                    // room for active/completed challenge lists,
+                    // shared-with-you, achievements. The modal stays
+                    // for pending rows where "decide quickly" is the
+                    // job, not "browse around".
+                    onView={() => router.push(`/users/${fr.user.id}`)}
                   />
                 ))}
               </Section>
@@ -268,59 +272,38 @@ function FriendsInner() {
         <UserProfileModal
           userId={viewing.entry.user.id}
           onClose={() => setViewing(null)}
-          forceMinimal={viewing.kind === "incoming"}
+          forceMinimal
           actions={
-            viewing.kind === "incoming" ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => block(viewing.entry.user.id)}
-                  disabled={busyId !== null}
-                  className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 disabled:opacity-50"
-                >
-                  Block
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    respond(viewing.entry.friendshipId, "DECLINED")
-                  }
-                  disabled={busyId !== null}
-                  className="rounded-full bg-white px-3 py-2 text-xs font-bold text-ink-muted ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Decline
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    respond(viewing.entry.friendshipId, "ACCEPTED")
-                  }
-                  disabled={busyId !== null}
-                  className="rounded-full bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50"
-                >
-                  Accept ✓
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => block(viewing.entry.user.id)}
-                  disabled={busyId !== null}
-                  className="rounded-full px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-                >
-                  Block
-                </button>
-                <button
-                  type="button"
-                  onClick={() => unfriend(viewing.entry.friendshipId)}
-                  disabled={busyId !== null}
-                  className="rounded-full px-3 py-2 text-xs font-semibold text-ink-muted hover:bg-slate-100 disabled:opacity-50"
-                >
-                  Unfriend
-                </button>
-              </>
-            )
+            <>
+              <button
+                type="button"
+                onClick={() => block(viewing.entry.user.id)}
+                disabled={busyId !== null}
+                className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 disabled:opacity-50"
+              >
+                Block
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  respond(viewing.entry.friendshipId, "DECLINED")
+                }
+                disabled={busyId !== null}
+                className="rounded-full bg-white px-3 py-2 text-xs font-bold text-ink-muted ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  respond(viewing.entry.friendshipId, "ACCEPTED")
+                }
+                disabled={busyId !== null}
+                className="rounded-full bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50"
+              >
+                Accept ✓
+              </button>
+            </>
           }
         />
       ) : null}

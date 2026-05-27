@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { UserChallengeStatus } from '@prisma/client';
+import { AchievementKind, CheckinStatus, UserChallengeStatus } from '@prisma/client';
 
 import { FriendsService } from '../friends/friends.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,6 +25,22 @@ import { PrismaService } from '../prisma/prisma.service';
  * already chosen to publish through their engagement with the
  * platform.
  */
+export interface ProfileChallengeSummary {
+  challengeId: string;
+  title: string;
+  durationDays: number;
+  startDate: Date;
+  /** Set on COMPLETED, null on ACTIVE. */
+  endDate: Date | null;
+  /** 0–100. */
+  progressPercent: number;
+}
+
+export interface ProfileAchievement {
+  kind: AchievementKind;
+  earnedAt: Date;
+}
+
 export interface UserProfileView {
   id: string;
   name: string;
@@ -36,9 +52,15 @@ export interface UserProfileView {
   /** True when viewer === target. */
   isSelf: boolean;
   // Full-tier fields (gated). Omitted entirely (not just nulled) when
-  // viewer doesn't qualify, so a leak on the wire is obvious.
+  // viewer doesn't qualify, so a leak on the wire is obvious. Lists
+  // replace the previous Count summaries — clients can take .length
+  // when they only need the number.
   sharedChallengeCount?: number;
   achievementsCount?: number;
+  activeChallenges?: ProfileChallengeSummary[];
+  completedChallenges?: ProfileChallengeSummary[];
+  sharedChallenges?: Array<{ challengeId: string; title: string }>;
+  achievements?: ProfileAchievement[];
 }
 
 @Injectable()
@@ -85,13 +107,88 @@ export class UsersService {
     };
 
     if (isFriend) {
-      // Friend-only counts in parallel to keep response time flat.
-      const [sharedCount, achievementsCount] = await Promise.all([
-        this.sharedChallengeCount(viewerId, targetId),
-        this.prisma.achievement.count({ where: { userId: targetId } }),
+      // Three parallel fetches: target's challenges + completed
+      // checkins (for derived progress), target's achievements, and
+      // the viewer's own challenge ids (to compute shared list).
+      const [ucs, achievements, viewerChallengeIds] = await Promise.all([
+        this.prisma.userChallenge.findMany({
+          where: {
+            userId: targetId,
+            status: {
+              in: [
+                UserChallengeStatus.ACTIVE,
+                UserChallengeStatus.COMPLETED,
+              ],
+            },
+          },
+          orderBy: { startDate: 'desc' },
+          select: {
+            challengeId: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            challenge: {
+              select: { id: true, title: true, durationDays: true },
+            },
+            // Only COMPLETED check-ins matter for the headline percent.
+            checkins: {
+              where: { status: CheckinStatus.COMPLETED },
+              select: { checkinDate: true },
+            },
+          },
+        }),
+        this.prisma.achievement.findMany({
+          where: { userId: targetId },
+          orderBy: { earnedAt: 'desc' },
+          select: { kind: true, earnedAt: true },
+        }),
+        this.prisma.userChallenge.findMany({
+          where: { userId: viewerId },
+          select: { challengeId: true },
+        }),
       ]);
-      view.sharedChallengeCount = sharedCount;
-      view.achievementsCount = achievementsCount;
+
+      const viewerIds = new Set(viewerChallengeIds.map((u) => u.challengeId));
+      const activeList: ProfileChallengeSummary[] = [];
+      const completedList: ProfileChallengeSummary[] = [];
+      const sharedList: Array<{ challengeId: string; title: string }> = [];
+
+      for (const uc of ucs) {
+        const completedDays = uc.checkins.length;
+        const percent =
+          uc.challenge.durationDays === 0
+            ? 0
+            : Math.round(
+                (completedDays / uc.challenge.durationDays) * 100 * 10,
+              ) / 10;
+        const summary: ProfileChallengeSummary = {
+          challengeId: uc.challengeId,
+          title: uc.challenge.title,
+          durationDays: uc.challenge.durationDays,
+          startDate: uc.startDate,
+          endDate: uc.endDate,
+          progressPercent: percent,
+        };
+        if (uc.status === UserChallengeStatus.ACTIVE) activeList.push(summary);
+        else completedList.push(summary);
+
+        if (viewerIds.has(uc.challengeId)) {
+          sharedList.push({
+            challengeId: uc.challengeId,
+            title: uc.challenge.title,
+          });
+        }
+      }
+
+      view.activeChallenges = activeList;
+      view.completedChallenges = completedList;
+      view.sharedChallenges = sharedList;
+      view.achievements = achievements;
+      // Keep count fields too so the preview-tier modal (which never
+      // pulls lists) still has stable summary numbers — and so any
+      // client that only ever consumed counts doesn't break.
+      view.sharedChallengeCount = sharedList.length;
+      view.achievementsCount = achievements.length;
     }
 
     return view;
@@ -105,25 +202,4 @@ export class UsersService {
     return map.get(targetId)?.state === 'accepted';
   }
 
-  /**
-   * Count of challenges where BOTH viewer and target have a
-   * UserChallenge row (any status). Reasonable proxy for "common
-   * ground" without exposing the actual list.
-   */
-  private async sharedChallengeCount(
-    viewerId: string,
-    targetId: string,
-  ): Promise<number> {
-    const viewerChallengeIds = await this.prisma.userChallenge.findMany({
-      where: { userId: viewerId },
-      select: { challengeId: true },
-    });
-    if (viewerChallengeIds.length === 0) return 0;
-    return this.prisma.userChallenge.count({
-      where: {
-        userId: targetId,
-        challengeId: { in: viewerChallengeIds.map((u) => u.challengeId) },
-      },
-    });
-  }
 }
