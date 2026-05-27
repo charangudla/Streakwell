@@ -6,7 +6,11 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import { computeProgress, dayNumber } from "@/lib/progress";
-import { generateShareCardBlob } from "@/lib/share-card";
+import {
+  generateShareCardBlob,
+  SHARE_FORMATS,
+  type ShareFormat,
+} from "@/lib/share-card";
 import type { Challenge } from "@/lib/types";
 import type { DailyCheckin, UserChallenge } from "@/lib/web-types";
 
@@ -26,7 +30,10 @@ function ProgressInner({ params }: PageProps) {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [sharing, setSharing] = useState(false);
+  // Track which format is currently being rendered so we can show a
+  // spinner on just that button — the user can read the others while
+  // a render is in flight.
+  const [sharingFormat, setSharingFormat] = useState<ShareFormat | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,15 +110,16 @@ function ProgressInner({ params }: PageProps) {
     if (idx >= 0 && idx < totalDays) statusByDayIdx.set(idx, c.status);
   }
 
-  // Capture challenge.title in a const so the narrowed (non-null) type
-  // survives into the onShare closure below — TypeScript drops null
-  // narrowing on free variables once you cross a function boundary.
+  // Capture nullable fields into consts so their narrowed types survive
+  // into the onShare closure below — TypeScript drops null narrowing on
+  // free variables once you cross a function boundary.
   const challengeTitle = challenge.title;
+  const challengeDailyTask = challenge.dailyTask;
   const shareText = `I'm on Day ${today} of ${challengeTitle} on Vital30. ${stats.activeDays} active days so far. Join me — https://vital30.com/download`;
 
-  async function onShare() {
-    if (sharing) return;
-    setSharing(true);
+  async function onShare(format: ShareFormat) {
+    if (sharingFormat !== null) return;
+    setSharingFormat(format);
     setShareNote(null);
     try {
       // Build the same per-day status array the on-screen calendar uses,
@@ -119,19 +127,25 @@ function ProgressInner({ params }: PageProps) {
       const daysStatus = Array.from({ length: totalDays }, (_, i) =>
         statusByDayIdx.get(i),
       );
-      const blob = await generateShareCardBlob({
-        challengeTitle,
-        totalDays,
-        currentDay: today,
-        activeDays: stats.activeDays,
-        currentStreak: stats.currentStreak,
-        longestStreak: stats.longestStreak,
-        completionRate: stats.completionRate,
-        daysStatus,
-      });
-      const file = new File([blob], "vital30-progress.png", {
-        type: "image/png",
-      });
+      const blob = await generateShareCardBlob(
+        {
+          challengeTitle,
+          dailyTask: challengeDailyTask,
+          totalDays,
+          currentDay: today,
+          activeDays: stats.activeDays,
+          currentStreak: stats.currentStreak,
+          longestStreak: stats.longestStreak,
+          completionRate: stats.completionRate,
+          daysStatus,
+        },
+        format,
+      );
+      const file = new File(
+        [blob],
+        `vital30-progress-${format}.png`,
+        { type: "image/png" },
+      );
 
       // Preferred path on phones: native share sheet WITH the image
       // attached. Works on iOS Safari 15+ and Android Chrome — both
@@ -152,7 +166,7 @@ function ProgressInner({ params }: PageProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "vital30-progress.png";
+      a.download = file.name;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -166,14 +180,14 @@ function ProgressInner({ params }: PageProps) {
         }
       }
       setShareNote(
-        "Card downloaded. Share text copied — paste into your post.",
+        `${SHARE_FORMATS[format].label} card downloaded. Share text copied — paste into your post.`,
       );
     } catch (e) {
       // User-cancelled native share is an AbortError — silent.
       if ((e as Error).name === "AbortError") return;
       setShareNote("Could not generate share card. Try again.");
     } finally {
-      setSharing(false);
+      setSharingFormat(null);
     }
   }
 
@@ -246,62 +260,141 @@ function ProgressInner({ params }: PageProps) {
           </p>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-          {uc.status === "ACTIVE" ? (
+        {uc.status === "ACTIVE" ? (
+          <div className="mt-8">
             <Link
               href={`/my-challenges/${id}/checkin`}
               className="inline-flex h-12 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600"
             >
               Check in today
             </Link>
-          ) : null}
-          <button
-            type="button"
-            onClick={onShare}
-            disabled={sharing}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-6 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            {sharing ? (
-              <>
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Generating…
-              </>
-            ) : (
-              <>
-                <ShareIcon />
-                Share status image
-              </>
-            )}
-          </button>
-        </div>
-        {shareNote ? (
-          <p className="mt-3 text-sm text-ink-muted" role="status">
-            {shareNote}
-          </p>
+          </div>
         ) : null}
+
+        {/* Share-to-social card. Picker → user taps the format that
+            matches the surface they'll post to. Each button generates a
+            differently-sized PNG and hands it to the native share sheet
+            (or downloads it on desktop). */}
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-ink sm:text-lg">
+                Share your progress
+              </h2>
+              <p className="mt-1 text-xs text-ink-muted sm:text-sm">
+                Pick a size for the social surface you&apos;re posting to.
+                We&apos;ll open your share sheet on phones, or download
+                the PNG on desktop.
+              </p>
+            </div>
+            <ShareIcon />
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {(Object.keys(SHARE_FORMATS) as ShareFormat[]).map((fmt) => {
+              const spec = SHARE_FORMATS[fmt];
+              const busy = sharingFormat === fmt;
+              const disabled = sharingFormat !== null;
+              return (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => onShare(fmt)}
+                  disabled={disabled}
+                  className="group flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-surface-soft p-4 text-left transition-all hover:border-brand-300 hover:bg-white hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface-soft disabled:hover:shadow-none"
+                >
+                  <FormatThumb format={fmt} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-ink group-hover:text-brand-700">
+                      {spec.label}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-medium text-ink-muted">
+                      {spec.w} × {spec.h}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {spec.hint}
+                    </p>
+                  </div>
+                  <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+                    {busy ? (
+                      <>
+                        <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-700" />
+                        Generating…
+                      </>
+                    ) : (
+                      <>Generate →</>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {shareNote ? (
+            <p
+              className="mt-3 text-xs text-ink-muted sm:text-sm"
+              role="status"
+            >
+              {shareNote}
+            </p>
+          ) : null}
+        </div>
       </Container>
     </section>
   );
 }
 
-/** Outline share-arrow glyph for the "Share status image" button. */
+/**
+ * Tiny visual showing the format's aspect ratio — a brand-green
+ * rectangle proportioned to each format so the user can scan the
+ * picker and pick the shape that matches the surface they want to
+ * post to without reading dimensions.
+ */
+function FormatThumb({ format }: { format: ShareFormat }) {
+  const dims: Record<ShareFormat, { w: number; h: number }> = {
+    square: { w: 36, h: 36 },
+    portrait: { w: 32, h: 40 },
+    story: { w: 24, h: 42 },
+  };
+  const { w, h } = dims[format];
+  return (
+    <div
+      aria-hidden="true"
+      className="flex items-center justify-center"
+      style={{ width: 44, height: 44 }}
+    >
+      <div
+        className="rounded-md bg-gradient-to-br from-brand-400 to-brand-700 shadow-sm ring-1 ring-inset ring-white/20"
+        style={{ width: w, height: h }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Share glyph used in the share-card header. Tinted brand circle with
+ * an upload-arrow inside — same visual language as the iOS / Android
+ * share sheet so users associate the surface with sharing.
+ */
 function ShareIcon() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-4 w-4"
+    <span
       aria-hidden="true"
+      className="grid h-10 w-10 flex-none place-items-center rounded-full bg-brand-50 text-brand-700"
     >
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-      <polyline points="16 6 12 2 8 6" />
-      <line x1="12" y1="2" x2="12" y2="15" />
-    </svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-5 w-5"
+      >
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+        <polyline points="16 6 12 2 8 6" />
+        <line x1="12" y1="2" x2="12" y2="15" />
+      </svg>
+    </span>
   );
 }
 
