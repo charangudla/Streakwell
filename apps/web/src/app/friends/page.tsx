@@ -87,6 +87,43 @@ function FriendsInner() {
     }
   }
 
+  async function block(userId: string) {
+    if (busyId !== null) return;
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(
+        "Block this user? They won't be able to send you friend requests.",
+      );
+      if (!ok) return;
+    }
+    setBusyId(userId);
+    try {
+      await apiClient("/friends/block", {
+        method: "POST",
+        body: { userId },
+      });
+      await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function unblock(friendshipId: string) {
+    if (busyId !== null) return;
+    setBusyId(friendshipId);
+    try {
+      await apiClient(`/friends/${friendshipId}/unblock`, {
+        method: "POST",
+      });
+      await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <section className="py-8 sm:py-10">
       <Container className="max-w-2xl">
@@ -111,7 +148,8 @@ function FriendsInner() {
           </div>
         ) : data.accepted.length === 0 &&
           data.incoming.length === 0 &&
-          data.outgoing.length === 0 ? (
+          data.outgoing.length === 0 &&
+          data.blocked.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-surface-soft p-10 text-center">
             <p className="text-lg font-semibold text-ink">
               No friends yet
@@ -128,7 +166,7 @@ function FriendsInner() {
           <div className="mt-6 space-y-8">
             {data.incoming.length > 0 ? (
               <Section
-                title="Incoming requests"
+                title="Pending requests"
                 count={data.incoming.length}
                 tone="action"
               >
@@ -136,9 +174,10 @@ function FriendsInner() {
                   <IncomingRow
                     key={fr.friendshipId}
                     entry={fr}
-                    busy={busyId === fr.friendshipId}
+                    busy={busyId === fr.friendshipId || busyId === fr.user.id}
                     onAccept={() => respond(fr.friendshipId, "ACCEPTED")}
                     onDecline={() => respond(fr.friendshipId, "DECLINED")}
+                    onBlock={() => block(fr.user.id)}
                   />
                 ))}
               </Section>
@@ -150,21 +189,35 @@ function FriendsInner() {
                   <AcceptedRow
                     key={fr.friendshipId}
                     entry={fr}
-                    busy={busyId === fr.friendshipId}
+                    busy={busyId === fr.friendshipId || busyId === fr.user.id}
                     onUnfriend={() => unfriend(fr.friendshipId)}
+                    onBlock={() => block(fr.user.id)}
                   />
                 ))}
               </Section>
             ) : null}
 
             {data.outgoing.length > 0 ? (
-              <Section title="Pending invites you sent" count={data.outgoing.length}>
+              <Section title="Sent" count={data.outgoing.length}>
                 {data.outgoing.map((fr) => (
                   <OutgoingRow
                     key={fr.friendshipId}
                     entry={fr}
                     busy={busyId === fr.friendshipId}
                     onCancel={() => unfriend(fr.friendshipId)}
+                  />
+                ))}
+              </Section>
+            ) : null}
+
+            {data.blocked.length > 0 ? (
+              <Section title="Blocked" count={data.blocked.length}>
+                {data.blocked.map((fr) => (
+                  <BlockedRow
+                    key={fr.friendshipId}
+                    entry={fr}
+                    busy={busyId === fr.friendshipId}
+                    onUnblock={() => unblock(fr.friendshipId)}
                   />
                 ))}
               </Section>
@@ -220,11 +273,13 @@ function IncomingRow({
   busy,
   onAccept,
   onDecline,
+  onBlock,
 }: {
   entry: FriendListEntry;
   busy: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  onBlock: () => void;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50/40 p-4">
@@ -237,7 +292,15 @@ function IncomingRow({
           Wants to be your challenge friend
         </p>
       </div>
-      <div className="flex flex-none gap-2">
+      <div className="flex flex-none flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={onBlock}
+          disabled={busy}
+          className="rounded-full bg-white px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 disabled:opacity-50"
+        >
+          Block
+        </button>
         <button
           type="button"
           onClick={onDecline}
@@ -263,10 +326,12 @@ function AcceptedRow({
   entry,
   busy,
   onUnfriend,
+  onBlock,
 }: {
   entry: FriendListEntry;
   busy: boolean;
   onUnfriend: () => void;
+  onBlock: () => void;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
@@ -283,14 +348,24 @@ function AcceptedRow({
           )}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onUnfriend}
-        disabled={busy}
-        className="rounded-full px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-      >
-        Unfriend
-      </button>
+      <div className="flex flex-none gap-1">
+        <button
+          type="button"
+          onClick={onUnfriend}
+          disabled={busy}
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-slate-100 disabled:opacity-50"
+        >
+          Unfriend
+        </button>
+        <button
+          type="button"
+          onClick={onBlock}
+          disabled={busy}
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+        >
+          Block
+        </button>
+      </div>
     </li>
   );
 }
@@ -320,6 +395,40 @@ function OutgoingRow({
         className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-slate-100 disabled:opacity-50"
       >
         Cancel
+      </button>
+    </li>
+  );
+}
+
+function BlockedRow({
+  entry,
+  busy,
+  onUnblock,
+}: {
+  entry: FriendListEntry;
+  busy: boolean;
+  onUnblock: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/40 p-4">
+      <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-slate-400 text-xs font-bold text-white">
+        ✕
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-ink">
+          {entry.user.name}
+        </p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          Blocked. They can&rsquo;t send you friend requests.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onUnblock}
+        disabled={busy}
+        className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 disabled:opacity-50"
+      >
+        Unblock
       </button>
     </li>
   );

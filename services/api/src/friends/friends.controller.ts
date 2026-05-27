@@ -11,6 +11,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 
 import type { Auth } from '../auth/auth';
+import { BlockUserDto } from './dto/block-user.dto';
 import { FriendRequestDto } from './dto/friend-request.dto';
 import { RespondFriendDto } from './dto/respond-friend.dto';
 import { FriendsService } from './friends.service';
@@ -64,5 +65,41 @@ export class FriendsController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.friends.unfriend(session.user.id, id);
+  }
+
+  /**
+   * Block a user — overwrites any existing PENDING / ACCEPTED /
+   * DECLINED row with the viewer as the blocker. Blocked users are
+   * server-blocked from sending friend requests in either direction.
+   * Same 20/hour budget as friend requests so a malicious bulk-block
+   * doesn't sidestep abuse limits.
+   */
+  @Post('block')
+  @Throttle({ default: { limit: 20, ttl: 60 * 60 * 1000 } })
+  block(
+    @Session() session: UserSession<Auth>,
+    @Body() dto: BlockUserDto,
+  ) {
+    return this.friends.block(session.user.id, dto.userId);
+  }
+
+  /** Unblock — only the original blocker can call this. */
+  @Post(':id/unblock')
+  unblock(
+    @Session() session: UserSession<Auth>,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.friends.unblock(session.user.id, id);
+  }
+
+  /**
+   * Cheap badge counts. Used by the header Friends icon to render a
+   * red bubble when incoming requests are waiting. Kept separate from
+   * the full /friends payload so the header can poll-or-refetch
+   * without pulling the entire list.
+   */
+  @Get('counts')
+  counts(@Session() session: UserSession<Auth>) {
+    return this.friends.counts(session.user.id);
   }
 }

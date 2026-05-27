@@ -221,7 +221,8 @@ export type FriendshipState =
   | "none"
   | "pending_sent"
   | "pending_received"
-  | "accepted";
+  | "accepted"
+  | "blocked_by_me";
 
 export type ChatMember = {
   userId: string;
@@ -247,4 +248,10 @@ export type FriendList = {
   accepted: FriendListEntry[];
   incoming: FriendListEntry[];
   outgoing: FriendListEntry[];
+  blocked: FriendListEntry[];
+};
+
+export type FriendCounts = {
+  /** PENDING requests where viewer is the recipient — drives header badge. */
+  incoming: number;
 };

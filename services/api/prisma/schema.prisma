@@ -480,6 +480,11 @@ enum FriendshipStatus {
   PENDING
   ACCEPTED
   DECLINED
+  // Viewer blocked the other party. The row's `requesterId` is always
+  // the blocker; the recipient is the one being blocked. The friends
+  // service refuses to create / promote any row between two users when
+  // a BLOCKED row exists in either direction.
+  BLOCKED
 }
 
 model ChallengeFriendship {

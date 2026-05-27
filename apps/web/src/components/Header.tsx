@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Container } from "./Container";
 import { ButtonLink } from "./Button";
 import { isAppRoute } from "./MobileTabBar";
 import { NotificationBell } from "./NotificationBell";
+import { apiClient } from "@/lib/api-client";
 import { signOut, useSession } from "@/lib/auth-client";
+import type { FriendCounts } from "@/lib/web-types";
 
 const PUBLIC_NAV = [
   { href: "/challenges", label: "Challenges" },
@@ -74,6 +76,7 @@ export function Header() {
             <div className="h-10 w-24 animate-pulse rounded-full bg-slate-100" />
           ) : user ? (
             <div className="flex items-center gap-2">
+              <FriendsIconLink />
               <ChatIconLink />
               <NotificationBell />
               <UserMenu name={user.name} onSignOut={handleSignOut} />
@@ -101,6 +104,7 @@ export function Header() {
             is order-dependent and the wrong one can win. */}
         {slimMobile ? (
           <div className="flex items-center gap-1 md:hidden">
+            <FriendsIconLink />
             <ChatIconLink />
             <NotificationBell />
           </div>
@@ -330,6 +334,80 @@ function ChatIconLink() {
       >
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
       </svg>
+    </Link>
+  );
+}
+
+/**
+ * Header friends link — people glyph in a square tile, sized to match
+ * the chat icon next to it. Wears a rose-coloured badge with the
+ * pending-incoming-request count when > 0.
+ *
+ * Counts fetch on mount + every 60s while the user is on a page that
+ * mounts the Header (which is layout-level so this is basically the
+ * whole authed session). Sixty seconds is a generous interval but
+ * matches the "this isn't urgent live notification" intent — friend
+ * requests don't need second-level refresh.
+ */
+function FriendsIconLink() {
+  const [incoming, setIncoming] = useState<number>(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    async function poll() {
+      try {
+        const res = await apiClient<FriendCounts>("/friends/counts");
+        if (!cancelled) setIncoming(res.incoming);
+      } catch {
+        // 401 / network blip — drop the badge silently. Next tick may
+        // recover.
+      }
+    }
+    void poll();
+    timer = setInterval(() => void poll(), 60_000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <Link
+      href="/friends"
+      aria-label={
+        incoming > 0
+          ? `Friends — ${incoming} pending ${
+              incoming === 1 ? "request" : "requests"
+            }`
+          : "Friends"
+      }
+      className="relative grid h-10 w-10 place-items-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-5 w-5"
+        aria-hidden="true"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      {incoming > 0 ? (
+        <span
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
+        >
+          {incoming > 9 ? "9+" : incoming}
+        </span>
+      ) : null}
     </Link>
   );
 }

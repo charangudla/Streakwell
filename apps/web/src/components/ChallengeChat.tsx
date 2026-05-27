@@ -944,6 +944,12 @@ function MemberRow({
           cls: "bg-brand-50 text-brand-700 cursor-default",
           disabled: true,
         };
+      case "blocked_by_me":
+        return {
+          label: "Blocked",
+          cls: "bg-slate-100 text-ink-muted cursor-default",
+          disabled: true,
+        };
     }
   })();
 

@@ -14,7 +14,11 @@ export type FriendshipState =
   | 'none'
   | 'pending_sent'
   | 'pending_received'
-  | 'accepted';
+  | 'accepted'
+  // Viewer has blocked this user. Returned to the blocker only; the
+  // blocked party sees `none` so they don't get a signal that they
+  // were blocked.
+  | 'blocked_by_me';
 
 export interface FriendshipForOther {
   friendshipId: string;
@@ -60,6 +64,13 @@ export class FriendsService {
     });
 
     if (existing) {
+      // Blocked in either direction — refuse silently with a generic
+      // "can't send" message so the blocker isn't outed to the blocked
+      // party (and so the blocked party doesn't get a fishing signal
+      // that their target exists).
+      if (existing.status === FriendshipStatus.BLOCKED) {
+        throw new BadRequestException("Couldn't send the request.");
+      }
       if (existing.status === FriendshipStatus.ACCEPTED) {
         throw new ConflictException('You are already friends.');
       }
@@ -142,6 +153,99 @@ export class FriendsService {
     return updated;
   }
 
+  /**
+   * Block a user. If a row already exists between the two parties
+   * (PENDING / ACCEPTED / DECLINED), we overwrite it with BLOCKED and
+   * point the requesterId at the blocker so we always know who did the
+   * blocking from the row alone. Idempotent — re-blocking is a no-op.
+   *
+   * We do NOT fire a notification to the blocked party (defeats the
+   * purpose of blocking) and we do NOT remove the chat membership —
+   * blocked users still see each other in shared challenge chats per
+   * the v1 scope. The block is solely about preventing friend
+   * requests + outbound interactions through the friends graph.
+   */
+  async block(userId: string, targetId: string) {
+    if (userId === targetId) {
+      throw new BadRequestException("You can't block yourself.");
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { id: true },
+    });
+    if (!target) throw new NotFoundException('User not found.');
+
+    const existing = await this.prisma.challengeFriendship.findFirst({
+      where: {
+        OR: [
+          { requesterId: userId, recipientId: targetId },
+          { requesterId: targetId, recipientId: userId },
+        ],
+      },
+    });
+
+    if (existing) {
+      // Already blocked — no-op for idempotency. If the OTHER party
+      // blocked us, we still overwrite (they'll see us in their list
+      // too once both directions update? No — we delete theirs and
+      // create ours so the row reflects who is the blocker).
+      if (
+        existing.status === FriendshipStatus.BLOCKED &&
+        existing.requesterId === userId
+      ) {
+        return existing;
+      }
+      await this.prisma.challengeFriendship.delete({
+        where: { id: existing.id },
+      });
+    }
+
+    return this.prisma.challengeFriendship.create({
+      data: {
+        requesterId: userId,
+        recipientId: targetId,
+        status: FriendshipStatus.BLOCKED,
+        respondedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Unblock a previously-blocked user. Only the blocker (= the row's
+   * requesterId) can call this — the blocked party shouldn't have
+   * the ability to remove their own block server-side.
+   */
+  async unblock(userId: string, friendshipId: string) {
+    const fr = await this.prisma.challengeFriendship.findUnique({
+      where: { id: friendshipId },
+    });
+    if (!fr || fr.status !== FriendshipStatus.BLOCKED) {
+      throw new NotFoundException('Block not found.');
+    }
+    if (fr.requesterId !== userId) {
+      throw new ForbiddenException();
+    }
+    await this.prisma.challengeFriendship.delete({
+      where: { id: friendshipId },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * Cheap counts for the header badge — just the incoming-pending
+   * count for now. Kept as a separate endpoint so the header can hit
+   * it without paying for the full /friends payload.
+   */
+  async counts(userId: string) {
+    const incoming = await this.prisma.challengeFriendship.count({
+      where: {
+        recipientId: userId,
+        status: FriendshipStatus.PENDING,
+      },
+    });
+    return { incoming };
+  }
+
   async list(userId: string) {
     const rows = await this.prisma.challengeFriendship.findMany({
       where: {
@@ -151,7 +255,9 @@ export class FriendsService {
           },
           // DECLINED rows aren't surfaced anywhere — the requester
           // shouldn't be reminded of a rejection and the recipient
-          // moved on.
+          // moved on. Blocked rows where the OTHER party blocked
+          // the viewer are also hidden — only the blocker sees
+          // their own block.
           { status: { not: FriendshipStatus.DECLINED } },
         ],
       },
@@ -170,6 +276,7 @@ export class FriendsService {
     }> = [];
     const incoming: typeof accepted = [];
     const outgoing: typeof accepted = [];
+    const blocked: typeof accepted = [];
 
     for (const fr of rows) {
       const other =
@@ -180,7 +287,12 @@ export class FriendsService {
         createdAt: fr.createdAt,
         respondedAt: fr.respondedAt,
       };
-      if (fr.status === FriendshipStatus.ACCEPTED) {
+      if (fr.status === FriendshipStatus.BLOCKED) {
+        // Only the blocker (= requesterId) sees their own block. Hide
+        // the row from the blocked party so they don't get a fishing
+        // signal that they were blocked.
+        if (fr.requesterId === userId) blocked.push(view);
+      } else if (fr.status === FriendshipStatus.ACCEPTED) {
         accepted.push(view);
       } else if (fr.recipientId === userId) {
         incoming.push(view);
@@ -188,7 +300,7 @@ export class FriendsService {
         outgoing.push(view);
       }
     }
-    return { accepted, incoming, outgoing };
+    return { accepted, incoming, outgoing, blocked };
   }
 
   async unfriend(userId: string, friendshipId: string) {
@@ -234,9 +346,19 @@ export class FriendsService {
       const otherId =
         fr.requesterId === viewerId ? fr.recipientId : fr.requesterId;
       let state: FriendshipForOther['state'];
-      if (fr.status === FriendshipStatus.ACCEPTED) state = 'accepted';
-      else if (fr.requesterId === viewerId) state = 'pending_sent';
-      else state = 'pending_received';
+      if (fr.status === FriendshipStatus.BLOCKED) {
+        // Only the blocker sees the blocked state; the blocked party
+        // sees 'none' so they can't fish for the fact they were
+        // blocked.
+        if (fr.requesterId !== viewerId) continue;
+        state = 'blocked_by_me';
+      } else if (fr.status === FriendshipStatus.ACCEPTED) {
+        state = 'accepted';
+      } else if (fr.requesterId === viewerId) {
+        state = 'pending_sent';
+      } else {
+        state = 'pending_received';
+      }
       map.set(otherId, { friendshipId: fr.id, state });
     }
     return map;
