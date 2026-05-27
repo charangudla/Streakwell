@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EmailService } from '../email/email.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { SubmitContactDto } from './dto/submit-contact.dto';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class PublicContactService {
   constructor(
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -25,6 +27,17 @@ export class PublicContactService {
       );
       return false;
     }
+
+    // Persist before sending email so an outbound provider hiccup doesn't
+    // lose the message. Stored rows surface in the admin inbox later.
+    await this.prisma.contactSubmission.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        message: dto.message,
+        ipAddress: ipAddress ?? null,
+      },
+    });
 
     const inbox =
       this.config.get<string>('CONTACT_INBOX') ??

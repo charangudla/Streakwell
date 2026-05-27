@@ -286,6 +286,23 @@ model Favorite {
   @@index([userId])
 }
 
+// Public contact form submissions. Anyone can POST to /public/contact;
+// these get persisted here for admin triage in addition to being emailed
+// to CONTACT_INBOX. `resolvedAt` flips to a timestamp once a human has
+// dealt with it (e.g. via the admin dashboard once that ships).
+model ContactSubmission {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  email      String
+  message    String
+  ipAddress  String?
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([resolvedAt])
+}
+
 // Earned achievement (badge). Unique per (user, kind) so each badge can be
 // awarded only once. Kind-specific metadata (e.g. which challenge unlocked
 // it) lives in `data`.

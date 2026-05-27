@@ -18,14 +18,19 @@ type Props = {
  * via POST /favorites or DELETE /favorites/:challengeId.
  *
  * We share `loaded` state across multiple instances via a module-level
- * cache so a page full of cards only hits /favorites once.
+ * cache so a page full of cards only hits /favorites once. The cache is
+ * keyed by userId so signing out then back in as a different user can't
+ * leak the previous user's favorites into the new session.
  */
+let cachedUserId: string | null = null;
 let cachedFavoriteIds: Set<string> | null = null;
 let cachedPromise: Promise<Set<string>> | null = null;
 
-async function loadFavorites(): Promise<Set<string>> {
-  if (cachedFavoriteIds) return cachedFavoriteIds;
-  if (cachedPromise) return cachedPromise;
+async function loadFavorites(userId: string): Promise<Set<string>> {
+  if (cachedUserId === userId && cachedFavoriteIds) return cachedFavoriteIds;
+  if (cachedUserId === userId && cachedPromise) return cachedPromise;
+  cachedUserId = userId;
+  cachedFavoriteIds = null;
   cachedPromise = apiClient<FavoriteEntry[]>("/favorites")
     .then((list) => {
       cachedFavoriteIds = new Set(list.map((f) => f.challengeId));
@@ -43,9 +48,18 @@ export function FavoriteHeart({ challengeId, size = 36 }: Props) {
   const [isFav, setIsFav] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!session?.user) return;
+    const userId = session?.user?.id;
+    if (!userId) {
+      // User signed out — discard cache so a different user signing in
+      // doesn't see the previous user's favorites.
+      cachedUserId = null;
+      cachedFavoriteIds = null;
+      cachedPromise = null;
+      setIsFav(null);
+      return;
+    }
     let cancelled = false;
-    void loadFavorites().then((set) => {
+    void loadFavorites(userId).then((set) => {
       if (!cancelled) setIsFav(set.has(challengeId));
     });
     return () => {

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { JsonLd } from "@/components/JsonLd";
 import { APP_NAME, APP_TAGLINE, SITE_URL } from "@/lib/constants";
 
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
     "Join simple 30-day wellness challenges, check in daily, track progress, and share your status.",
   applicationName: APP_NAME,
   authors: [{ name: APP_NAME }],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+    statusBarStyle: "default",
+  },
   openGraph: {
     type: "website",
     siteName: APP_NAME,
@@ -35,6 +42,12 @@ export const metadata: Metadata = {
     description:
       "Join simple 30-day wellness challenges, check in daily, track progress, and share your status.",
   },
+};
+
+export const viewport = {
+  themeColor: "#10b981",
+  width: "device-width",
+  initialScale: 1,
 };
 
 const ORGANIZATION_LD = {
@@ -72,6 +85,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <InstallPrompt />
       </body>
     </html>
   );
