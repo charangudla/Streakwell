@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ButtonLink } from "@/components/Button";
@@ -30,23 +29,21 @@ export default function ChatInboxPage() {
  * bookmarked one — we just don't surface them on entry.
  */
 function ChatInboxInner() {
-  const router = useRouter();
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  /**
-   * Back button — prefer history.back() so we land wherever the user
-   * came from (dashboard, /my-challenges, a progress page, etc.).
-   * Falls back to /dashboard for direct-URL entries or PWA cold starts
-   * where there's no prior history entry.
+  /*
+   * NOTE: the back button below uses a hard Link to /dashboard
+   * instead of router.back(). /chat is a hub page; the user comes
+   * here from anywhere via the header 💬 icon. Using router.back()
+   * created a loop:
+   *   /chat → tap a row → /chat/[id]
+   *   /chat/[id] → "← Chats" → /chat
+   *   /chat → "← Back" → router.back() → /chat/[id]   (LOOP)
+   * Going to /dashboard is the canonical "exit the chat surface"
+   * destination and matches the pattern used by /friends and other
+   * top-level hubs.
    */
-  function goBack() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/dashboard");
-    }
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -80,13 +77,12 @@ function ChatInboxInner() {
   return (
     <section className="py-8 sm:py-10">
       <Container className="max-w-2xl">
-        <button
-          type="button"
-          onClick={goBack}
+        <Link
+          href="/dashboard"
           className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
         >
-          ← Back
-        </button>
+          ← Dashboard
+        </Link>
         <div className="mt-3 flex items-baseline justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
             Chats

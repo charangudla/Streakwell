@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -48,14 +49,17 @@ function FriendsInner() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [viewing, setViewing] = useState<ViewedProfile>(null);
 
-  /** Smart back — history if available, otherwise /dashboard. */
-  function goBack() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/dashboard");
-    }
-  }
+  /*
+   * NOTE: back button below uses a hard Link to /dashboard instead
+   * of router.back() — /friends is a hub page reachable from the
+   * header 👥 icon anywhere in the app, and router.back() created
+   * a loop:
+   *   /friends → tap an accepted row → /users/[id]
+   *   /users/[id] → "← Back" → /friends
+   *   /friends → "← Back" → router.back() → /users/[id]   (LOOP)
+   * Going to /dashboard is the canonical "exit the friends surface"
+   * destination.
+   */
 
   const load = useCallback(async () => {
     try {
@@ -155,13 +159,12 @@ function FriendsInner() {
   return (
     <section className="py-8 sm:py-10">
       <Container className="max-w-2xl">
-        <button
-          type="button"
-          onClick={goBack}
+        <Link
+          href="/dashboard"
           className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
         >
-          ← Back
-        </button>
+          ← Dashboard
+        </Link>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Challenge friends
         </h1>
