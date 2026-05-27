@@ -333,21 +333,27 @@ function pickHeroVariant(
   status: UserChallenge["todayCheckinStatus"],
 ): HeroVariant {
   if (status === null) {
+    // AMBER, not brand-green — when nothing is checked in yet the
+    // hero should read as "your turn, do this", not "you're done"
+    // (which is what a green-tinted card historically signalled).
+    // Glyph is an arrow, not a checkmark, for the same reason.
     return {
       gradient:
-        "bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700",
-      eyebrow: "text-brand-100",
-      bar: "bg-streak",
-      glyph: "✓",
+        "bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600",
+      eyebrow: "text-amber-50",
+      bar: "bg-white",
+      glyph: "→",
       cta: () => "Check in today →",
     };
   }
   if (status === "COMPLETED") {
+    // Brand-green only AFTER a completed check-in — clear "done"
+    // signal. Checkmark glyph reinforces it.
     return {
       gradient:
-        "bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900",
+        "bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700",
       eyebrow: "text-brand-100",
-      bar: "bg-streak",
+      bar: "bg-white",
       glyph: "✓",
       cta: (day) => `Day ${day} done →`,
     };

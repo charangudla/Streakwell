@@ -75,15 +75,16 @@ type Variant = {
 };
 
 function pickVariant(status: UserChallenge["todayCheckinStatus"]): Variant {
-  // Action-needed: most prominent — bright brand border, amber dot,
-  // explicit "Check in today" CTA — so the user's eye lands here first
-  // in a grid of mixed states.
+  // Action-needed: amber-tinted border + amber CTA so the card reads
+  // as "your attention is needed", NOT as a green-checked-in card.
+  // Previously this used brand-green text which led to confusion when
+  // a freshly-joined challenge appeared green and felt "already done".
   if (status === null) {
     return {
-      card: "border-slate-200 bg-white hover:border-brand-300",
-      eyebrow: "text-brand-700",
-      bar: "bg-brand-500",
-      cta: "text-brand-700",
+      card: "border-amber-300 bg-amber-50/40 hover:border-amber-400",
+      eyebrow: "text-amber-700",
+      bar: "bg-amber-400",
+      cta: "text-amber-800",
       dot: "bg-streak animate-pulse",
       label: () => "Check in today →",
     };
