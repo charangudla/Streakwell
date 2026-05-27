@@ -147,15 +147,25 @@ function DashboardInner() {
           </div>
         ) : null}
 
-        {/* More active challenges */}
+        {/* Your other active challenges — horizontal swipe carousel
+            on phone + tablet (matches Recommended + Popular below and
+            the mobile app's lane pattern), grid on desktop. Guard
+            stays at `> 1` because the hero card above already shows
+            the first active; with 0 or 1 active there's nothing
+            "other" to surface. */}
         {activeList.length > 1 ? (
           <section className="mt-10">
-            <SectionHeader title="Your other active challenges" />
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <SectionHeader
+              title="Your other active challenges"
+              seeAllHref="/my-challenges"
+            />
+            <HorizontalCardRow>
               {activeList.slice(1).map((uc) => (
-                <ActiveChallengeCard key={uc.id} uc={uc} />
+                <CarouselCard key={uc.id}>
+                  <ActiveChallengeCard uc={uc} />
+                </CarouselCard>
               ))}
-            </div>
+            </HorizontalCardRow>
           </section>
         ) : null}
 
