@@ -88,7 +88,18 @@ export default function RootLayout({
           which only inflated the gap between page content and the
           footer (80px of dead space) and never helped tab-bar
           clearance. Desktop opts out via md:pb-0. */}
-      <body className="flex min-h-full flex-col bg-surface pb-20 text-ink md:pb-0">
+      {/* suppressHydrationWarning is targeted at the <body> ONLY (not
+          its children) — Grammarly and a handful of other browser
+          extensions inject attributes like `data-new-gr-c-s-check-loaded`
+          and `data-gr-ext-installed` on the body before React hydrates,
+          which trips a hydration mismatch warning we can't fix from
+          our code. This flag silences ONLY attribute-level diffs on
+          this one element; any real hydration bug inside the tree still
+          surfaces normally. */}
+      <body
+        suppressHydrationWarning
+        className="flex min-h-full flex-col bg-surface pb-20 text-ink md:pb-0"
+      >
         <JsonLd data={[ORGANIZATION_LD, WEBSITE_LD]} />
         <Header />
         <main className="flex-1">{children}</main>
