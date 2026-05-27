@@ -94,20 +94,22 @@ export function Header() {
 
         {/* On phone-sized authenticated app pages, the bottom tab bar
             carries navigation, so we show JUST a notification bell on the
-            right instead of the hamburger menu. */}
+            right instead of the hamburger menu. We conditionally RENDER
+            (not toggle a `hidden` class) because mixing Tailwind display
+            utilities like `inline-flex` and `hidden` on the same element
+            is order-dependent and the wrong one can win. */}
         {slimMobile ? (
           <div className="flex items-center md:hidden">
             <NotificationBell />
           </div>
-        ) : null}
-
-        <button
-          type="button"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-slate-100 md:hidden ${slimMobile ? "hidden" : ""}`}
-          onClick={() => setOpen((prev) => !prev)}
-        >
+        ) : (
+          <button
+            type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-slate-100 md:hidden"
+            onClick={() => setOpen((prev) => !prev)}
+          >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -133,9 +135,10 @@ export function Header() {
             )}
           </svg>
         </button>
+        )}
       </Container>
 
-      {open && !slimMobile && (
+      {open && (
         <div className="border-t border-slate-200 bg-white md:hidden">
           <Container className="flex flex-col gap-1 py-3">
             {nav.map((link) => (
