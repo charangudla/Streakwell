@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ButtonLink } from "@/components/Button";
@@ -31,17 +32,30 @@ export default function FriendsPage() {
  * DECLINED rows are filtered server-side — neither party sees them.
  */
 function FriendsInner() {
+  const router = useRouter();
   const [data, setData] = useState<FriendList | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  /** Smart back — history if available, otherwise /dashboard. */
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/dashboard");
+    }
+  }
+
   const load = useCallback(async () => {
     try {
       const res = await apiClient<FriendList>("/friends");
-      setData(res);
+      // Defensive default for `blocked` — if the API hasn't been
+      // restarted to include the new field, we still render the
+      // other three sections instead of crashing on undefined.length.
+      setData({ ...res, blocked: res.blocked ?? [] });
       setErr(null);
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyApiError(e));
     }
   }, []);
 
@@ -62,7 +76,7 @@ function FriendsInner() {
       });
       await load();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -81,7 +95,7 @@ function FriendsInner() {
       await apiClient(`/friends/${friendshipId}`, { method: "DELETE" });
       await load();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -103,7 +117,7 @@ function FriendsInner() {
       });
       await load();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -118,7 +132,7 @@ function FriendsInner() {
       });
       await load();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyApiError(e));
     } finally {
       setBusyId(null);
     }
@@ -127,7 +141,14 @@ function FriendsInner() {
   return (
     <section className="py-8 sm:py-10">
       <Container className="max-w-2xl">
-        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+        <button
+          type="button"
+          onClick={goBack}
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
+        >
+          ← Back
+        </button>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Challenge friends
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
@@ -434,3 +455,27 @@ function BlockedRow({
   );
 }
 
+
+/**
+ * Turn an apiClient error into a sentence the user can actually act
+ * on. The raw `(e as Error).message` for a 404 NestJS response is
+ * literally "Cannot GET /friends", which looked alarming + cryptic in
+ * the UI. This wraps the common failure modes (auth lapse, server
+ * not reachable, server not on the new code) in friendlier copy.
+ */
+function friendlyApiError(e: unknown): string {
+  const err = e as { status?: number; message?: string };
+  if (err.status === 401) {
+    return "Your session expired. Please sign in again.";
+  }
+  if (err.status === 403) {
+    return "You don't have access to this.";
+  }
+  if (err.status === 404) {
+    return "We couldn't reach the server. Try reloading — if the issue persists, the API may need a restart.";
+  }
+  if (err.status && err.status >= 500) {
+    return "The server hit an error. Please try again in a moment.";
+  }
+  return err.message ?? "Something went wrong.";
+}
