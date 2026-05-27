@@ -46,6 +46,19 @@ enum ShareType {
   COMPLETION
 }
 
+// Visibility for user-created challenges. Seeded challenges (no
+// createdById) ignore this field — they're always public.
+enum ChallengeVisibility {
+  PRIVATE   // only people with the inviteToken URL OR an explicit invite can see/join
+  PUBLIC    // also shows up in /challenges browse alongside seeded challenges
+}
+
+enum ChallengeInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 enum NotificationType {
   STREAK_MILESTONE
   CHALLENGE_COMPLETE
@@ -94,6 +107,11 @@ model User {
   notifications  Notification[]
   favorites      Favorite[]
   achievements   Achievement[]
+
+  // Custom challenges feature
+  createdChallenges Challenge[]       @relation("CreatedChallenges")
+  invitesSent       ChallengeInvite[] @relation("ChallengeInvitesSent")
+  invitesReceived   ChallengeInvite[] @relation("ChallengeInvitesReceived")
 }
 
 // Better Auth — one row per active session. We use bearer tokens (mobile)
@@ -198,12 +216,23 @@ model Challenge {
   categoryId       String              @db.Uuid
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  
+
+  // Custom-challenge fields. NULL on the seeded catalog. createdById
+  // SetNull so a creator deleting their account doesn't cascade-delete
+  // every challenge they made and orphan everyone's check-ins.
+  createdById      String?             @db.Uuid
+  createdBy        User?               @relation("CreatedChallenges", fields: [createdById], references: [id], onDelete: SetNull)
+  visibility       ChallengeVisibility @default(PUBLIC)
+  inviteToken      String?             @unique
+
   category         ChallengeCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   userChallenges   UserChallenge[]
   favorites        Favorite[]
+  invites          ChallengeInvite[]
 
   @@index([categoryId])
+  @@index([createdById])
+  @@index([visibility])
 }
 
 model UserChallenge {
@@ -301,6 +330,35 @@ model ContactSubmission {
 
   @@index([createdAt])
   @@index([resolvedAt])
+}
+
+// Invite to a custom challenge. Created by the challenge's owner when
+// they explicitly invite someone by email. If the invited email already
+// belongs to a Vital30 user, invitedUserId resolves immediately so the
+// invite shows up in their /invites inbox. Otherwise the invite still
+// gets stored, and we send the invitee a real email with the join link;
+// when they sign up later, a backfill job (or signup hook) can resolve
+// `invitedUserId`.
+//
+// The shareable-link path does NOT create a ChallengeInvite — the link
+// just contains the Challenge's inviteToken. Open-token joins are
+// tracked in UserChallenge like any other join.
+model ChallengeInvite {
+  id              String                @id @default(uuid()) @db.Uuid
+  challengeId     String                @db.Uuid
+  challenge       Challenge             @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  invitedById     String                @db.Uuid
+  invitedBy       User                  @relation("ChallengeInvitesSent", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedEmail    String
+  invitedUserId   String?               @db.Uuid
+  invitedUser     User?                 @relation("ChallengeInvitesReceived", fields: [invitedUserId], references: [id], onDelete: SetNull)
+  status          ChallengeInviteStatus @default(PENDING)
+  createdAt       DateTime              @default(now())
+  respondedAt     DateTime?
+
+  @@unique([challengeId, invitedEmail])
+  @@index([invitedUserId])
+  @@index([invitedEmail])
 }
 
 // Earned achievement (badge). Unique per (user, kind) so each badge can be

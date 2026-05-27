@@ -20,6 +20,12 @@ export class ChallengesController {
   }
 
   @AllowAnonymous()
+  @Get('by-token/:token')
+  findByInviteToken(@Param('token') token: string) {
+    return this.challenges.findByInviteToken(token);
+  }
+
+  @AllowAnonymous()
   @Get(':id')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.challenges.findById(id);

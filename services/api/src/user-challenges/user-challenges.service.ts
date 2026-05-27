@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CheckinStatus, Prisma, UserChallengeStatus } from '@prisma/client';
+import {
+  ChallengeInviteStatus,
+  ChallengeVisibility,
+  CheckinStatus,
+  Prisma,
+  UserChallengeStatus,
+} from '@prisma/client';
 
 import { calculateChallengeProgress } from '../challenges/domain/progress-calculator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,13 +29,55 @@ export type UserChallengeView = {
 export class UserChallengesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async join(userId: string, challengeId: string): Promise<UserChallengeView> {
+  async join(
+    userId: string,
+    challengeId: string,
+    inviteToken?: string,
+  ): Promise<UserChallengeView> {
     const challenge = await this.prisma.challenge.findUnique({
       where: { id: challengeId },
-      select: { id: true, isActive: true },
+      select: {
+        id: true,
+        isActive: true,
+        visibility: true,
+        createdById: true,
+        inviteToken: true,
+      },
     });
     if (!challenge || !challenge.isActive) {
       throw new NotFoundException('Challenge not found.');
+    }
+
+    // Visibility gate for PRIVATE custom challenges. Seeded challenges
+    // default to PUBLIC and short-circuit through.
+    if (challenge.visibility === ChallengeVisibility.PRIVATE) {
+      const isCreator = challenge.createdById === userId;
+      const tokenMatches =
+        !!inviteToken &&
+        !!challenge.inviteToken &&
+        inviteToken === challenge.inviteToken;
+      let hasInvite = false;
+      if (!isCreator && !tokenMatches) {
+        const invite = await this.prisma.challengeInvite.findFirst({
+          where: {
+            challengeId,
+            invitedUserId: userId,
+            status: {
+              in: [
+                ChallengeInviteStatus.PENDING,
+                ChallengeInviteStatus.ACCEPTED,
+              ],
+            },
+          },
+          select: { id: true },
+        });
+        hasInvite = !!invite;
+      }
+      if (!isCreator && !tokenMatches && !hasInvite) {
+        throw new ForbiddenException(
+          'This challenge is private. You need an invite or share link to join.',
+        );
+      }
     }
 
     try {

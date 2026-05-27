@@ -13,6 +13,7 @@ import { createAuth } from './auth/auth';
 import { CategoriesModule } from './categories/categories.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { CheckinsModule } from './checkins/checkins.module';
+import { CustomChallengesModule } from './custom-challenges/custom-challenges.module';
 import { EmailModule } from './email/email.module';
 import { EmailService } from './email/email.service';
 import { FavoritesModule } from './favorites/favorites.module';
@@ -72,6 +73,7 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     ReferralsModule,
     PublicContactModule,
     ShareEventsModule,
+    CustomChallengesModule,
   ],
   controllers: [AppController],
   providers: [

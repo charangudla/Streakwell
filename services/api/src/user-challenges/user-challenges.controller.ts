@@ -11,7 +11,11 @@ export class UserChallengesController {
 
   @Post()
   join(@Session() session: UserSession<Auth>, @Body() dto: JoinChallengeDto) {
-    return this.userChallenges.join(session.user.id, dto.challengeId);
+    return this.userChallenges.join(
+      session.user.id,
+      dto.challengeId,
+      dto.inviteToken,
+    );
   }
 
   @Get()
