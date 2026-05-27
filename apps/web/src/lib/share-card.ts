@@ -107,12 +107,39 @@ export async function generateShareCardBlob(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context not available.");
 
+  // What we're celebrating: the latest day the user actually completed.
+  // This is different from `currentDay` (which is today's index whether
+  // they've checked in or not). If they completed today, both agree;
+  // if today's check-in isn't done yet, we celebrate yesterday.
+  const latestCompletedDay = latestCompletedFromStatus(opts.daysStatus);
+  const milestone = detectMilestone(
+    latestCompletedDay,
+    opts.totalDays,
+    opts.currentStreak,
+  );
+
+  // Seeded RNG keyed on the user's state so the SAME card always
+  // renders with the SAME confetti pattern — re-generating doesn't
+  // shuffle the visual.
+  const rand = seededRandom(
+    latestCompletedDay * 1009 + opts.totalDays * 31 + opts.currentStreak,
+  );
+
   drawBackground(ctx, w, h);
   drawDecor(ctx, w, h);
+  drawConfetti(ctx, w, h, format, latestCompletedDay, milestone, rand);
 
-  if (format === "square") renderSquare(ctx, w, h, opts);
-  else if (format === "portrait") renderPortrait(ctx, w, h, opts);
-  else renderStory(ctx, w, h, opts);
+  const render: RenderContext = {
+    ctx,
+    w,
+    h,
+    opts,
+    latestCompletedDay,
+    milestone,
+  };
+  if (format === "square") renderSquare(render);
+  else if (format === "portrait") renderPortrait(render);
+  else renderStory(render);
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -129,67 +156,143 @@ export async function generateShareCardBlob(
 }
 
 // =========================================================================
+// Celebration logic
+// =========================================================================
+
+type MilestoneType = "complete" | "week" | "half";
+
+interface Milestone {
+  type: MilestoneType;
+  /** Banner text shown above the title. */
+  banner: string;
+}
+
+interface RenderContext {
+  ctx: CanvasRenderingContext2D;
+  w: number;
+  h: number;
+  opts: ShareCardOptions;
+  latestCompletedDay: number;
+  milestone: Milestone | null;
+}
+
+/** 1-based day number of the most recent COMPLETED entry, or 0 if none. */
+function latestCompletedFromStatus(days: DayStatus[]): number {
+  for (let i = days.length - 1; i >= 0; i -= 1) {
+    if (days[i] === "COMPLETED") return i + 1;
+  }
+  return 0;
+}
+
+/**
+ * Pick the most significant celebration to surface — "Challenge
+ * complete!" beats "N weeks strong!" beats "Halfway there!". Anything
+ * else is a regular daily completion (handled by the smaller
+ * "Successfully completed Day N" line, not a milestone banner).
+ */
+function detectMilestone(
+  latestCompletedDay: number,
+  totalDays: number,
+  _currentStreak: number,
+): Milestone | null {
+  if (latestCompletedDay <= 0) return null;
+  if (latestCompletedDay >= totalDays) {
+    return { type: "complete", banner: "Challenge complete!" };
+  }
+  // Halfway only matters for challenges long enough for it to be
+  // distinct from "Day 1". For 7-day plans halfway is day 3 — feels
+  // arbitrary — so we gate it at totalDays >= 14.
+  const half = Math.floor(totalDays / 2);
+  if (latestCompletedDay === half && totalDays >= 14 && half % 7 !== 0) {
+    return { type: "half", banner: "Halfway there!" };
+  }
+  if (latestCompletedDay % 7 === 0) {
+    const weeks = latestCompletedDay / 7;
+    return {
+      type: "week",
+      banner: weeks === 1 ? "1 week strong!" : `${weeks} weeks strong!`,
+    };
+  }
+  return null;
+}
+
+// =========================================================================
 // Per-format renderers
 // =========================================================================
 
-function renderSquare(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  opts: ShareCardOptions,
-) {
+function renderSquare(r: RenderContext) {
+  const { ctx, w: W, h: H, opts } = r;
   const pad = 72;
   drawHeader(ctx, pad, pad, W - pad * 2, opts);
-  const titleBottom = drawTitle(ctx, pad, 220, W - pad * 2, opts, {
+  const celebBottom = drawCelebrationBanner(
+    ctx,
+    pad,
+    178,
+    W - pad * 2,
+    r,
+    { lineSize: 30, milestoneSize: 56, milestoneHeight: 96 },
+  );
+  const titleTop = celebBottom + 24;
+  const titleBottom = drawTitle(ctx, pad, titleTop, W - pad * 2, opts, {
+    titleSize: 68,
+    titleLeading: 80,
+    dailySize: 24,
+  });
+  const statsTop = Math.max(titleBottom + 32, 520);
+  drawStatsCard(ctx, pad, statsTop, W - pad * 2, 188, opts);
+  const calTop = statsTop + 188 + 44;
+  drawCalendar(ctx, pad, calTop, W - pad * 2, H - calTop - 92, opts);
+  drawFooter(ctx, pad, H - pad, W - pad * 2);
+}
+
+function renderPortrait(r: RenderContext) {
+  const { ctx, w: W, h: H, opts } = r;
+  const pad = 84;
+  drawHeader(ctx, pad, pad, W - pad * 2, opts);
+  const celebBottom = drawCelebrationBanner(
+    ctx,
+    pad,
+    196,
+    W - pad * 2,
+    r,
+    { lineSize: 34, milestoneSize: 64, milestoneHeight: 112 },
+  );
+  const titleTop = celebBottom + 28;
+  const titleBottom = drawTitle(ctx, pad, titleTop, W - pad * 2, opts, {
     titleSize: 76,
     titleLeading: 88,
     dailySize: 26,
   });
-  const statsTop = Math.max(titleBottom + 36, 470);
-  drawStatsCard(ctx, pad, statsTop, W - pad * 2, 200, opts);
-  const calTop = statsTop + 200 + 52;
-  drawCalendar(ctx, pad, calTop, W - pad * 2, H - calTop - 96, opts);
-  drawFooter(ctx, pad, H - pad, W - pad * 2);
-}
-
-function renderPortrait(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  opts: ShareCardOptions,
-) {
-  const pad = 84;
-  drawHeader(ctx, pad, pad, W - pad * 2, opts);
-  const titleBottom = drawTitle(ctx, pad, 240, W - pad * 2, opts, {
-    titleSize: 84,
-    titleLeading: 96,
-    dailySize: 28,
-  });
-  const statsTop = Math.max(titleBottom + 48, 540);
-  drawStatsCard(ctx, pad, statsTop, W - pad * 2, 220, opts);
-  const calTop = statsTop + 220 + 64;
+  const statsTop = Math.max(titleBottom + 40, 620);
+  drawStatsCard(ctx, pad, statsTop, W - pad * 2, 208, opts);
+  const calTop = statsTop + 208 + 56;
   drawCalendar(ctx, pad, calTop, W - pad * 2, H - calTop - 110, opts);
   drawFooter(ctx, pad, H - pad, W - pad * 2);
 }
 
-function renderStory(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  opts: ShareCardOptions,
-) {
+function renderStory(r: RenderContext) {
+  const { ctx, w: W, h: H, opts } = r;
   const pad = 96;
   drawHeader(ctx, pad, pad + 40, W - pad * 2, opts);
+  const celebBottom = drawCelebrationBanner(
+    ctx,
+    pad,
+    280,
+    W - pad * 2,
+    r,
+    { lineSize: 42, milestoneSize: 80, milestoneHeight: 144 },
+  );
   // Stories get prime real estate above the fold — much bigger title.
-  const titleBottom = drawTitle(ctx, pad, 360, W - pad * 2, opts, {
-    titleSize: 104,
-    titleLeading: 120,
-    dailySize: 32,
+  const titleTop = celebBottom + 40;
+  const titleBottom = drawTitle(ctx, pad, titleTop, W - pad * 2, opts, {
+    titleSize: 92,
+    titleLeading: 108,
+    dailySize: 30,
     maxTitleLines: 3,
   });
-  const statsTop = Math.max(titleBottom + 64, 880);
-  drawStatsCard(ctx, pad, statsTop, W - pad * 2, 240, opts);
-  const calTop = statsTop + 240 + 80;
+  const statsTop = Math.max(titleBottom + 56, 1020);
+  drawStatsCard(ctx, pad, statsTop, W - pad * 2, 228, opts);
+  const calTop = statsTop + 228 + 64;
   // Reserve space at the bottom for the CTA banner + footer.
   const calBottom = H - 320;
   drawCalendar(ctx, pad, calTop, W - pad * 2, calBottom - calTop, opts);
@@ -490,6 +593,355 @@ function drawDayCell(
     ctx.textBaseline = "middle";
     ctx.fillText(String(dayNumber), x + size / 2, y + size / 2 + size * 0.04);
   }
+}
+
+// =========================================================================
+// Celebration banner — "Successfully completed Day N" or milestone pill
+// =========================================================================
+
+interface CelebrationSpec {
+  /** Font size for the regular "Successfully completed…" line. */
+  lineSize: number;
+  /** Font size of the milestone banner text. */
+  milestoneSize: number;
+  /** Height of the milestone pill. */
+  milestoneHeight: number;
+}
+
+/**
+ * Draws either a milestone banner (week / halfway / complete) OR a
+ * subtler "✓ Successfully completed Day N" line, depending on what
+ * the user just hit. Returns the y-coordinate one pixel BELOW the
+ * banner so callers can stack the title under it without overlap.
+ *
+ * When latestCompletedDay is 0 (no check-ins yet — first share)
+ * returns y unchanged and draws nothing, so the title sits at its
+ * natural position instead of starting under empty padding.
+ */
+function drawCelebrationBanner(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  r: RenderContext,
+  spec: CelebrationSpec,
+): number {
+  const { latestCompletedDay, milestone } = r;
+  if (latestCompletedDay <= 0) return y;
+
+  if (milestone) {
+    return drawMilestoneBanner(ctx, x, y, w, milestone, spec);
+  }
+  return drawCompletionLine(ctx, x, y, w, latestCompletedDay, spec);
+}
+
+function drawCompletionLine(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  day: number,
+  spec: CelebrationSpec,
+): number {
+  const text = `Successfully completed Day ${day}`;
+  ctx.font = `800 ${spec.lineSize}px ${FONT_STACK}`;
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  const textW = ctx.measureText(text).width;
+
+  // Inline check icon in front. Drawn as a circle with a vector check
+  // so we don't depend on emoji rendering (which is inconsistent
+  // across OSes when rasterised through canvas).
+  const checkSize = spec.lineSize * 1.1;
+  drawCheckBadge(ctx, x, y - 2, checkSize);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(text, x + checkSize + 14, y);
+
+  // Subtle amber underline under the text — a "highlighter" feel that
+  // sells the celebration without yet being a full milestone pill.
+  const underlineY = y + spec.lineSize + 6;
+  const underlineW = textW + 4;
+  ctx.fillStyle = "rgba(245,158,11,0.55)";
+  roundRect(
+    ctx,
+    x + checkSize + 12,
+    underlineY,
+    underlineW,
+    spec.lineSize * 0.18,
+    spec.lineSize * 0.09,
+  );
+  ctx.fill();
+  // Silence "unused parameter" warning while keeping `w` in the
+  // signature for layout symmetry with drawMilestoneBanner.
+  void w;
+  return y + spec.lineSize + 20;
+}
+
+function drawMilestoneBanner(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  m: Milestone,
+  spec: CelebrationSpec,
+): number {
+  const h = spec.milestoneHeight;
+  // Amber pill — bright enough to read as "celebration", not just
+  // information. Soft shadow for lift off the green bg.
+  ctx.save();
+  ctx.shadowColor = "rgba(120,53,15,0.45)";
+  ctx.shadowBlur = 32;
+  ctx.shadowOffsetY = 10;
+  roundRect(ctx, x, y, w, h, h / 2);
+  const g = ctx.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0, "#fbbf24");
+  g.addColorStop(1, STREAK);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+
+  // Star bursts on each side of the text — pure shape, no emoji.
+  const starR = spec.milestoneSize * 0.55;
+  const cy = y + h / 2;
+  drawStar(ctx, x + h * 0.5, cy, 5, starR, starR * 0.45, "#ffffff");
+  drawStar(ctx, x + w - h * 0.5, cy, 5, starR, starR * 0.45, "#ffffff");
+
+  ctx.fillStyle = STREAK_DARK;
+  ctx.font = `900 ${spec.milestoneSize}px ${FONT_STACK}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(m.banner, x + w / 2, cy + 2);
+
+  return y + h + 8;
+}
+
+/**
+ * Filled circle with a thick white check mark — replaces the emoji ✓
+ * so it renders identically across iOS / Android / Windows canvases.
+ */
+function drawCheckBadge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+) {
+  ctx.save();
+  ctx.fillStyle = STREAK;
+  ctx.beginPath();
+  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = size * 0.18;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - size * 0.22, cy + size * 0.02);
+  ctx.lineTo(cx - size * 0.05, cy + size * 0.2);
+  ctx.lineTo(cx + size * 0.25, cy - size * 0.18);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// =========================================================================
+// Confetti — scattered shapes around the card border, more on milestones
+// =========================================================================
+
+type ConfettiShape = "circle" | "square" | "streamer" | "triangle" | "star";
+
+/**
+ * Scatters confetti pieces around the card. Density grows with
+ * progress (and jumps on milestones) so the visual energy of the
+ * card matches what the user is celebrating: Day 1 is gentle, week
+ * boundaries get a lot of pieces, completion is a full party.
+ *
+ * Pieces concentrate in the OUTER RING of the canvas — we reject any
+ * placement that would fall in the central content rectangle — so the
+ * confetti reads as celebration around the card without making the
+ * title or stats hard to read.
+ */
+function drawConfetti(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  format: ShareFormat,
+  latestCompletedDay: number,
+  milestone: Milestone | null,
+  rand: () => number,
+) {
+  if (latestCompletedDay <= 0 && !milestone) return;
+
+  // Density baseline scales with canvas area so Story doesn't feel
+  // sparser than Square.
+  const area = W * H;
+  const baseDensity = Math.round((area / 1_166_400) * 55);
+  let density = baseDensity;
+  if (milestone?.type === "week") density = Math.round(baseDensity * 1.8);
+  if (milestone?.type === "half") density = Math.round(baseDensity * 2.4);
+  if (milestone?.type === "complete")
+    density = Math.round(baseDensity * 3.2);
+
+  // Outer-ring band: confetti only outside the central content rect.
+  // The band gets wider on Story (more vertical breathing room).
+  const sidePad = format === "story" ? 60 : 50;
+  const innerLeft = sidePad;
+  const innerRight = W - sidePad;
+  const innerTop = 160;
+  const innerBottom = H - 160;
+
+  const baseColors = [
+    "#ffffff",
+    BRAND_100,
+    STREAK,
+    "#fbbf24",
+    BRAND_400,
+  ];
+  const partyColors = [
+    ...baseColors,
+    "#fda4af", // rose
+    "#a78bfa", // violet
+    "#60a5fa", // sky
+  ];
+  const palette = milestone ? partyColors : baseColors;
+
+  const shapes: ConfettiShape[] = [
+    "circle",
+    "circle",
+    "square",
+    "streamer",
+    "streamer",
+    "triangle",
+    "star",
+  ];
+
+  let placed = 0;
+  let attempts = 0;
+  const attemptCap = density * 8;
+  while (placed < density && attempts < attemptCap) {
+    attempts += 1;
+    const x = rand() * W;
+    const y = rand() * H;
+    // Reject if inside the central content rect — but always accept
+    // along the very top/bottom strips because that's where confetti
+    // looks most celebratory.
+    const inX = x > innerLeft && x < innerRight;
+    const inY = y > innerTop && y < innerBottom;
+    if (inX && inY) continue;
+
+    const shape = shapes[Math.floor(rand() * shapes.length)];
+    const color = palette[Math.floor(rand() * palette.length)];
+    const size = 8 + rand() * 18;
+    const rotation = rand() * Math.PI * 2;
+    drawConfettiPiece(ctx, x, y, shape, size, color, rotation);
+    placed += 1;
+  }
+
+  // Milestone corner starbursts — bigger sparkle accents in the four
+  // corners so the eye is drawn outward and the card feels framed by
+  // the celebration.
+  if (milestone) {
+    const cornerInset = format === "story" ? 110 : 90;
+    const starColor = milestone.type === "complete" ? "#fbbf24" : "#ffffff";
+    const starSize = format === "story" ? 38 : 30;
+    drawStar(ctx, cornerInset, cornerInset, 6, starSize, starSize * 0.4, starColor);
+    drawStar(ctx, W - cornerInset, cornerInset, 6, starSize, starSize * 0.4, starColor);
+    drawStar(ctx, cornerInset, H - cornerInset, 6, starSize, starSize * 0.4, starColor);
+    drawStar(ctx, W - cornerInset, H - cornerInset, 6, starSize, starSize * 0.4, starColor);
+  }
+}
+
+function drawConfettiPiece(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  shape: ConfettiShape,
+  size: number,
+  color: string,
+  rotation: number,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.fillStyle = color;
+  // Soft shadow so confetti reads as foreground on the gradient bg
+  // rather than blending into it.
+  ctx.shadowColor = "rgba(0,0,0,0.18)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2;
+
+  switch (shape) {
+    case "circle":
+      ctx.beginPath();
+      ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case "square":
+      ctx.fillRect(-size / 2, -size / 2, size, size);
+      break;
+    case "streamer": {
+      const sw = size * 2.6;
+      const sh = size * 0.36;
+      roundRect(ctx, -sw / 2, -sh / 2, sw, sh, sh / 2);
+      ctx.fill();
+      break;
+    }
+    case "triangle":
+      ctx.beginPath();
+      ctx.moveTo(0, -size / 2);
+      ctx.lineTo(size / 2, size / 2);
+      ctx.lineTo(-size / 2, size / 2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case "star":
+      drawStar(ctx, 0, 0, 5, size / 2, size / 4, color);
+      break;
+  }
+  ctx.restore();
+}
+
+/** Filled N-point star centred at (cx, cy). */
+function drawStar(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  points: number,
+  outer: number,
+  inner: number,
+  fill: string,
+) {
+  ctx.save();
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i += 1) {
+    const radius = i % 2 === 0 ? outer : inner;
+    const a = (Math.PI / points) * i - Math.PI / 2;
+    const px = cx + Math.cos(a) * radius;
+    const py = cy + Math.sin(a) * radius;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * mulberry32 — a tiny seeded PRNG. We seed with a hash of the user's
+ * progress state so the same card always renders identical confetti
+ * (no shuffle on re-generate).
+ */
+function seededRandom(seed: number): () => number {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function drawCtaBanner(
