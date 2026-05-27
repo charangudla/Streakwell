@@ -58,45 +58,114 @@ const TEST_NAME = 'Milestone Tester';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-interface MilestonePlan {
-  /** 1-based "today" day for this challenge. */
+/**
+ * Three flavours of seed entry, all 30-day plans:
+ *
+ *   kind === 'active'    — today === plan.day, days 1..day are COMPLETED,
+ *                          status stays ACTIVE so the cells are editable.
+ *                          Used for the week-milestone celebration tests.
+ *   kind === 'completed' — challenge finished `endedDaysAgo` days ago. We
+ *                          stamp endDate = today - endedDaysAgo, startDate =
+ *                          endDate - 29 days, and write 30 COMPLETED cells.
+ *                          Lands under /my-challenges → Completed →
+ *                          monthly bucket matching endDate's month.
+ *   kind === 'abandoned' — user gave up `endedDaysAgo` days ago after
+ *                          completing the first `completedBefore` days of a
+ *                          full 30-day plan. startDate is 29 days before
+ *                          endDate (so the calendar shows the unfilled
+ *                          tail). Lands under Abandoned → monthly bucket.
+ */
+type ActivePlan = {
+  kind: 'active';
   day: number;
-  /** Why this entry exists — printed to console for orientation. */
   expectation: string;
-}
+};
+type CompletedPlan = {
+  kind: 'completed';
+  endedDaysAgo: number;
+  expectation: string;
+};
+type AbandonedPlan = {
+  kind: 'abandoned';
+  endedDaysAgo: number;
+  completedBefore: number;
+  expectation: string;
+};
+type SeedPlan = ActivePlan | CompletedPlan | AbandonedPlan;
 
-// One challenge per celebration tier. Days chosen so the share card's
-// milestone detector fires the matching banner:
-//
-//    day === 7   → "1 week strong!"
-//    day === 14  → "2 weeks strong!"
-//    day === 21  → "3 weeks strong!"
-//    day === 30  → "Challenge complete!" (latestCompletedDay === totalDays)
-//
-// All four challenges remain status=ACTIVE so the calendar cells stay
-// editable for testing the change-decision flow. (The checkin service
-// would auto-flip the 30-day one to COMPLETED if /checkins were POSTed,
-// but we write directly via Prisma so the status stays put.)
-const PLANS: MilestonePlan[] = [
+// Active plans hit the milestone celebration banners:
+//   day === 7   → "1 week strong!"
+//   day === 14  → "2 weeks strong!"
+//   day === 21  → "3 weeks strong!"
+// Completed plans span FIVE different months so the new Completed
+// "Month YYYY" bucketing on /my-challenges has visible structure
+// (today's month + 4 calendar months back, crossing the year boundary).
+// Abandoned plans live in two different months with different
+// completion percentages so the progress bars vary.
+const PLANS: SeedPlan[] = [
+  // ── Active milestone tests ────────────────────────────────────────────
   {
+    kind: 'active',
     day: 7,
     expectation:
       'Week 1 milestone — banner: "1 week strong!" · 7 completed cells · 23 upcoming',
   },
   {
+    kind: 'active',
     day: 14,
     expectation:
-      'Week 2 milestone — banner: "2 weeks strong!" · 14 completed cells · 16 upcoming',
+      'Week 2 milestone — banner: "2 weeks strong!" · 14 completed · 16 upcoming',
   },
   {
+    kind: 'active',
     day: 21,
     expectation:
-      'Week 3 milestone — banner: "3 weeks strong!" · 21 completed cells · 9 upcoming',
+      'Week 3 milestone — banner: "3 weeks strong!" · 21 completed · 9 upcoming',
+  },
+
+  // ── Completed across five buckets ─────────────────────────────────────
+  {
+    kind: 'completed',
+    endedDaysAgo: 0,
+    expectation:
+      'Completed TODAY — current-month bucket — share card shows "Challenge complete!"',
   },
   {
-    day: 30,
+    kind: 'completed',
+    endedDaysAgo: 35,
+    expectation: 'Completed ~5 weeks ago — last-month bucket',
+  },
+  {
+    kind: 'completed',
+    endedDaysAgo: 70,
+    expectation: 'Completed ~10 weeks ago — two-months-back bucket',
+  },
+  {
+    kind: 'completed',
+    endedDaysAgo: 100,
+    expectation: 'Completed ~14 weeks ago — three-months-back bucket',
+  },
+  {
+    kind: 'completed',
+    endedDaysAgo: 150,
     expectation:
-      'Month milestone — banner: "Challenge complete!" · all 30 cells filled · lives under Completed (not Active)',
+      'Completed ~5 months ago — crosses the year boundary into the previous year bucket',
+  },
+
+  // ── Abandoned across two buckets ──────────────────────────────────────
+  {
+    kind: 'abandoned',
+    endedDaysAgo: 40,
+    completedBefore: 12,
+    expectation:
+      'Abandoned ~1 month ago after 12/30 days — Abandoned section, last-month bucket',
+  },
+  {
+    kind: 'abandoned',
+    endedDaysAgo: 125,
+    completedBefore: 3,
+    expectation:
+      'Abandoned ~4 months ago after only 3/30 days — early-quit example',
   },
 ];
 
@@ -130,11 +199,11 @@ async function main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────
-  // 2. Pick 4 distinct 30-day ACTIVE PUBLIC challenges.
-  //    We sort by createdAt so the picks are stable across runs against
-  //    the same DB. Distinct categories make the dashboard view more
-  //    varied, but if the catalog only has 30-day challenges in one
-  //    category we still pick from that.
+  // 2. Pick PLANS.length distinct 30-day PUBLIC challenges.
+  //    Take the first N from the catalog (sorted by createdAt for
+  //    stability). We don't bother trying to spread across categories
+  //    here — with 10 picks across the ~6 categories, we'd run out of
+  //    distinct categories anyway. Distinct challenge IDs is enough.
   // ─────────────────────────────────────────────────────────────────────
   const allCandidates = await prisma.challenge.findMany({
     where: {
@@ -142,7 +211,7 @@ async function main() {
       isActive: true,
     },
     orderBy: { createdAt: 'asc' },
-    select: { id: true, title: true, categoryId: true },
+    select: { id: true, title: true },
   });
   if (allCandidates.length < PLANS.length) {
     throw new Error(
@@ -150,70 +219,52 @@ async function main() {
         'Run `npm run prisma:seed` first to populate the catalog.',
     );
   }
-
-  const seenCategories = new Set<string>();
-  const picked: Array<{ id: string; title: string }> = [];
-  for (const c of allCandidates) {
-    if (picked.length === PLANS.length) break;
-    if (seenCategories.has(c.categoryId)) continue;
-    seenCategories.add(c.categoryId);
-    picked.push({ id: c.id, title: c.title });
-  }
-  // Fall back to non-distinct picks if the catalog doesn't have enough
-  // distinct categories with 30-day plans.
-  while (picked.length < PLANS.length) {
-    const next = allCandidates[picked.length];
-    picked.push({ id: next.id, title: next.title });
-  }
+  const picked = allCandidates.slice(0, PLANS.length);
 
   // ─────────────────────────────────────────────────────────────────────
-  // 3. Create each UserChallenge + backfill its check-ins so the dayN
-  //    math lands exactly on the milestone.
+  // 3. Create each UserChallenge + backfill its check-ins per the plan
+  //    kind. Resolve(plan) hands back the four pieces we need: when the
+  //    challenge ran, what status it's in now, and how many completed
+  //    cells to write.
   // ─────────────────────────────────────────────────────────────────────
   const todayUtc = startOfUtcDay(new Date());
 
   for (let i = 0; i < PLANS.length; i += 1) {
     const plan = PLANS[i];
     const challenge = picked[i];
+    const resolved = resolvePlan(plan, todayUtc);
 
-    // startDate so that today === plan.day:
-    //   dayNumber = floor((todayUtcMs - startUtcMs) / DAY_MS) + 1
-    //   plan.day   = floor(N) + 1, so N = plan.day - 1
-    //   startDate  = todayUtc - (plan.day - 1) * DAY_MS
-    const startDate = new Date(todayUtc.getTime() - (plan.day - 1) * DAY_MS);
-
-    // The 30-day plan represents a FINISHED challenge — flip its
-    // status to COMPLETED with endDate set so it lands in the
-    // "Completed" section of /my-challenges (instead of staying in
-    // Active). The other tiers (Day 7 / 14 / 21) stay ACTIVE so the
-    // user can still tap their calendar cells to test the
-    // edit-decision flow. No progressPercent column — the API
-    // derives it at read time from completedDays / durationDays.
-    const isFinalDay = plan.day === 30;
     const uc = await prisma.userChallenge.create({
       data: {
         userId: user.id,
         challengeId: challenge.id,
-        status: isFinalDay
-          ? UserChallengeStatus.COMPLETED
-          : UserChallengeStatus.ACTIVE,
-        startDate,
-        endDate: isFinalDay ? new Date() : null,
+        status: resolved.status,
+        startDate: resolved.startDate,
+        endDate: resolved.endDate,
       },
     });
 
-    // Backfill check-ins for days 1..plan.day, all COMPLETED so each
-    // milestone is "freshly hit" (latestCompletedDay === plan.day).
-    const rows = Array.from({ length: plan.day }, (_, dayIdx) => ({
-      userChallengeId: uc.id,
-      checkinDate: new Date(startDate.getTime() + dayIdx * DAY_MS),
-      status: CheckinStatus.COMPLETED,
-    }));
-    await prisma.dailyCheckin.createMany({ data: rows });
+    if (resolved.completedDays > 0) {
+      const rows = Array.from(
+        { length: resolved.completedDays },
+        (_, dayIdx) => ({
+          userChallengeId: uc.id,
+          checkinDate: new Date(
+            resolved.startDate.getTime() + dayIdx * DAY_MS,
+          ),
+          status: CheckinStatus.COMPLETED,
+        }),
+      );
+      await prisma.dailyCheckin.createMany({ data: rows });
+    }
 
-    console.log(
-      `  ✓ Day ${plan.day.toString().padStart(2, ' ')} · ${challenge.title}`,
-    );
+    const tag =
+      plan.kind === 'active'
+        ? `Active · Day ${plan.day.toString().padStart(2, ' ')}`
+        : plan.kind === 'completed'
+          ? `Completed · ended ${plan.endedDaysAgo.toString().padStart(3, ' ')} days ago`
+          : `Abandoned · ended ${plan.endedDaysAgo.toString().padStart(3, ' ')} days ago`;
+    console.log(`  ✓ ${tag} · ${challenge.title}`);
     console.log(`      ${plan.expectation}`);
   }
 
@@ -227,24 +278,37 @@ async function main() {
     '   /dashboard         → carousel of the 3 ACTIVE challenges (hero + 2 in "other")',
   );
   console.log(
+    '                     · Completed tile shows "5", Active tile "3" — both tap into /my-challenges#...',
+  );
+  console.log(
     '   /challenges        → "Your challenges" carousel of the 3 active',
   );
   console.log(
-    '   /my-challenges     → 3 under Active (Day 7 / 14 / 21) · 1 under Completed (Day 30, "Early Bird Bedtime")',
+    '   /my-challenges     → 3 under Active (Day 7 / 14 / 21) — flat grid',
   );
+  console.log(
+    '                     · 5 under Completed across 5 month buckets',
+  );
+  console.log('                     · 2 under Abandoned across 2 month buckets');
   console.log(
     '   /my-challenges/[id]/progress → calendar + share card (one per challenge)',
   );
   console.log('');
   console.log('What to test:');
   console.log(
-    '   • Open each progress page → tap "Share your progress" → see the milestone banner',
+    '   • Open each ACTIVE progress page → tap "Share your progress" → see the milestone banner',
   );
   console.log(
-    '   • Tap any past calendar cell → modal opens in edit mode with the current pick highlighted',
+    '   • Tap a past calendar cell on an ACTIVE challenge → modal opens in edit mode',
   );
   console.log(
     '   • Pick a different status, tap Done → calendar cell colour changes immediately',
+  );
+  console.log(
+    '   • Open Completed/Abandoned cards → see bucketing by "Month YYYY" subheading',
+  );
+  console.log(
+    '   • On Completed Today\'s card → share card shows "Challenge complete!" milestone banner',
   );
 }
 
@@ -252,6 +316,66 @@ function startOfUtcDay(date: Date): Date {
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
   );
+}
+
+interface ResolvedPlan {
+  startDate: Date;
+  endDate: Date | null;
+  status: UserChallengeStatus;
+  /** Number of COMPLETED check-ins to write starting at startDate. */
+  completedDays: number;
+}
+
+/**
+ * Turn a SeedPlan into the four concrete pieces the create loop needs.
+ * Math derivations:
+ *
+ *   active:    today === plan.day  ⇒  startDate = todayUtc - (day-1)*DAY
+ *              status ACTIVE, all `day` cells COMPLETED.
+ *
+ *   completed: endDate = todayUtc - endedDaysAgo*DAY
+ *              startDate = endDate - 29*DAY (30-day plan ends ON the
+ *                          30th day so startDate is 29 days before)
+ *              status COMPLETED, all 30 cells COMPLETED.
+ *
+ *   abandoned: endDate = todayUtc - endedDaysAgo*DAY (when they gave up)
+ *              startDate = endDate - 29*DAY (full 30-day plan, didn't
+ *                          finish — the abandoned tail stays unfilled)
+ *              status ABANDONED, first `completedBefore` cells COMPLETED.
+ */
+function resolvePlan(plan: SeedPlan, todayUtc: Date): ResolvedPlan {
+  if (plan.kind === 'active') {
+    const startDate = new Date(
+      todayUtc.getTime() - (plan.day - 1) * DAY_MS,
+    );
+    return {
+      startDate,
+      endDate: null,
+      status: UserChallengeStatus.ACTIVE,
+      completedDays: plan.day,
+    };
+  }
+  if (plan.kind === 'completed') {
+    const endDate = new Date(
+      todayUtc.getTime() - plan.endedDaysAgo * DAY_MS,
+    );
+    const startDate = new Date(endDate.getTime() - 29 * DAY_MS);
+    return {
+      startDate,
+      endDate,
+      status: UserChallengeStatus.COMPLETED,
+      completedDays: 30,
+    };
+  }
+  // abandoned
+  const endDate = new Date(todayUtc.getTime() - plan.endedDaysAgo * DAY_MS);
+  const startDate = new Date(endDate.getTime() - 29 * DAY_MS);
+  return {
+    startDate,
+    endDate,
+    status: UserChallengeStatus.ABANDONED,
+    completedDays: plan.completedBefore,
+  };
 }
 
 main()
