@@ -24,7 +24,13 @@
  *  so the catalog has 30-day challenges this script can pick from.
  * ============================================================================
  */
-import { CheckinStatus, PrismaClient, UserChallengeStatus } from '@prisma/client';
+import {
+  ChatMessageKind,
+  CheckinStatus,
+  FriendshipStatus,
+  PrismaClient,
+  UserChallengeStatus,
+} from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 
@@ -57,6 +63,137 @@ const TEST_PASSWORD = 'TesterVital30!';
 const TEST_NAME = 'Milestone Tester';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Companion test users for the chat + friends features. All share the
+ * same password as the primary milestone tester (TesterVital30!) so
+ * a manual test can rotate between them quickly. They join the same
+ * "community shared" challenge as the milestone tester so they all
+ * appear in each other's Members sheet.
+ *
+ * Friendships are seeded against the primary tester so opening the
+ * Members sheet as `milestone-tester@vital30.com` shows ALL FOUR
+ * friend-button states in a single screen:
+ *   alice    ACCEPTED         → "✓ Friend"
+ *   bob      pending_received → "Accept ✓"  (he sent you a request)
+ *   charlie  pending_sent     → "Pending"   (you sent him a request)
+ *   diana    none             → "+ Add friend"
+ */
+interface CompanionSpec {
+  email: string;
+  password: string;
+  name: string;
+  /** Today's check-in status on the shared challenge. null = not in yet. */
+  todayStatus: CheckinStatus | null;
+  /** Friendship state relative to the primary tester. */
+  friendshipWithTester:
+    | { kind: 'ACCEPTED' }
+    | { kind: 'PENDING_FROM_THEM' } // they sent the tester a request
+    | { kind: 'PENDING_FROM_TESTER' } // the tester sent them a request
+    | { kind: 'NONE' };
+}
+
+const COMPANIONS: CompanionSpec[] = [
+  {
+    email: 'alice@vital30.com',
+    password: TEST_PASSWORD,
+    name: 'Alice Companion',
+    todayStatus: CheckinStatus.COMPLETED,
+    friendshipWithTester: { kind: 'ACCEPTED' },
+  },
+  {
+    email: 'bob@vital30.com',
+    password: TEST_PASSWORD,
+    name: 'Bob Companion',
+    todayStatus: CheckinStatus.MISSED,
+    friendshipWithTester: { kind: 'PENDING_FROM_THEM' },
+  },
+  {
+    email: 'charlie@vital30.com',
+    password: TEST_PASSWORD,
+    name: 'Charlie Companion',
+    todayStatus: null,
+    friendshipWithTester: { kind: 'PENDING_FROM_TESTER' },
+  },
+  {
+    email: 'diana@vital30.com',
+    password: TEST_PASSWORD,
+    name: 'Diana Companion',
+    todayStatus: CheckinStatus.SKIPPED,
+    friendshipWithTester: { kind: 'NONE' },
+  },
+];
+
+/**
+ * A handful of preset chat messages from different companions so the
+ * shared channel isn't empty on first load. Order = chronological
+ * insertion; reactions reference each by index.
+ */
+interface SeedChatPost {
+  /** Index into COMPANIONS, OR the literal "TESTER" for the primary. */
+  authorIdx: number | 'TESTER';
+  presetCode: string;
+  /** How many minutes ago to backdate this message. */
+  minutesAgo: number;
+  /** Reactions: list of (reactor, emoji) tuples. */
+  reactions: Array<{ reactor: number | 'TESTER'; emoji: string }>;
+}
+
+const CHAT_SCRIPT: SeedChatPost[] = [
+  {
+    authorIdx: 0, // Alice
+    presetCode: 'DONE_TODAY',
+    minutesAgo: 240,
+    reactions: [
+      { reactor: 'TESTER', emoji: 'fire' },
+      { reactor: 1, emoji: 'muscle' },
+    ],
+  },
+  {
+    authorIdx: 1, // Bob
+    presetCode: 'MISSED_TODAY',
+    minutesAgo: 180,
+    reactions: [
+      { reactor: 0, emoji: 'praying' },
+      { reactor: 3, emoji: 'praying' },
+      { reactor: 'TESTER', emoji: 'love' },
+    ],
+  },
+  {
+    authorIdx: 3, // Diana
+    presetCode: 'KEEP_GOING',
+    minutesAgo: 90,
+    reactions: [{ reactor: 0, emoji: 'celebrate' }],
+  },
+  {
+    authorIdx: 2, // Charlie
+    presetCode: 'NEED_MOTIVATION',
+    minutesAgo: 30,
+    reactions: [
+      { reactor: 'TESTER', emoji: 'muscle' },
+      { reactor: 0, emoji: 'muscle' },
+    ],
+  },
+  {
+    authorIdx: 0, // Alice
+    presetCode: 'BURNED_IT',
+    minutesAgo: 10,
+    reactions: [
+      { reactor: 'TESTER', emoji: 'fire' },
+      { reactor: 1, emoji: 'fire' },
+      { reactor: 3, emoji: 'celebrate' },
+    ],
+  },
+  {
+    authorIdx: 'TESTER',
+    presetCode: 'GRATEFUL',
+    minutesAgo: 4,
+    reactions: [
+      { reactor: 0, emoji: 'love' },
+      { reactor: 3, emoji: 'love' },
+    ],
+  },
+];
 
 /**
  * Three flavours of seed entry, all 30-day plans:
@@ -187,19 +324,21 @@ async function main() {
   console.log('🌱 Seeding milestone test user…');
 
   // ─────────────────────────────────────────────────────────────────────
-  // 1. Wipe + recreate the test user.
-  //    User has onDelete: Cascade on UserChallenge, Account, Session, etc.
-  //    so this clears every trace of the previous run in one statement.
+  // 1. Wipe + recreate the primary test user AND all companions.
+  //    User has onDelete: Cascade on UserChallenge, Account, Session,
+  //    ChallengeChatMessage, ChatReaction, ChallengeFriendship etc.
+  //    so deleting clears every trace of the previous run.
   // ─────────────────────────────────────────────────────────────────────
-  const existing = await prisma.user.findUnique({
-    where: { email: TEST_EMAIL },
-  });
-  if (existing) {
-    console.log(`  · removing existing test user ${TEST_EMAIL}`);
-    await prisma.user.delete({ where: { id: existing.id } });
+  const allEmails = [TEST_EMAIL, ...COMPANIONS.map((c) => c.email)];
+  for (const email of allEmails) {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      console.log(`  · removing existing user ${email}`);
+      await prisma.user.delete({ where: { id: existing.id } });
+    }
   }
 
-  console.log('  · creating test user via Better Auth signUpEmail');
+  console.log('  · creating primary tester via Better Auth signUpEmail');
   await auth.api.signUpEmail({
     body: {
       email: TEST_EMAIL,
@@ -211,6 +350,24 @@ async function main() {
     where: { email: TEST_EMAIL },
     data: { emailVerified: true },
   });
+
+  // Create the 4 companions up front so their user IDs are available
+  // when we wire friendships + chat messages below.
+  const companions: Array<{
+    spec: CompanionSpec;
+    id: string;
+  }> = [];
+  for (const spec of COMPANIONS) {
+    console.log(`  · creating companion ${spec.email}`);
+    await auth.api.signUpEmail({
+      body: { email: spec.email, password: spec.password, name: spec.name },
+    });
+    const created = await prisma.user.update({
+      where: { email: spec.email },
+      data: { emailVerified: true },
+    });
+    companions.push({ spec, id: created.id });
+  }
 
   // ─────────────────────────────────────────────────────────────────────
   // 2. Pick PLANS.length distinct 30-day PUBLIC challenges.
@@ -282,10 +439,163 @@ async function main() {
     console.log(`      ${plan.expectation}`);
   }
 
+  // ─────────────────────────────────────────────────────────────────────
+  // 4. Companion users: join the SHARED challenge (the Day-7 active
+  //    one) so they appear in each other's Members sheet + chat poll.
+  //    The shared challenge is the first 30-day active plan; PLANS[0]
+  //    is the Day-7 milestone, so picked[0] is what tester joined for
+  //    that. We piggyback on tester's UC.startDate so everyone is on
+  //    the same calendar day.
+  // ─────────────────────────────────────────────────────────────────────
+  const sharedChallenge = picked[0];
   console.log('');
-  console.log('✅ Done. Sign in with:');
-  console.log(`   email:    ${TEST_EMAIL}`);
+  console.log(`Seeding shared challenge "${sharedChallenge.title}" for community testing:`);
+  for (const c of companions) {
+    const sharedStart = new Date(todayUtc.getTime() - 6 * DAY_MS); // Day 7 today
+    const uc = await prisma.userChallenge.create({
+      data: {
+        userId: c.id,
+        challengeId: sharedChallenge.id,
+        status: UserChallengeStatus.ACTIVE,
+        startDate: sharedStart,
+      },
+    });
+    // Each companion: 6 prior completed days (days 1-6) so progress
+    // looks lived-in, plus today's row matching their todayStatus.
+    const rows: Array<{
+      userChallengeId: string;
+      checkinDate: Date;
+      status: CheckinStatus;
+    }> = [];
+    for (let i = 0; i < 6; i += 1) {
+      rows.push({
+        userChallengeId: uc.id,
+        checkinDate: new Date(sharedStart.getTime() + i * DAY_MS),
+        status: CheckinStatus.COMPLETED,
+      });
+    }
+    if (c.spec.todayStatus) {
+      rows.push({
+        userChallengeId: uc.id,
+        checkinDate: todayUtc,
+        status: c.spec.todayStatus,
+      });
+    }
+    await prisma.dailyCheckin.createMany({ data: rows });
+    console.log(
+      `   ✓ ${c.spec.name.padEnd(18)} today=${c.spec.todayStatus ?? 'NULL'}`,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 5. Friendship rows — one per friend-button state so the tester
+  //    sees all 4 states in the Members sheet on a single open.
+  // ─────────────────────────────────────────────────────────────────────
+  console.log('');
+  console.log('Seeding friendships (relative to milestone-tester):');
+  for (const c of companions) {
+    const kind = c.spec.friendshipWithTester.kind;
+    if (kind === 'NONE') {
+      console.log(`   · ${c.spec.name.padEnd(18)} → none ("+ Add friend" available)`);
+      continue;
+    }
+    if (kind === 'ACCEPTED') {
+      // tester requested, companion accepted
+      await prisma.challengeFriendship.create({
+        data: {
+          requesterId: user.id,
+          recipientId: c.id,
+          status: FriendshipStatus.ACCEPTED,
+          respondedAt: new Date(),
+        },
+      });
+      console.log(`   ✓ ${c.spec.name.padEnd(18)} → ACCEPTED ("✓ Friend")`);
+    } else if (kind === 'PENDING_FROM_THEM') {
+      await prisma.challengeFriendship.create({
+        data: {
+          requesterId: c.id,
+          recipientId: user.id,
+          status: FriendshipStatus.PENDING,
+        },
+      });
+      console.log(`   ✓ ${c.spec.name.padEnd(18)} → PENDING from them ("Accept ✓")`);
+    } else {
+      await prisma.challengeFriendship.create({
+        data: {
+          requesterId: user.id,
+          recipientId: c.id,
+          status: FriendshipStatus.PENDING,
+        },
+      });
+      console.log(`   ✓ ${c.spec.name.padEnd(18)} → PENDING from tester ("Pending")`);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 6. Chat messages + reactions on the shared challenge so the
+  //    /chat/[shared] window has a real-feeling thread on first
+  //    open. Backdated via createdAt so the thread runs chronologically
+  //    when sorted oldest→newest in the UI.
+  // ─────────────────────────────────────────────────────────────────────
+  console.log('');
+  console.log('Seeding chat thread on shared challenge:');
+  const now = new Date();
+  for (const post of CHAT_SCRIPT) {
+    const authorId =
+      post.authorIdx === 'TESTER'
+        ? user.id
+        : companions[post.authorIdx].id;
+    const created = new Date(now.getTime() - post.minutesAgo * 60_000);
+    const msg = await prisma.challengeChatMessage.create({
+      data: {
+        challengeId: sharedChallenge.id,
+        userId: authorId,
+        kind: ChatMessageKind.PRESET,
+        presetCode: post.presetCode,
+        createdAt: created,
+      },
+    });
+    for (const r of post.reactions) {
+      const reactorId =
+        r.reactor === 'TESTER' ? user.id : companions[r.reactor].id;
+      // Skip if reactor === author (Prisma will accept it but it's
+      // weird UX-wise — you don't react to your own messages).
+      if (reactorId === authorId) continue;
+      await prisma.chatReaction.create({
+        data: {
+          messageId: msg.id,
+          userId: reactorId,
+          emoji: r.emoji,
+        },
+      });
+    }
+    const authorName =
+      post.authorIdx === 'TESTER'
+        ? TEST_NAME
+        : companions[post.authorIdx].spec.name;
+    console.log(
+      `   ✓ ${post.minutesAgo.toString().padStart(4, ' ')}m ago · ${authorName.padEnd(18)} · ${post.presetCode} (${post.reactions.length} reactions)`,
+    );
+  }
+
+  console.log('');
+  console.log('✅ Done. All accounts share the same password:');
   console.log(`   password: ${TEST_PASSWORD}`);
+  console.log('');
+  console.log('Primary (10 challenges, all 4 friend states visible in chat):');
+  console.log(`   • ${TEST_EMAIL}   (${TEST_NAME})`);
+  console.log('');
+  console.log('Companions (joined the shared "Day 7" challenge so they appear in each other\'s Members + chat):');
+  for (const c of COMPANIONS) {
+    const fs = {
+      ACCEPTED: 'already friends with tester',
+      PENDING_FROM_THEM: 'has sent tester a friend request — Accept ✓ on members sheet, also on tester\'s /friends inbox',
+      PENDING_FROM_TESTER: 'tester sent them a request — Accept ✓ visible when they log in',
+      NONE: '"+ Add friend" available from tester (no relation yet)',
+    }[c.friendshipWithTester.kind];
+    console.log(`   • ${c.email.padEnd(28)} (${c.name})`);
+    console.log(`        today: ${c.todayStatus ?? 'not in yet'}, friendship: ${fs}`);
+  }
   console.log('');
   console.log('Where to look:');
   console.log(
@@ -329,6 +639,26 @@ async function main() {
   );
   console.log(
     '   • On Completed Today\'s card → share card shows "Challenge complete!" milestone banner',
+  );
+  console.log('');
+  console.log('   Community chat + friends (sign in as milestone-tester first):');
+  console.log(
+    '   • 💬 icon in header → /chat → tap the shared challenge → see seeded thread (6 messages, reactions live)',
+  );
+  console.log(
+    '   • Chat header: "5 members" + summary chips (✓ ✗ ⌀ ◯) → tap "Members" → all 4 friend states visible',
+  );
+  console.log(
+    '   • Tap "+ Add friend" on Diana → sign in as diana@vital30.com → /friends → Accept → log back in as tester to see "✓ Friend"',
+  );
+  console.log(
+    '   • Tap "Accept ✓" on Bob in members sheet → friend request resolved without leaving chat',
+  );
+  console.log(
+    '   • Tap "Invite" next to Alice (already friend) → pick one of your custom challenges → sign in as alice@vital30.com → /invites → accept',
+  );
+  console.log(
+    '   • Sign in as charlie@vital30.com → /friends → see milestone-tester\'s incoming request → accept or decline',
   );
 }
 
