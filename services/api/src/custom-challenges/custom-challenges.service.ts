@@ -50,7 +50,7 @@ export class CustomChallengesService {
       const slug =
         slugify(dto.title) + '-' + token.slice(0, 6).toLowerCase();
       try {
-        return await this.prisma.challenge.create({
+        const created = await this.prisma.challenge.create({
           data: {
             title: dto.title,
             slug,
@@ -71,6 +71,17 @@ export class CustomChallengesService {
           },
           select: this.detailSelect,
         });
+
+        // Auto-join the creator. If you took the time to set up a
+        // challenge you almost certainly want to participate in it — and
+        // this makes the challenge surface in /my-challenges so the
+        // creator has somewhere to check in daily. They can still
+        // abandon their own UserChallenge later if they only want to
+        // observe. The join visibility-gate trivially allows the creator
+        // because challenge.createdById === userId.
+        await this.userChallenges.join(userId, created.id);
+
+        return created;
       } catch (e) {
         if (
           e instanceof Prisma.PrismaClientKnownRequestError &&
