@@ -5,9 +5,33 @@ import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
+import { Select, type SelectOption } from "@/components/Select";
 import { apiClient } from "@/lib/api-client";
 import { dayNumber } from "@/lib/progress";
 import type { UserChallenge } from "@/lib/web-types";
+
+const ALL = "ALL";
+
+const MONTH_OPTIONS: SelectOption<string>[] = [
+  { value: ALL, label: "All months" },
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+/** The date that "bucket" a UserChallenge — endDate when present, else startDate. */
+function refDate(uc: UserChallenge): Date {
+  return new Date(uc.endDate ?? uc.startDate);
+}
 
 export default function MyChallengesPage() {
   return (
@@ -20,6 +44,12 @@ export default function MyChallengesPage() {
 function MyChallengesInner() {
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Year/month filters. Default ALL = no filter — Year gets pre-loaded
+  // options from whatever years appear in the user's data so we never
+  // offer an empty year.
+  const [year, setYear] = useState<string>(ALL);
+  const [month, setMonth] = useState<string>(ALL);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,9 +67,52 @@ function MyChallengesInner() {
     };
   }, []);
 
-  const active = (ucs ?? []).filter((u) => u.status === "ACTIVE");
-  const completed = (ucs ?? []).filter((u) => u.status === "COMPLETED");
-  const abandoned = (ucs ?? []).filter((u) => u.status === "ABANDONED");
+  // Years actually present in the data — newest first so the dropdown
+  // matches the order of the buckets below. Showing only-present years
+  // avoids "April 2099" type dead options.
+  const yearOptions = useMemo<SelectOption<string>[]>(() => {
+    const years = new Set<number>();
+    for (const uc of ucs ?? []) {
+      years.add(refDate(uc).getUTCFullYear());
+    }
+    const sorted = Array.from(years).sort((a, b) => b - a);
+    return [
+      { value: ALL, label: "All years" },
+      ...sorted.map((y) => ({ value: String(y), label: String(y) })),
+    ];
+  }, [ucs]);
+
+  // Apply filters before the status split so each section's
+  // count/empty-state reflects the user's pick.
+  const filteredUcs = useMemo(() => {
+    if (!ucs) return null;
+    if (year === ALL && month === ALL) return ucs;
+    const wantYear = year === ALL ? null : Number(year);
+    const wantMonth = month === ALL ? null : Number(month);
+    return ucs.filter((uc) => {
+      const d = refDate(uc);
+      if (wantYear !== null && d.getUTCFullYear() !== wantYear) return false;
+      // getUTCMonth is 0-indexed; our MONTH_OPTIONS values are 1-indexed.
+      if (wantMonth !== null && d.getUTCMonth() + 1 !== wantMonth) {
+        return false;
+      }
+      return true;
+    });
+  }, [ucs, year, month]);
+
+  const filterActive = year !== ALL || month !== ALL;
+  const active = (filteredUcs ?? []).filter((u) => u.status === "ACTIVE");
+  const completed = (filteredUcs ?? []).filter(
+    (u) => u.status === "COMPLETED",
+  );
+  const abandoned = (filteredUcs ?? []).filter(
+    (u) => u.status === "ABANDONED",
+  );
+  const noMatches =
+    filterActive &&
+    active.length === 0 &&
+    completed.length === 0 &&
+    abandoned.length === 0;
 
   return (
     <section className="py-10 sm:py-12">
@@ -52,6 +125,67 @@ function MyChallengesInner() {
           <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             {err}
           </p>
+        ) : null}
+
+        {/* Year + month filter card. Hidden when the user has no
+            challenges yet — the empty-state CTA below covers that
+            scenario more usefully than dead dropdowns. */}
+        {ucs && ucs.length > 0 ? (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="filter-year"
+                  className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+                >
+                  Year
+                </label>
+                <Select
+                  id="filter-year"
+                  value={year}
+                  options={yearOptions}
+                  onChange={setYear}
+                  aria-label="Filter by year"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="filter-month"
+                  className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+                >
+                  Month
+                </label>
+                <Select
+                  id="filter-month"
+                  value={month}
+                  options={MONTH_OPTIONS}
+                  onChange={setMonth}
+                  aria-label="Filter by month"
+                />
+              </div>
+            </div>
+            {filterActive ? (
+              <div className="mt-3 flex items-center justify-between text-sm text-ink-muted">
+                <span>
+                  Showing{" "}
+                  <span className="font-semibold text-ink">
+                    {(filteredUcs ?? []).length}
+                  </span>{" "}
+                  of {ucs.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setYear(ALL);
+                    setMonth(ALL);
+                  }}
+                  className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {ucs === null ? (
@@ -67,6 +201,26 @@ function MyChallengesInner() {
             <ButtonLink href="/challenges" size="md" className="mt-6">
               Browse challenges
             </ButtonLink>
+          </div>
+        ) : noMatches ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-surface-soft p-10 text-center">
+            <p className="text-lg font-semibold text-ink">
+              No challenges match those filters
+            </p>
+            <p className="mt-2 text-sm text-ink-muted">
+              Try a different month or year, or clear filters to see
+              everything.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setYear(ALL);
+                setMonth(ALL);
+              }}
+              className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-600"
+            >
+              Clear filters
+            </button>
           </div>
         ) : (
           <div className="mt-8 space-y-12">
