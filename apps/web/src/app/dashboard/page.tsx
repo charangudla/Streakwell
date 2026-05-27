@@ -128,7 +128,12 @@ function DashboardInner() {
           ) : activeList.length === 1 ? (
             <HeroCheckinCard uc={activeList[0]} dayNumber={currentDay} />
           ) : activeList.length === 2 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            // 2-up grid at every viewport — matches the user's mockup
+            // ("divide the big card in the homepage into two"). At
+            // phone width each card is ~170px; HeroCheckinCard's
+            // compact variant + line-clamp-2 on the daily-task line
+            // handles that gracefully.
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {activeList.map((uc) => (
                 <HeroCheckinCard
                   key={uc.id}
@@ -139,7 +144,7 @@ function DashboardInner() {
               ))}
             </div>
           ) : activeList.length === 3 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {activeList.map((uc) => (
                 <ActiveChallengeCard key={uc.id} uc={uc} />
               ))}
@@ -149,7 +154,7 @@ function DashboardInner() {
             // 4+ active — show first 4 in a 2x2 grid, then a CTA below
             // that tells the user there's more or invites them to add.
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {activeList.slice(0, 4).map((uc) => (
                   <ActiveChallengeCard key={uc.id} uc={uc} />
                 ))}
