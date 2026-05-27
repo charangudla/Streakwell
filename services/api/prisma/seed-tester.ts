@@ -78,6 +78,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 type ActivePlan = {
   kind: 'active';
   day: number;
+  /**
+   * How many days of check-ins to write. Defaults to `day` so today
+   * is checked in (the milestone-celebration tests need this). Set
+   * BELOW `day` to leave today unchecked — useful for testing the
+   * dashboard's "Check in today" color variant.
+   */
+  completedDays?: number;
   expectation: string;
 };
 type CompletedPlan = {
@@ -121,6 +128,13 @@ const PLANS: SeedPlan[] = [
     day: 21,
     expectation:
       'Week 3 milestone — banner: "3 weeks strong!" · 21 completed · 9 upcoming',
+  },
+  {
+    kind: 'active',
+    day: 4,
+    completedDays: 3,
+    expectation:
+      'Day 4 active, today NOT yet checked in — dashboard card shows the brand-green "Check in today →" variant with the pulsing amber dot (the other 3 actives are in the "done" calmer green variant for contrast)',
   },
 
   // ── Completed across five buckets ─────────────────────────────────────
@@ -275,16 +289,22 @@ async function main() {
   console.log('');
   console.log('Where to look:');
   console.log(
-    '   /dashboard         → carousel of the 3 ACTIVE challenges (hero + 2 in "other")',
+    '   /dashboard         → 4 active in a 2x2 grid + "Add more challenges →" CTA',
   );
   console.log(
-    '                     · Completed tile shows "5", Active tile "3" — both tap into /my-challenges#...',
+    '                     · 3 cards in the "done" green-tint variant (Day 7/14/21 checked in)',
   );
   console.log(
-    '   /challenges        → "Your challenges" carousel of the 3 active',
+    '                     · 1 card in the "Check in today" bright variant w/ amber pulse (Day 4 unchecked)',
   );
   console.log(
-    '   /my-challenges     → 3 under Active (Day 7 / 14 / 21) — flat grid',
+    '                     · Stats tiles: Active 4 · Completed 5 — both tap into /my-challenges#...',
+  );
+  console.log(
+    '   /challenges        → "Your challenges" carousel of the 4 active',
+  );
+  console.log(
+    '   /my-challenges     → 4 under Active (Day 7 / 14 / 21 / 4) — flat grid',
   );
   console.log(
     '                     · 5 under Completed across 5 month buckets',
@@ -352,7 +372,7 @@ function resolvePlan(plan: SeedPlan, todayUtc: Date): ResolvedPlan {
       startDate,
       endDate: null,
       status: UserChallengeStatus.ACTIVE,
-      completedDays: plan.day,
+      completedDays: plan.completedDays ?? plan.day,
     };
   }
   if (plan.kind === 'completed') {

@@ -8,6 +8,12 @@ export type UserChallenge = {
   startDate: string;
   endDate: string | null;
   progressPercent: number;
+  /**
+   * The user's check-in status for TODAY (UTC date), or null when
+   * today hasn't been logged yet. Used by the dashboard to colour-code
+   * each active-challenge card by whether action is still needed.
+   */
+  todayCheckinStatus: "COMPLETED" | "MISSED" | "SKIPPED" | null;
   /** Embedded so PRIVATE custom challenges render without a second fetch. */
   challenge: {
     id: string;

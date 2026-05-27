@@ -24,6 +24,14 @@ export type UserChallengeView = {
   endDate: Date | null;
   progressPercent: number;
   /**
+   * The user's check-in status for TODAY (UTC date), or null when
+   * today hasn't been logged yet. Lets the web dashboard colour-code
+   * each active-challenge card by whether action is still needed —
+   * "Check in today" stands out as the unfinished one. Mobile can
+   * use the same signal for the home-screen "today's tasks" view.
+   */
+  todayCheckinStatus: CheckinStatus | null;
+  /**
    * Embedded challenge fields the mobile + web UIs need to render the
    * card (title, daily task, etc.) without an extra round-trip per row.
    * Critical for PRIVATE custom challenges since `/challenges` filters
@@ -104,7 +112,8 @@ export class UserChallengesService {
         data: { userId, challengeId },
         select: this.userChallengeSelect,
       });
-      return this.toView(uc, []);
+      // Just-joined: nothing checked in today by definition.
+      return this.toView(uc, [], null);
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -118,7 +127,16 @@ export class UserChallengesService {
         });
         if (existing && existing.status === UserChallengeStatus.ACTIVE) {
           const checkins = await this.completedCheckins(existing.id);
-          return this.toView(existing, checkins);
+          // Idempotent join — single-row path, check today directly
+          // instead of detouring through the batched helper.
+          const todayMap = await this.todayCheckinByUserChallenge([
+            existing.id,
+          ]);
+          return this.toView(
+            existing,
+            checkins,
+            todayMap.get(existing.id) ?? null,
+          );
         }
         throw new ConflictException('Already joined this challenge.');
       }
@@ -134,10 +152,21 @@ export class UserChallengesService {
     });
     if (rows.length === 0) return [];
 
-    const checkinsByUc = await this.completedCheckinsByUserChallenge(
-      rows.map((r) => r.id),
+    const ucIds = rows.map((r) => r.id);
+    // Two batched lookups so we still avoid N+1: all-time completed
+    // dates (for progressPercent) AND today's check-in status (for
+    // the dashboard's per-card colour). Both keyed by userChallengeId.
+    const [checkinsByUc, todayByUc] = await Promise.all([
+      this.completedCheckinsByUserChallenge(ucIds),
+      this.todayCheckinByUserChallenge(ucIds),
+    ]);
+    return rows.map((row) =>
+      this.toView(
+        row,
+        checkinsByUc.get(row.id) ?? [],
+        todayByUc.get(row.id) ?? null,
+      ),
     );
-    return rows.map((row) => this.toView(row, checkinsByUc.get(row.id) ?? []));
   }
 
   /** Throws if the userChallenge isn't owned by `userId`. */
@@ -212,6 +241,28 @@ export class UserChallengesService {
     return grouped;
   }
 
+  /**
+   * Single batched fetch for today's check-in (any status, not just
+   * COMPLETED) keyed by userChallengeId. Returns null per row when
+   * today hasn't been logged. checkinDate is stored as @db.Date so
+   * the equality check works against start-of-UTC-day.
+   */
+  private async todayCheckinByUserChallenge(
+    userChallengeIds: string[],
+  ): Promise<Map<string, CheckinStatus>> {
+    const today = startOfUtcDay(new Date());
+    const rows = await this.prisma.dailyCheckin.findMany({
+      where: {
+        userChallengeId: { in: userChallengeIds },
+        checkinDate: today,
+      },
+      select: { userChallengeId: true, status: true },
+    });
+    const map = new Map<string, CheckinStatus>();
+    for (const r of rows) map.set(r.userChallengeId, r.status);
+    return map;
+  }
+
   private toView(
     row: {
       id: string;
@@ -234,6 +285,7 @@ export class UserChallengesService {
       };
     },
     completedDates: Date[],
+    todayCheckinStatus: CheckinStatus | null,
   ): UserChallengeView {
     const progress = calculateChallengeProgress(
       completedDates.map((d) => ({ completedOn: d })),
@@ -241,6 +293,13 @@ export class UserChallengesService {
     return {
       ...row,
       progressPercent: Math.round(progress.completionRate * 100 * 10) / 10,
+      todayCheckinStatus,
     };
   }
+}
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
 }

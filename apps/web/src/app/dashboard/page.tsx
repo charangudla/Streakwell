@@ -110,14 +110,52 @@ function DashboardInner() {
           </p>
         ) : null}
 
-        {/* Hero check-in card */}
+        {/* Active-challenge area — layout swaps based on how many the
+            user is currently working on:
+              1 active  → one full-width HeroCheckinCard (gradient)
+              2 active  → two HeroCheckinCards side by side (each half)
+              3 active  → 2x2 grid: 3 ActiveChallengeCards + "Add another"
+              4 active  → 2x2 grid of 4 cards + "Add more challenges →"
+              5+ active → first 4 + "See all N active challenges →"
+            All card variants surface today's check-in status via colour
+            so the user can scan and immediately spot the cards that
+            still need attention. */}
         <div className="mt-6">
           {ucs === null ? (
             <HeroSkeleton />
-          ) : firstActive ? (
-            <HeroCheckinCard uc={firstActive} dayNumber={currentDay} />
-          ) : (
+          ) : activeList.length === 0 ? (
             <EmptyHero />
+          ) : activeList.length === 1 ? (
+            <HeroCheckinCard uc={activeList[0]} dayNumber={currentDay} />
+          ) : activeList.length === 2 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {activeList.map((uc) => (
+                <HeroCheckinCard
+                  key={uc.id}
+                  uc={uc}
+                  dayNumber={dayNumber(uc.startDate, uc.challenge.durationDays)}
+                  compact
+                />
+              ))}
+            </div>
+          ) : activeList.length === 3 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {activeList.map((uc) => (
+                <ActiveChallengeCard key={uc.id} uc={uc} />
+              ))}
+              <AddAnotherTile />
+            </div>
+          ) : (
+            // 4+ active — show first 4 in a 2x2 grid, then a CTA below
+            // that tells the user there's more or invites them to add.
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {activeList.slice(0, 4).map((uc) => (
+                  <ActiveChallengeCard key={uc.id} uc={uc} />
+                ))}
+              </div>
+              <AddMoreCta extraCount={activeList.length - 4} />
+            </>
           )}
         </div>
 
@@ -153,27 +191,11 @@ function DashboardInner() {
           </div>
         ) : null}
 
-        {/* Your other active challenges — horizontal swipe carousel
-            on phone + tablet (matches Recommended + Popular below and
-            the mobile app's lane pattern), grid on desktop. Guard
-            stays at `> 1` because the hero card above already shows
-            the first active; with 0 or 1 active there's nothing
-            "other" to surface. */}
-        {activeList.length > 1 ? (
-          <section className="mt-10">
-            <SectionHeader
-              title="Your other active challenges"
-              seeAllHref="/my-challenges"
-            />
-            <HorizontalCardRow>
-              {activeList.slice(1).map((uc) => (
-                <CarouselCard key={uc.id}>
-                  <ActiveChallengeCard uc={uc} />
-                </CarouselCard>
-              ))}
-            </HorizontalCardRow>
-          </section>
-        ) : null}
+        {/* "Your other active challenges" section used to live here —
+            removed because the new count-based layout above already
+            shows ALL active challenges (up to 4 in the grid, plus a
+            "See all N" CTA when there are more). One surface for
+            active work instead of two competing ones. */}
 
         {/* Recommended for you — horizontal swipe carousel on phone +
             tablet (mirrors the mobile app's home screen), grid on
@@ -222,51 +244,189 @@ function DashboardInner() {
   );
 }
 
-/** Big featured card for the user's first active challenge. */
+/**
+ * Big featured card for one of the user's active challenges. Used at
+ * full width when there's 1 active, and in a 2-col grid for the
+ * 2-active case so the "today's focus" gradient feel survives at
+ * smaller widths.
+ *
+ * Gradient + CTA reflect today's check-in status so a glance tells
+ * the user whether they still need to act:
+ *   null      → brand-green gradient, "Check in today →"  (action)
+ *   COMPLETED → deeper-green gradient, "✓ Day N done"     (settled)
+ *   MISSED    → rose gradient, "Day N missed"             (informational)
+ *   SKIPPED   → slate gradient, "Day N skipped"           (informational)
+ */
 function HeroCheckinCard({
   uc,
   dayNumber: day,
+  compact = false,
 }: {
   uc: UserChallenge;
   dayNumber: number;
+  /** When true, scales type + padding down for the 2-up grid. */
+  compact?: boolean;
 }) {
   const c = uc.challenge;
   const pct = Math.min(100, Math.max(0, uc.progressPercent));
+  const v = pickHeroVariant(uc.todayCheckinStatus);
   return (
     <Link
       href={`/my-challenges/${uc.id}/progress`}
-      className="group block overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700 p-6 text-white shadow-lg transition-transform hover:-translate-y-0.5 sm:p-8"
+      className={`group block h-full overflow-hidden rounded-3xl ${v.gradient} text-white shadow-lg transition-transform hover:-translate-y-0.5 ${compact ? "p-5 sm:p-6" : "p-6 sm:p-8"}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-100">
+        <div className="min-w-0">
+          <p className={`text-xs font-semibold uppercase tracking-wide ${v.eyebrow}`}>
             Today · Day {day} of {c.durationDays}
           </p>
-          <h2 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
+          <h2
+            className={`mt-2 font-bold leading-tight ${compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"}`}
+          >
             {c.title}
           </h2>
-          <p className="mt-2 max-w-xl text-sm text-brand-50 sm:text-base">
+          <p
+            className={`mt-2 max-w-xl text-white/85 ${compact ? "line-clamp-2 text-sm" : "text-sm sm:text-base"}`}
+          >
             {c.dailyTask}
           </p>
         </div>
-        <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-white/15 text-2xl">
-          ✓
+        <div
+          className={`grid flex-none place-items-center rounded-full bg-white/15 ${compact ? "h-10 w-10 text-lg" : "h-12 w-12 text-2xl"}`}
+          aria-hidden="true"
+        >
+          {v.glyph}
         </div>
       </div>
-      <div className="mt-6">
+      <div className={compact ? "mt-4" : "mt-6"}>
         <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
           <div
-            className="h-full rounded-full bg-streak"
+            className={`h-full rounded-full ${v.bar}`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="mt-3 flex items-center justify-between text-xs font-medium text-brand-100">
+        <div className="mt-3 flex items-center justify-between gap-2 text-xs font-medium text-white/85">
           <span>{pct.toFixed(0)}% complete</span>
           <span className="font-semibold text-white group-hover:translate-x-0.5">
-            Check in today →
+            {v.cta(day)}
           </span>
         </div>
       </div>
+    </Link>
+  );
+}
+
+type HeroVariant = {
+  gradient: string;
+  eyebrow: string;
+  bar: string;
+  glyph: string;
+  cta: (day: number) => string;
+};
+
+function pickHeroVariant(
+  status: UserChallenge["todayCheckinStatus"],
+): HeroVariant {
+  if (status === null) {
+    return {
+      gradient:
+        "bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700",
+      eyebrow: "text-brand-100",
+      bar: "bg-streak",
+      glyph: "✓",
+      cta: () => "Check in today →",
+    };
+  }
+  if (status === "COMPLETED") {
+    return {
+      gradient:
+        "bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900",
+      eyebrow: "text-brand-100",
+      bar: "bg-streak",
+      glyph: "✓",
+      cta: (day) => `Day ${day} done →`,
+    };
+  }
+  if (status === "MISSED") {
+    return {
+      gradient:
+        "bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700",
+      eyebrow: "text-rose-100",
+      bar: "bg-white/70",
+      glyph: "·",
+      cta: (day) => `Day ${day} missed →`,
+    };
+  }
+  // SKIPPED
+  return {
+    gradient: "bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700",
+    eyebrow: "text-slate-100",
+    bar: "bg-white/70",
+    glyph: "‖",
+    cta: (day) => `Day ${day} skipped →`,
+  };
+}
+
+/**
+ * Fills the empty 4th slot of the 2x2 grid when the user has exactly 3
+ * active challenges. Same card dimensions as ActiveChallengeCard so the
+ * grid feels balanced; visually distinct (dashed border, brand tint on
+ * hover) so it reads as "tap to add", not as a real challenge.
+ */
+function AddAnotherTile() {
+  return (
+    <Link
+      href="/challenges"
+      className="group flex h-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-surface-soft p-5 text-center transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:bg-white hover:shadow-md"
+    >
+      <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-500 group-hover:text-white">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-5 w-5"
+          aria-hidden="true"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+      </span>
+      <p className="mt-3 text-sm font-bold text-ink group-hover:text-brand-700">
+        Add another challenge
+      </p>
+      <p className="mt-1 text-xs text-ink-muted">Browse challenges →</p>
+    </Link>
+  );
+}
+
+/**
+ * CTA below the 2x2 grid when the user has 4+ active challenges.
+ * Shows "Add more" by default; flips to "See all N active challenges"
+ * when there's a 5th+ already that the grid is hiding so the user
+ * understands "more exist, tap to view them".
+ */
+function AddMoreCta({ extraCount }: { extraCount: number }) {
+  if (extraCount > 0) {
+    return (
+      <Link
+        href="/my-challenges#active"
+        className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-50"
+      >
+        See all {extraCount + 4} active challenges →
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/challenges"
+      className="mt-4 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-surface-soft p-4 text-sm font-bold text-ink transition-colors hover:border-brand-400 hover:bg-white hover:text-brand-700"
+    >
+      <span className="text-lg leading-none">+</span>
+      Add more challenges →
     </Link>
   );
 }
