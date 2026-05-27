@@ -26,7 +26,7 @@ const FOOTER_GROUPS = [
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-slate-200 bg-surface-soft">
+    <footer className="mt-12 border-t border-slate-200 bg-surface-soft">
       {/* Brand on its own line at the top, then Product / Legal /
           Contact as THREE COLUMNS SIDE BY SIDE, each column titled +
           links stacked vertically underneath. On phones the three

@@ -81,14 +81,17 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-surface text-ink">
+      {/* Bottom padding on BODY (not on main) so the MobileTabBar — fixed
+          at the viewport bottom, ~60px tall plus safe-area inset — has
+          empty space to overlay at max scroll without obscuring the
+          footer content above it. The previous setup put pb-20 on main,
+          which only inflated the gap between page content and the
+          footer (80px of dead space) and never helped tab-bar
+          clearance. Desktop opts out via md:pb-0. */}
+      <body className="flex min-h-full flex-col bg-surface pb-20 text-ink md:pb-0">
         <JsonLd data={[ORGANIZATION_LD, WEBSITE_LD]} />
         <Header />
-        {/* Bottom padding accommodates the MobileTabBar on phone-sized
-            app routes (the tab bar is fixed and ~60px tall, plus a safe-
-            area inset). Desktop ignores via md:pb-0. The tab bar itself
-            decides whether to render based on route + auth. */}
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main className="flex-1">{children}</main>
         <Footer />
         <InstallPrompt />
         <MobileTabBar />
