@@ -10,6 +10,7 @@ import {
   Prisma,
 } from '@prisma/client';
 
+import { FriendsService } from '../friends/friends.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CHAT_PRESETS,
@@ -42,7 +43,10 @@ import {
  */
 @Injectable()
 export class ChallengeChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly friends: FriendsService,
+  ) {}
 
   /**
    * Load everything the client needs to render the chat panel in one
@@ -122,25 +126,40 @@ export class ChallengeChatService {
     });
     if (ucs.length === 0) return [];
 
-    // Batched today check-ins for these UCs.
-    const todayRows = await this.prisma.dailyCheckin.findMany({
-      where: {
-        userChallengeId: { in: ucs.map((u) => u.id) },
-        checkinDate: today,
-      },
-      select: { userChallengeId: true, status: true },
-    });
+    // Two batched lookups so the members endpoint is still O(1)
+    // round-trips: today's check-ins keyed by UC id + the viewer's
+    // friendship state with each OTHER user keyed by user id.
+    const [todayRows, friendshipsByUser] = await Promise.all([
+      this.prisma.dailyCheckin.findMany({
+        where: {
+          userChallengeId: { in: ucs.map((u) => u.id) },
+          checkinDate: today,
+        },
+        select: { userChallengeId: true, status: true },
+      }),
+      this.friends.statusByUser(
+        userId,
+        ucs.filter((u) => u.userId !== userId).map((u) => u.userId),
+      ),
+    ]);
     const todayByUc = new Map<string, CheckinStatus>();
     for (const r of todayRows) todayByUc.set(r.userChallengeId, r.status);
 
     return ucs
-      .map((uc) => ({
-        userId: uc.user.id,
-        name: uc.user.name,
-        joinedAt: uc.createdAt,
-        todayCheckinStatus: todayByUc.get(uc.id) ?? null,
-        isYou: uc.user.id === userId,
-      }))
+      .map((uc) => {
+        const fs = friendshipsByUser.get(uc.user.id);
+        return {
+          userId: uc.user.id,
+          name: uc.user.name,
+          joinedAt: uc.createdAt,
+          todayCheckinStatus: todayByUc.get(uc.id) ?? null,
+          isYou: uc.user.id === userId,
+          // 'none' for both the viewer themself (no self-friendship) and
+          // anyone the viewer hasn't interacted with yet.
+          friendship: fs?.state ?? ('none' as const),
+          friendshipId: fs?.friendshipId ?? null,
+        };
+      })
       // Viewer first, then COMPLETED, then MISSED, then SKIPPED, then
       // pending (null) — a glance shows who's done today before who
       // needs nudging.

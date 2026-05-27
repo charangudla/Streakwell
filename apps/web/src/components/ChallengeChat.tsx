@@ -730,23 +730,67 @@ function MembersSheet({
   const [invitingMember, setInvitingMember] = useState<ChatMember | null>(
     null,
   );
+  // Per-user busy state so a friend action only disables that row's
+  // button while in flight. Tracks userId, not friendshipId, because
+  // pre-friend-request rows have friendshipId === null.
+  const [busyFriendUserId, setBusyFriendUserId] = useState<string | null>(
+    null,
+  );
+
+  const loadMembers = useCallback(async () => {
+    try {
+      const rows = await apiClient<ChatMember[]>(
+        `/challenges/${challengeId}/members`,
+      );
+      setMembers(rows);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }, [challengeId]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await apiClient<ChatMember[]>(
-          `/challenges/${challengeId}/members`,
-        );
-        if (!cancelled) setMembers(rows);
-      } catch (e) {
-        if (!cancelled) setErr((e as Error).message);
+    void loadMembers();
+  }, [loadMembers]);
+
+  /**
+   * Handles whichever friend action the row's current state implies:
+   *   none              → POST /friends/request
+   *   pending_received  → POST /friends/:id/respond ACCEPTED
+   *   pending_sent      → POST /friends/:id/respond DECLINED? No —
+   *                        sender can't cancel via this surface; the
+   *                        button is disabled. (Cancel lives on the
+   *                        /friends inbox.)
+   *   accepted          → button is disabled (unfriend lives on
+   *                        /friends inbox so this surface stays
+   *                        intent-focused).
+   * Re-fetches members on success so the row's button label updates
+   * authoritatively — keeps the optimistic-state surface area small.
+   */
+  async function handleFriendAction(member: ChatMember) {
+    if (busyFriendUserId !== null) return;
+    setBusyFriendUserId(member.userId);
+    try {
+      if (member.friendship === "none") {
+        await apiClient("/friends/request", {
+          method: "POST",
+          body: { recipientId: member.userId },
+        });
+      } else if (
+        member.friendship === "pending_received" &&
+        member.friendshipId
+      ) {
+        await apiClient(`/friends/${member.friendshipId}/respond`, {
+          method: "POST",
+          body: { decision: "ACCEPTED" },
+        });
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [challengeId]);
+      await loadMembers();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyFriendUserId(null);
+    }
+  }
 
   // Esc to close. Body-scroll lock keeps the page underneath still.
   useEffect(() => {
@@ -815,7 +859,9 @@ function MembersSheet({
                 <MemberRow
                   key={m.userId}
                   member={m}
+                  busy={busyFriendUserId === m.userId}
                   onInvite={() => setInvitingMember(m)}
+                  onFriendAction={() => handleFriendAction(m)}
                 />
               ))}
             </ul>
@@ -835,10 +881,15 @@ function MembersSheet({
 
 function MemberRow({
   member,
+  busy,
   onInvite,
+  onFriendAction,
 }: {
   member: ChatMember;
+  /** True while a friend-action call for this user is in flight. */
+  busy: boolean;
   onInvite: () => void;
+  onFriendAction: () => void;
 }) {
   const initials = initialsFrom(member.name);
   const status = member.todayCheckinStatus;
@@ -858,6 +909,41 @@ function MemberRow({
         : status === "SKIPPED"
           ? "Skipped"
           : "Not in yet";
+
+  // Friend button label + interactivity vary with friendship state.
+  // "Pending" + "✓ Friend" render as static chips — the cancel /
+  // unfriend lives on the /friends inbox so this surface stays
+  // intent-focused (only ACTION-needed taps live here).
+  const friendBtn = (() => {
+    if (member.isYou) return null;
+    switch (member.friendship) {
+      case "none":
+        return {
+          label: "+ Add friend",
+          cls: "bg-white text-brand-700 ring-1 ring-inset ring-brand-200 hover:bg-brand-50",
+          disabled: busy,
+        };
+      case "pending_received":
+        return {
+          label: busy ? "…" : "Accept ✓",
+          cls: "bg-brand-500 text-white hover:bg-brand-600",
+          disabled: busy,
+        };
+      case "pending_sent":
+        return {
+          label: "Pending",
+          cls: "bg-slate-100 text-ink-muted cursor-not-allowed",
+          disabled: true,
+        };
+      case "accepted":
+        return {
+          label: "✓ Friend",
+          cls: "bg-brand-50 text-brand-700 cursor-default",
+          disabled: true,
+        };
+    }
+  })();
+
   return (
     <li className="flex items-center gap-3 px-5 py-3">
       <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">
@@ -879,13 +965,25 @@ function MemberRow({
         </span>
       </div>
       {member.isYou ? null : (
-        <button
-          type="button"
-          onClick={onInvite}
-          className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100"
-        >
-          Invite
-        </button>
+        <div className="flex flex-none flex-col items-end gap-1">
+          {friendBtn ? (
+            <button
+              type="button"
+              onClick={onFriendAction}
+              disabled={friendBtn.disabled}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-60 ${friendBtn.cls}`}
+            >
+              {friendBtn.label}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onInvite}
+            className="rounded-full bg-brand-50 px-3 py-1.5 text-[11px] font-bold text-brand-700 hover:bg-brand-100"
+          >
+            Invite
+          </button>
+        </div>
       )}
     </li>
   );

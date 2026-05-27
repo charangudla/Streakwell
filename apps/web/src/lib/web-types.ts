@@ -217,6 +217,12 @@ export type ToggleReactionResult = {
   mine: Record<string, boolean>;
 };
 
+export type FriendshipState =
+  | "none"
+  | "pending_sent"
+  | "pending_received"
+  | "accepted";
+
 export type ChatMember = {
   userId: string;
   name: string;
@@ -224,4 +230,21 @@ export type ChatMember = {
   todayCheckinStatus: CheckinStatus | null;
   /** True for the viewer's own row — used to pin themselves at top. */
   isYou: boolean;
+  /** Friendship state with the viewer. "none" for self too. */
+  friendship: FriendshipState;
+  /** Set when friendship !== "none"; lets the client call /friends/:id endpoints. */
+  friendshipId: string | null;
+};
+
+export type FriendListEntry = {
+  friendshipId: string;
+  user: { id: string; name: string };
+  createdAt: string;
+  respondedAt: string | null;
+};
+
+export type FriendList = {
+  accepted: FriendListEntry[];
+  incoming: FriendListEntry[];
+  outgoing: FriendListEntry[];
 };

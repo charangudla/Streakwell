@@ -116,6 +116,11 @@ model User {
   // Per-challenge community chat
   chatMessages  ChallengeChatMessage[]
   chatReactions ChatReaction[]
+
+  // Challenge friends — symmetric semantically but stored as one row
+  // per pair; the relation names track who originated the request.
+  sentFriendRequests     ChallengeFriendship[] @relation("FriendshipRequester")
+  receivedFriendRequests ChallengeFriendship[] @relation("FriendshipRecipient")
 }
 
 // Better Auth — one row per active session. We use bearer tokens (mobile)
@@ -447,4 +452,48 @@ model ChatReaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+}
+
+// =============================================================================
+// Challenge friends
+// =============================================================================
+// User-to-user friendship graph used by the chat Members sheet:
+//   - Add Friend → creates a PENDING row, requester is the viewer
+//   - Recipient sees it on /friends and Accepts (→ ACCEPTED) or Declines
+//     (→ DECLINED). Notifications fire both ways.
+//   - Once ACCEPTED, both parties can invite each other to their custom
+//     challenges via the existing POST /custom-challenges/:id/invites/by-user
+//     flow.
+//
+// Friendship is symmetric in meaning but stored asymmetrically (one row
+// per pair) — the row remembers who initiated, which is useful for
+// "pending sent vs pending received" UX cues. Lookups for "is X my
+// friend?" query both directions via OR.
+//
+// @@unique([requesterId, recipientId]) prevents duplicate requests in
+// the same direction. The cross-direction case (A requests B while B
+// already requested A) is handled in the service: an accept-on-collision
+// promotes the existing PENDING to ACCEPTED instead of creating a
+// second row.
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model ChallengeFriendship {
+  id          String           @id @default(uuid()) @db.Uuid
+  requesterId String           @db.Uuid
+  recipientId String           @db.Uuid
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  respondedAt DateTime?
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipient User @relation("FriendshipRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, recipientId])
+  @@index([recipientId, status])
+  @@index([requesterId, status])
 }

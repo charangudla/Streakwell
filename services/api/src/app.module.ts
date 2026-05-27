@@ -18,6 +18,7 @@ import { CustomChallengesModule } from './custom-challenges/custom-challenges.mo
 import { EmailModule } from './email/email.module';
 import { EmailService } from './email/email.service';
 import { FavoritesModule } from './favorites/favorites.module';
+import { FriendsModule } from './friends/friends.module';
 import { HealthModule } from './health/health.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -71,6 +72,7 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     AchievementsModule,
     CheckinsModule,
     FavoritesModule,
+    FriendsModule,
     ReferralsModule,
     PublicContactModule,
     ShareEventsModule,
