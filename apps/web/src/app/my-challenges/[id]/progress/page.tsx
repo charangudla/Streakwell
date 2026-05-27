@@ -83,7 +83,10 @@ function ProgressInner({ params }: PageProps) {
 
   const totalDays = challenge.durationDays;
   const today = dayNumber(uc.startDate, totalDays);
-  const statusByDayIdx = new Map<number, string>();
+  const statusByDayIdx = new Map<
+    number,
+    "COMPLETED" | "MISSED" | "SKIPPED"
+  >();
   for (const c of checkins) {
     const idx = Math.floor(
       (new Date(c.checkinDate).getTime() - new Date(uc.startDate).getTime()) /
@@ -136,34 +139,45 @@ function ProgressInner({ params }: PageProps) {
         </div>
 
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
-          <p className="text-sm font-semibold text-ink">30-day calendar</p>
-          <div className="mt-4 grid grid-cols-6 gap-1.5 sm:grid-cols-10">
+          <p className="text-sm font-semibold text-ink">
+            {totalDays}-day calendar
+          </p>
+          <div className="mt-4 grid grid-cols-6 gap-2 sm:grid-cols-10 sm:gap-2.5">
             {Array.from({ length: totalDays }).map((_, i) => {
               const s = statusByDayIdx.get(i);
-              const tone =
-                s === "COMPLETED"
-                  ? "bg-brand-500"
-                  : s === "MISSED"
-                    ? "bg-rose-200"
-                    : s === "SKIPPED"
-                      ? "bg-slate-200"
-                      : "bg-slate-100";
+              const dayNum = i + 1;
+              const isToday = dayNum === today && uc.status === "ACTIVE";
               return (
-                <div
+                <DayCell
                   key={i}
-                  title={`Day ${i + 1}${s ? ` · ${s}` : ""}`}
-                  className={`aspect-square rounded-md ${tone}`}
+                  day={dayNum}
+                  status={s}
+                  isToday={isToday}
                 />
               );
             })}
           </div>
-          <p className="mt-4 text-xs text-ink-muted">
-            <span className="inline-block h-2 w-2 rounded-sm bg-brand-500 align-middle" />{" "}
-            Completed ·{" "}
-            <span className="inline-block h-2 w-2 rounded-sm bg-rose-200 align-middle" />{" "}
-            Missed ·{" "}
-            <span className="inline-block h-2 w-2 rounded-sm bg-slate-200 align-middle" />{" "}
-            Skipped
+          <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-brand-500" />
+              Completed
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-200" />
+              Missed
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-200" />
+              Skipped
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-100 ring-1 ring-inset ring-slate-200" />
+              Upcoming
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-streak" />
+              Today
+            </span>
           </p>
         </div>
 
@@ -196,6 +210,58 @@ function Stat({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 text-2xl font-bold text-ink">{value}</p>
+    </div>
+  );
+}
+
+/**
+ * Single day in the 30-day calendar grid. Renders the day number inside
+ * a square coloured by status. Today gets a streak-coloured dot below
+ * the cell so the user can spot "you are here" at a glance — same
+ * convention the mobile ThirtyDayGrid widget uses.
+ */
+function DayCell({
+  day,
+  status,
+  isToday,
+}: {
+  day: number;
+  status: "COMPLETED" | "MISSED" | "SKIPPED" | undefined;
+  isToday: boolean;
+}) {
+  let bg = "bg-slate-100";
+  let fg = "text-ink-muted";
+  let border = "ring-1 ring-inset ring-slate-200";
+  if (status === "COMPLETED") {
+    bg = "bg-brand-500";
+    fg = "text-white";
+    border = "";
+  } else if (status === "MISSED") {
+    bg = "bg-rose-200";
+    fg = "text-rose-900";
+    border = "";
+  } else if (status === "SKIPPED") {
+    bg = "bg-slate-200";
+    fg = "text-ink-muted";
+    border = "";
+  }
+  if (isToday) {
+    border = `ring-2 ring-streak ${status ? "" : ""}`;
+  }
+  return (
+    <div className="relative flex flex-col items-center">
+      <div
+        className={`flex aspect-square w-full items-center justify-center rounded-lg font-mono text-xs font-semibold sm:text-sm ${bg} ${fg} ${border}`}
+        title={`Day ${day}${status ? ` · ${status.toLowerCase()}` : ""}${isToday ? " (today)" : ""}`}
+      >
+        {day}
+      </div>
+      {isToday ? (
+        <span
+          aria-hidden="true"
+          className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-streak"
+        />
+      ) : null}
     </div>
   );
 }
