@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChallengeCard } from "./ChallengeCard";
 import { CarouselCard, HorizontalCardRow } from "./HorizontalCardRow";
+import { Select, type SelectOption } from "./Select";
 import type { Category, Challenge } from "@/lib/types";
+
+type DifficultyFilter = Challenge["difficulty"] | "ALL";
 
 /**
  * How many cards to preview per category lane before users have to
@@ -18,10 +21,7 @@ type Props = {
   categories: Category[];
 };
 
-const DIFFICULTIES: Array<{
-  value: Challenge["difficulty"] | "ALL";
-  label: string;
-}> = [
+const DIFFICULTY_OPTIONS: SelectOption<DifficultyFilter>[] = [
   { value: "ALL", label: "All levels" },
   { value: "BEGINNER", label: "Beginner" },
   { value: "EASY", label: "Easy" },
@@ -32,8 +32,18 @@ const DIFFICULTIES: Array<{
 export function ChallengesBrowser({ challenges, categories }: Props) {
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>("ALL");
-  const [difficulty, setDifficulty] =
-    useState<Challenge["difficulty"] | "ALL">("ALL");
+  const [difficulty, setDifficulty] = useState<DifficultyFilter>("ALL");
+
+  // Compose the dropdown options once per render. "All categories" is
+  // prepended so users can clear the filter without hitting the
+  // separate "Clear filters" link below.
+  const categoryOptions: SelectOption<string>[] = useMemo(
+    () => [
+      { value: "ALL", label: "All categories" },
+      ...categories.map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [categories],
+  );
 
   const filtered = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -65,7 +75,14 @@ export function ChallengesBrowser({ challenges, categories }: Props) {
   return (
     <div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        {/* Search gets ~1.5x the width of each filter so the input feels
+            primary; selects get equal slots wide enough that their
+            dropdown menus (which match button width) show long category
+            names without wrapping. Was `[1fr_auto_auto]` when the
+            selects were native — `auto` collapsed our custom Select
+            buttons to chevron+label width, which made the open menu
+            unusably narrow. */}
+        <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr_1fr] sm:items-end">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
               Search
@@ -78,43 +95,36 @@ export function ChallengesBrowser({ challenges, categories }: Props) {
               className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="filter-category"
+              className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            >
               Category
-            </span>
-            <select
+            </label>
+            <Select
+              id="filter-category"
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              options={categoryOptions}
+              onChange={setCategoryId}
+              aria-label="Filter by category"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="filter-difficulty"
+              className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
             >
-              <option value="ALL">All categories</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
               Difficulty
-            </span>
-            <select
+            </label>
+            <Select<DifficultyFilter>
+              id="filter-difficulty"
               value={difficulty}
-              onChange={(e) =>
-                setDifficulty(
-                  e.target.value as Challenge["difficulty"] | "ALL",
-                )
-              }
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-            >
-              {DIFFICULTIES.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={DIFFICULTY_OPTIONS}
+              onChange={setDifficulty}
+              aria-label="Filter by difficulty"
+            />
+          </div>
         </div>
         {hasActiveFilters ? (
           <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">

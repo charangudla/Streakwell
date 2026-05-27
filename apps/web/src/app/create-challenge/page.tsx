@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Container } from "@/components/Container";
+import { Select, type SelectOption } from "@/components/Select";
 import { apiClient, ApiClientError } from "@/lib/api-client";
 import type { Category } from "@/lib/types";
 import type {
@@ -185,22 +186,19 @@ function CreateChallengeInner() {
               >
                 Difficulty
               </label>
-              <select
+              <Select<(typeof DIFFICULTIES)[number]>
                 id="difficulty"
                 value={difficulty}
-                onChange={(e) =>
-                  setDifficulty(
-                    e.target.value as (typeof DIFFICULTIES)[number],
-                  )
-                }
+                options={[
+                  { value: "BEGINNER", label: "Beginner" },
+                  { value: "EASY", label: "Easy" },
+                  { value: "MEDIUM", label: "Medium" },
+                  { value: "HARD", label: "Hard" },
+                ]}
+                onChange={setDifficulty}
                 disabled={submitting}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
-              >
-                <option value="BEGINNER">Beginner</option>
-                <option value="EASY">Easy</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HARD">Hard</option>
-              </select>
+                aria-label="Difficulty"
+              />
             </div>
           </div>
 
@@ -211,19 +209,18 @@ function CreateChallengeInner() {
             >
               Category
             </label>
-            <select
+            <Select
               id="category"
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              disabled={submitting || !categories}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
-            >
-              {categories?.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              options={
+                (categories ?? []).map(
+                  (c) => ({ value: c.id, label: c.name }) satisfies SelectOption<string>,
+                )
+              }
+              onChange={setCategoryId}
+              disabled={submitting || !categories || categories.length === 0}
+              aria-label="Category"
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">
