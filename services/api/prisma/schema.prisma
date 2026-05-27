@@ -112,6 +112,10 @@ model User {
   createdChallenges Challenge[]       @relation("CreatedChallenges")
   invitesSent       ChallengeInvite[] @relation("ChallengeInvitesSent")
   invitesReceived   ChallengeInvite[] @relation("ChallengeInvitesReceived")
+
+  // Per-challenge community chat
+  chatMessages  ChallengeChatMessage[]
+  chatReactions ChatReaction[]
 }
 
 // Better Auth — one row per active session. We use bearer tokens (mobile)
@@ -229,6 +233,7 @@ model Challenge {
   userChallenges   UserChallenge[]
   favorites        Favorite[]
   invites          ChallengeInvite[]
+  chatMessages     ChallengeChatMessage[]
 
   @@index([categoryId])
   @@index([createdById])
@@ -376,3 +381,70 @@ model Achievement {
   @@index([userId])
 }
 
+
+
+// =============================================================================
+// Per-challenge community chat
+// =============================================================================
+// Each Challenge has a single shared chat visible to everyone who joined it
+// (any UserChallenge status). Two kinds of messages live in the same table:
+//
+//   PRESET      — user-posted, but constrained to a fixed catalog of preset
+//                 codes (no free-text). Avoids abuse + keeps the channel
+//                 focused on shared check-in moments. presetCode is the
+//                 catalog key; the client resolves it to display text.
+//   CELEBRATION — auto-generated card, ONE per day per challenge, lazily
+//                 materialised on the first GET of the day (no cron). body
+//                 is the rendered celebration copy. scheduledDate is the
+//                 UTC date the card represents.
+//
+// A unique constraint on (challengeId, kind, scheduledDate) makes the
+// once-a-day celebration race-safe — a parallel first-view from two clients
+// both upsert and only one row lands.
+//
+// The daily check-in poll is NOT stored here — it is derived live from
+// DailyCheckin rows on read so it always reflects the current counts. No
+// row to keep in sync, no eventual-consistency surprise.
+
+enum ChatMessageKind {
+  PRESET
+  CELEBRATION
+}
+
+model ChallengeChatMessage {
+  id            String          @id @default(uuid()) @db.Uuid
+  challengeId   String          @db.Uuid
+  // null for CELEBRATION; SetNull so a user deleting their account does
+  // not cascade-delete the community history their messages live in.
+  userId        String?         @db.Uuid
+  kind          ChatMessageKind
+  presetCode    String?
+  body          String?
+  scheduledDate DateTime?       @db.Date
+  createdAt     DateTime        @default(now())
+
+  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reactions     ChatReaction[]
+
+  @@unique([challengeId, kind, scheduledDate], name: "uniq_celebration_per_day")
+  @@index([challengeId, createdAt(sort: Desc)])
+}
+
+// One row per (message, user, emoji). Toggling re-uses the row (delete +
+// re-create) so totals match the user-facing toggle UX. emoji is stored as
+// a short ASCII code ("fire", "love", …) — the client maps to the actual
+// character so we can swap visuals without a DB migration.
+model ChatReaction {
+  id         String   @id @default(uuid()) @db.Uuid
+  messageId  String   @db.Uuid
+  userId     String   @db.Uuid
+  emoji      String
+  createdAt  DateTime @default(now())
+
+  message    ChallengeChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}

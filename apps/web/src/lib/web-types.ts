@@ -149,3 +149,70 @@ export type IncomingInvite = ChallengeInvite & {
   };
   invitedBy: { id: string; name: string };
 };
+
+// =========================================================================
+// Per-challenge community chat
+// =========================================================================
+
+export type ChatPresetTone =
+  | "success"
+  | "milestone"
+  | "support"
+  | "neutral"
+  | "humor"
+  | "encourage";
+
+export type ChatPreset = {
+  code: string;
+  text: string;
+  tone: ChatPresetTone;
+};
+
+export type ChatReactionEmoji = {
+  code: string;
+  char: string;
+  label: string;
+};
+
+export type ChatMessageKind = "PRESET" | "CELEBRATION";
+
+export type ChatMessage = {
+  id: string;
+  kind: ChatMessageKind;
+  /** Catalog code for PRESET; null for CELEBRATION. */
+  presetCode: string | null;
+  /** Rendered body for CELEBRATION; null for PRESET. */
+  body: string | null;
+  /** UTC date the celebration represents; null for PRESET. */
+  scheduledDate: string | null;
+  createdAt: string;
+  /** Null for CELEBRATION (system) or for a user who deleted their account. */
+  user: { id: string; name: string } | null;
+  reactions: {
+    counts: Record<string, number>;
+    /** Whether the VIEWER is currently reacting with each emoji. */
+    mine: Record<string, boolean>;
+  };
+};
+
+export type ChatPoll = {
+  completed: number;
+  missed: number;
+  skipped: number;
+  pending: number;
+  total: number;
+  yourStatus: CheckinStatus | null;
+};
+
+export type ChatChannel = {
+  presets: ChatPreset[];
+  emoji: ChatReactionEmoji[];
+  poll: ChatPoll;
+  messages: ChatMessage[];
+};
+
+export type ToggleReactionResult = {
+  added: boolean;
+  counts: Record<string, number>;
+  mine: Record<string, boolean>;
+};

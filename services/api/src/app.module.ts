@@ -11,6 +11,7 @@ import { AuditLogService } from './audit/audit-log.service';
 import { AuditModule } from './audit/audit.module';
 import { createAuth } from './auth/auth';
 import { CategoriesModule } from './categories/categories.module';
+import { ChallengeChatModule } from './challenge-chat/challenge-chat.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { CheckinsModule } from './checkins/checkins.module';
 import { CustomChallengesModule } from './custom-challenges/custom-challenges.module';
@@ -74,6 +75,7 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     PublicContactModule,
     ShareEventsModule,
     CustomChallengesModule,
+    ChallengeChatModule,
   ],
   controllers: [AppController],
   providers: [

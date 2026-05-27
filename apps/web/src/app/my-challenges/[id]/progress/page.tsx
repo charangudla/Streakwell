@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ChallengeChat } from "@/components/ChallengeChat";
 import { CheckinModal } from "@/components/CheckinModal";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
@@ -41,6 +42,10 @@ function ProgressInner({ params }: PageProps) {
   // that day — today's day for the primary CTA, the tapped day for a
   // calendar-cell edit.
   const [editingDay, setEditingDay] = useState<number | null>(null);
+  // Bumped after a successful check-in so the chat panel's poll counts
+  // refetch — keeps the "Today's check-in poll" in sync with the
+  // user's just-saved status without waiting for next mount.
+  const [chatRefreshNonce, setChatRefreshNonce] = useState(0);
 
   // Refetch just the checkins (cheap — one endpoint, no challenge
   // hydration needed) so the calendar + stats update without a page
@@ -325,11 +330,35 @@ function ProgressInner({ params }: PageProps) {
           </div>
         ) : null}
 
+        {/* Community chat — shared across everyone on this Challenge.
+            Daily check-in poll auto-syncs with the user's own check-in
+            (chatRefreshNonce bumps on submit above). Preset-only posts
+            + reactions on the daily celebration card. */}
+        <section className="mt-10" aria-labelledby="chat-heading">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2
+              id="chat-heading"
+              className="text-xl font-bold tracking-tight text-ink sm:text-2xl"
+            >
+              Community chat
+            </h2>
+            <p className="text-xs text-ink-muted">
+              Visible to everyone on this challenge
+            </p>
+          </div>
+          <div className="mt-4">
+            <ChallengeChat
+              challengeId={challenge.id}
+              refreshNonce={chatRefreshNonce}
+            />
+          </div>
+        </section>
+
         {/* Share-to-social card. Picker → user taps the format that
             matches the surface they'll post to. Each button generates a
             differently-sized PNG and hands it to the native share sheet
             (or downloads it on desktop). */}
-        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+        <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-base font-bold text-ink sm:text-lg">
@@ -435,6 +464,9 @@ function ProgressInner({ params }: PageProps) {
                   // By the time the user taps "Done" the new data
                   // has almost certainly landed.
                   void refetchCheckins();
+                  // And bump the chat's refresh nonce so the poll
+                  // counts pick up this check-in too.
+                  setChatRefreshNonce((n) => n + 1);
                 }}
               />
             );
