@@ -6,6 +6,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import { computeProgress, dayNumber } from "@/lib/progress";
+import { generateShareCardBlob } from "@/lib/share-card";
 import type { Challenge } from "@/lib/types";
 import type { DailyCheckin, UserChallenge } from "@/lib/web-types";
 
@@ -25,6 +26,8 @@ function ProgressInner({ params }: PageProps) {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,20 +103,77 @@ function ProgressInner({ params }: PageProps) {
     if (idx >= 0 && idx < totalDays) statusByDayIdx.set(idx, c.status);
   }
 
-  const shareText = `I'm on Day ${today} of ${challenge.title} on Vital30. ${stats.activeDays} active days so far. Join me — https://vital30.com/download`;
+  // Capture challenge.title in a const so the narrowed (non-null) type
+  // survives into the onShare closure below — TypeScript drops null
+  // narrowing on free variables once you cross a function boundary.
+  const challengeTitle = challenge.title;
+  const shareText = `I'm on Day ${today} of ${challengeTitle} on Vital30. ${stats.activeDays} active days so far. Join me — https://vital30.com/download`;
 
-  function onShare() {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      navigator
-        .share({
+  async function onShare() {
+    if (sharing) return;
+    setSharing(true);
+    setShareNote(null);
+    try {
+      // Build the same per-day status array the on-screen calendar uses,
+      // so the PNG mirrors what the user is looking at.
+      const daysStatus = Array.from({ length: totalDays }, (_, i) =>
+        statusByDayIdx.get(i),
+      );
+      const blob = await generateShareCardBlob({
+        challengeTitle,
+        totalDays,
+        currentDay: today,
+        activeDays: stats.activeDays,
+        currentStreak: stats.currentStreak,
+        longestStreak: stats.longestStreak,
+        completionRate: stats.completionRate,
+        daysStatus,
+      });
+      const file = new File([blob], "vital30-progress.png", {
+        type: "image/png",
+      });
+
+      // Preferred path on phones: native share sheet WITH the image
+      // attached. Works on iOS Safari 15+ and Android Chrome — both
+      // require canShare({files}) to gate the call, otherwise iOS
+      // throws on share() with an unsupported payload.
+      const nav = typeof navigator !== "undefined" ? navigator : null;
+      if (nav?.canShare?.({ files: [file] })) {
+        await nav.share({
           title: "My Vital30 progress",
           text: shareText,
-          url: "https://vital30.com",
-        })
-        .catch(() => {});
-    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(shareText);
-      alert("Share text copied to clipboard.");
+          files: [file],
+        });
+        return;
+      }
+
+      // Desktop fallback: trigger a PNG download + copy the share text
+      // to clipboard so the user can paste it into a tweet / post.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "vital30-progress.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      if (nav?.clipboard) {
+        try {
+          await nav.clipboard.writeText(shareText);
+        } catch {
+          // Clipboard can throw on permission-denied; the PNG still
+          // downloaded so the share is recoverable.
+        }
+      }
+      setShareNote(
+        "Card downloaded. Share text copied — paste into your post.",
+      );
+    } catch (e) {
+      // User-cancelled native share is an AbortError — silent.
+      if ((e as Error).name === "AbortError") return;
+      setShareNote("Could not generate share card. Try again.");
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -198,13 +258,50 @@ function ProgressInner({ params }: PageProps) {
           <button
             type="button"
             onClick={onShare}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-ink px-6 text-sm font-semibold text-white hover:bg-slate-800"
+            disabled={sharing}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-6 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
           >
-            Share progress
+            {sharing ? (
+              <>
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <ShareIcon />
+                Share status image
+              </>
+            )}
           </button>
         </div>
+        {shareNote ? (
+          <p className="mt-3 text-sm text-ink-muted" role="status">
+            {shareNote}
+          </p>
+        ) : null}
       </Container>
     </section>
+  );
+}
+
+/** Outline share-arrow glyph for the "Share status image" button. */
+function ShareIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
   );
 }
 
