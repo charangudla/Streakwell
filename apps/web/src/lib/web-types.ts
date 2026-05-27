@@ -72,3 +72,49 @@ export type ReferralInfo = {
   referredCount: number;
   shareText: string;
 };
+
+export type ChallengeVisibility = "PRIVATE" | "PUBLIC";
+
+export type CustomChallenge = {
+  id: string;
+  title: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  dailyTask: string;
+  durationDays: number;
+  difficulty: "BEGINNER" | "EASY" | "MEDIUM" | "HARD";
+  categoryId: string;
+  createdById: string | null;
+  visibility: ChallengeVisibility;
+  inviteToken: string | null;
+  isActive: boolean;
+  createdAt: string;
+  inviteCount?: number;
+  joinedCount?: number;
+};
+
+export type ChallengeInviteStatus = "PENDING" | "ACCEPTED" | "DECLINED";
+
+export type ChallengeInvite = {
+  id: string;
+  challengeId: string;
+  invitedById: string;
+  invitedEmail: string;
+  invitedUserId: string | null;
+  status: ChallengeInviteStatus;
+  createdAt: string;
+  respondedAt: string | null;
+};
+
+export type IncomingInvite = ChallengeInvite & {
+  challenge: {
+    id: string;
+    title: string;
+    shortDescription: string;
+    dailyTask: string;
+    durationDays: number;
+    inviteToken: string | null;
+  };
+  invitedBy: { id: string; name: string };
+};

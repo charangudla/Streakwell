@@ -224,6 +224,20 @@ function UserMenu({
               My challenges
             </Link>
             <Link
+              href="/my-created-challenges"
+              className="block px-4 py-2 text-sm text-ink hover:bg-slate-50"
+              onClick={() => setOpen(false)}
+            >
+              Challenges you created
+            </Link>
+            <Link
+              href="/invites"
+              className="block px-4 py-2 text-sm text-ink hover:bg-slate-50"
+              onClick={() => setOpen(false)}
+            >
+              Challenge invites
+            </Link>
+            <Link
               href="/favorites"
               className="block px-4 py-2 text-sm text-ink hover:bg-slate-50"
               onClick={() => setOpen(false)}
