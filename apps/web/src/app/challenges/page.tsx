@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ButtonLink } from "@/components/Button";
 import { ChallengesBrowser } from "@/components/ChallengesBrowser";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
@@ -61,13 +60,18 @@ export default async function ChallengesPage() {
                   share a join link.
                 </p>
               </div>
-              <ButtonLink
+              {/* Plain Link, not <ButtonLink variant="primary"/>, because
+                  ButtonLink's variant classes (bg-brand-500 text-white)
+                  fight with our white-on-brand override and Tailwind's
+                  utility ordering — not className-string order — decides
+                  which wins, so the override loses unreliably. Inlining
+                  the styles avoids that battle. */}
+              <Link
                 href="/create-challenge"
-                size="md"
-                className="flex-none bg-white text-brand-700 hover:bg-brand-50"
+                className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Create your own
-              </ButtonLink>
+              </Link>
             </div>
           </div>
 

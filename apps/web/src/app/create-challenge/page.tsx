@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -93,7 +94,13 @@ function CreateChallengeInner() {
   return (
     <section className="py-10 sm:py-12">
       <Container className="max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <Link
+          href="/challenges"
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
+        >
+          ← Browse challenges
+        </Link>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           Create your own challenge
         </h1>
         <p className="mt-2 text-base text-ink-muted">
