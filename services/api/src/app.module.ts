@@ -27,6 +27,7 @@ import { PublicContactModule } from './public-contact/public-contact.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { ShareEventsModule } from './share-events/share-events.module';
 import { UserChallengesModule } from './user-challenges/user-challenges.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { UserChallengesModule } from './user-challenges/user-challenges.module';
     ShareEventsModule,
     CustomChallengesModule,
     ChallengeChatModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [

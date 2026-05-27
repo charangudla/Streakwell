@@ -255,3 +255,16 @@ export type FriendCounts = {
   /** PENDING requests where viewer is the recipient — drives header badge. */
   incoming: number;
 };
+
+export type UserProfile = {
+  id: string;
+  name: string;
+  joinedAt: string;
+  activeChallengeCount: number;
+  completedChallengeCount: number;
+  isFriend: boolean;
+  isSelf: boolean;
+  // Friend-only — present only when isFriend === true.
+  sharedChallengeCount?: number;
+  achievementsCount?: number;
+};

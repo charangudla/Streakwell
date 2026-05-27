@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import { apiClient } from "@/lib/api-client";
 import type { FriendList, FriendListEntry } from "@/lib/web-types";
 
@@ -31,11 +32,22 @@ export default function FriendsPage() {
  *
  * DECLINED rows are filtered server-side — neither party sees them.
  */
+/**
+ * Which profile-modal flavour is open (if any) — drives the action
+ * buttons shown inside the modal. `incoming` reuses the row's Accept/
+ * Decline/Block handlers; `accepted` reuses Unfriend/Block.
+ */
+type ViewedProfile =
+  | { kind: "incoming"; entry: FriendListEntry }
+  | { kind: "accepted"; entry: FriendListEntry }
+  | null;
+
 function FriendsInner() {
   const router = useRouter();
   const [data, setData] = useState<FriendList | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<ViewedProfile>(null);
 
   /** Smart back — history if available, otherwise /dashboard. */
   function goBack() {
@@ -74,6 +86,7 @@ function FriendsInner() {
         method: "POST",
         body: { decision },
       });
+      setViewing(null); // close modal after action
       await load();
     } catch (e) {
       setErr(friendlyApiError(e));
@@ -93,6 +106,7 @@ function FriendsInner() {
     setBusyId(friendshipId);
     try {
       await apiClient(`/friends/${friendshipId}`, { method: "DELETE" });
+      setViewing(null);
       await load();
     } catch (e) {
       setErr(friendlyApiError(e));
@@ -115,6 +129,7 @@ function FriendsInner() {
         method: "POST",
         body: { userId },
       });
+      setViewing(null);
       await load();
     } catch (e) {
       setErr(friendlyApiError(e));
@@ -199,6 +214,7 @@ function FriendsInner() {
                     onAccept={() => respond(fr.friendshipId, "ACCEPTED")}
                     onDecline={() => respond(fr.friendshipId, "DECLINED")}
                     onBlock={() => block(fr.user.id)}
+                    onView={() => setViewing({ kind: "incoming", entry: fr })}
                   />
                 ))}
               </Section>
@@ -213,6 +229,7 @@ function FriendsInner() {
                     busy={busyId === fr.friendshipId || busyId === fr.user.id}
                     onUnfriend={() => unfriend(fr.friendshipId)}
                     onBlock={() => block(fr.user.id)}
+                    onView={() => setViewing({ kind: "accepted", entry: fr })}
                   />
                 ))}
               </Section>
@@ -246,6 +263,67 @@ function FriendsInner() {
           </div>
         )}
       </Container>
+
+      {viewing ? (
+        <UserProfileModal
+          userId={viewing.entry.user.id}
+          onClose={() => setViewing(null)}
+          forceMinimal={viewing.kind === "incoming"}
+          actions={
+            viewing.kind === "incoming" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => block(viewing.entry.user.id)}
+                  disabled={busyId !== null}
+                  className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 disabled:opacity-50"
+                >
+                  Block
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    respond(viewing.entry.friendshipId, "DECLINED")
+                  }
+                  disabled={busyId !== null}
+                  className="rounded-full bg-white px-3 py-2 text-xs font-bold text-ink-muted ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    respond(viewing.entry.friendshipId, "ACCEPTED")
+                  }
+                  disabled={busyId !== null}
+                  className="rounded-full bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50"
+                >
+                  Accept ✓
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => block(viewing.entry.user.id)}
+                  disabled={busyId !== null}
+                  className="rounded-full px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                >
+                  Block
+                </button>
+                <button
+                  type="button"
+                  onClick={() => unfriend(viewing.entry.friendshipId)}
+                  disabled={busyId !== null}
+                  className="rounded-full px-3 py-2 text-xs font-semibold text-ink-muted hover:bg-slate-100 disabled:opacity-50"
+                >
+                  Unfriend
+                </button>
+              </>
+            )
+          }
+        />
+      ) : null}
     </section>
   );
 }
@@ -295,24 +373,33 @@ function IncomingRow({
   onAccept,
   onDecline,
   onBlock,
+  onView,
 }: {
   entry: FriendListEntry;
   busy: boolean;
   onAccept: () => void;
   onDecline: () => void;
   onBlock: () => void;
+  onView: () => void;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50/40 p-4">
-      <Avatar name={entry.user.name} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink">
-          {entry.user.name}
-        </p>
-        <p className="mt-0.5 text-xs text-ink-muted">
-          Wants to be your challenge friend
-        </p>
-      </div>
+      <button
+        type="button"
+        onClick={onView}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left hover:bg-brand-100/40"
+        aria-label={`View profile of ${entry.user.name}`}
+      >
+        <Avatar name={entry.user.name} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ink">
+            {entry.user.name}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            Tap to review profile
+          </p>
+        </div>
+      </button>
       <div className="flex flex-none flex-wrap justify-end gap-2">
         <button
           type="button"
@@ -348,27 +435,36 @@ function AcceptedRow({
   busy,
   onUnfriend,
   onBlock,
+  onView,
 }: {
   entry: FriendListEntry;
   busy: boolean;
   onUnfriend: () => void;
   onBlock: () => void;
+  onView: () => void;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-      <Avatar name={entry.user.name} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink">
-          {entry.user.name}
-        </p>
-        <p className="mt-0.5 text-xs text-ink-muted">
-          Friends since{" "}
-          {new Date(entry.respondedAt ?? entry.createdAt).toLocaleDateString(
-            "en-US",
-            { month: "short", day: "numeric", year: "numeric" },
-          )}
-        </p>
-      </div>
+      <button
+        type="button"
+        onClick={onView}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left hover:bg-slate-50"
+        aria-label={`View profile of ${entry.user.name}`}
+      >
+        <Avatar name={entry.user.name} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ink">
+            {entry.user.name}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            Friends since{" "}
+            {new Date(entry.respondedAt ?? entry.createdAt).toLocaleDateString(
+              "en-US",
+              { month: "short", day: "numeric", year: "numeric" },
+            )}
+          </p>
+        </div>
+      </button>
       <div className="flex flex-none gap-1">
         <button
           type="button"
