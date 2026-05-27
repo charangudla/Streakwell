@@ -95,6 +95,61 @@ export class ChallengeChatService {
     return this.toMessageView(message, userId);
   }
 
+  /**
+   * Members of a challenge's chat (= every UserChallenge row, any
+   * status). Joiners only. Returns each member with their name +
+   * today's check-in status + an `isYou` flag so the client can pin
+   * the viewer at the top of the list.
+   *
+   * No email — we deliberately don't surface email addresses to other
+   * members. The invite-to-another-challenge flow uses userId (see
+   * inviteUserToCustom) so a member can be invited without ever
+   * exposing their email to the inviter.
+   */
+  async getMembers(userId: string, challengeId: string) {
+    await this.assertJoiner(userId, challengeId);
+    const today = startOfUtcDay(new Date());
+
+    const ucs = await this.prisma.userChallenge.findMany({
+      where: { challengeId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        userId: true,
+        createdAt: true,
+        user: { select: { id: true, name: true } },
+      },
+    });
+    if (ucs.length === 0) return [];
+
+    // Batched today check-ins for these UCs.
+    const todayRows = await this.prisma.dailyCheckin.findMany({
+      where: {
+        userChallengeId: { in: ucs.map((u) => u.id) },
+        checkinDate: today,
+      },
+      select: { userChallengeId: true, status: true },
+    });
+    const todayByUc = new Map<string, CheckinStatus>();
+    for (const r of todayRows) todayByUc.set(r.userChallengeId, r.status);
+
+    return ucs
+      .map((uc) => ({
+        userId: uc.user.id,
+        name: uc.user.name,
+        joinedAt: uc.createdAt,
+        todayCheckinStatus: todayByUc.get(uc.id) ?? null,
+        isYou: uc.user.id === userId,
+      }))
+      // Viewer first, then COMPLETED, then MISSED, then SKIPPED, then
+      // pending (null) — a glance shows who's done today before who
+      // needs nudging.
+      .sort((a, b) => {
+        if (a.isYou !== b.isYou) return a.isYou ? -1 : 1;
+        return STATUS_SORT[a.todayCheckinStatus ?? 'NONE'] - STATUS_SORT[b.todayCheckinStatus ?? 'NONE'];
+      });
+  }
+
   async toggleReaction(
     userId: string,
     messageId: string,
@@ -344,3 +399,14 @@ function startOfUtcDay(d: Date): Date {
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
   );
 }
+
+// Sort order for members list: COMPLETED first (done), then MISSED,
+// then SKIPPED, then pending (null) so the "still need to act" rows
+// pile up at the bottom.
+const STATUS_SORT: Record<'COMPLETED' | 'MISSED' | 'SKIPPED' | 'NONE', number> =
+  {
+    COMPLETED: 0,
+    MISSED: 1,
+    SKIPPED: 2,
+    NONE: 3,
+  };

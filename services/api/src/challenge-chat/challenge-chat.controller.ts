@@ -32,6 +32,20 @@ export class ChallengeChatController {
   }
 
   /**
+   * Members of this challenge's chat (everyone who joined, any
+   * status). Joiners only. Used by the chat panel's Members sheet
+   * — the inviter UX needs the userIds so it can call the
+   * invite-by-user endpoint without exposing emails.
+   */
+  @Get('challenges/:id/members')
+  getMembers(
+    @Session() session: UserSession<Auth>,
+    @Param('id', new ParseUUIDPipe()) challengeId: string,
+  ) {
+    return this.chat.getMembers(session.user.id, challengeId);
+  }
+
+  /**
    * Post a preset message. Throttled to 12/min/user so a misbehaving
    * client (or someone spam-clicking) can't flood the channel.
    */

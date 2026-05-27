@@ -216,3 +216,12 @@ export type ToggleReactionResult = {
   counts: Record<string, number>;
   mine: Record<string, boolean>;
 };
+
+export type ChatMember = {
+  userId: string;
+  name: string;
+  joinedAt: string;
+  todayCheckinStatus: CheckinStatus | null;
+  /** True for the viewer's own row — used to pin themselves at top. */
+  isYou: boolean;
+};

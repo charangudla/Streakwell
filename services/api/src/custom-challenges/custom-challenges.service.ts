@@ -270,6 +270,83 @@ export class CustomChallengesService {
     }
   }
 
+  /**
+   * Invite an existing user by their userId — used from the chat
+   * Members sheet so we don't expose member emails to the inviter.
+   * Same downstream logic as invite(by email): create a ChallengeInvite
+   * row, fire an in-app notification, send the email.
+   */
+  async inviteUser(
+    inviterId: string,
+    challengeId: string,
+    targetUserId: string,
+  ) {
+    const challenge = await this.assertOwnership(challengeId, inviterId);
+
+    if (targetUserId === inviterId) {
+      throw new BadRequestException("You can't invite yourself.");
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, name: true, email: true },
+    });
+    if (!target) throw new NotFoundException('User not found.');
+
+    const inviter = await this.prisma.user.findUnique({
+      where: { id: inviterId },
+      select: { email: true, name: true },
+    });
+
+    try {
+      const invite = await this.prisma.challengeInvite.create({
+        data: {
+          challengeId: challenge.id,
+          invitedById: inviterId,
+          invitedEmail: target.email,
+          invitedUserId: target.id,
+        },
+      });
+
+      await this.notifications.emit({
+        userId: target.id,
+        type: 'SYSTEM',
+        title: 'You were invited to a challenge',
+        body: `${inviter?.name ?? 'Someone'} invited you to "${challenge.title}".`,
+        data: { challengeId: challenge.id, inviteId: invite.id },
+      });
+
+      const joinUrl = `${this.publicSiteUrl()}/c/${challenge.inviteToken}`;
+      await this.email.send({
+        to: target.email,
+        subject: `${inviter?.name ?? 'A friend'} invited you to a Vital30 challenge`,
+        text: [
+          `Hi ${target.name},`,
+          '',
+          `${inviter?.name ?? 'A Vital30 user'} invited you to join the "${challenge.title}" challenge.`,
+          '',
+          `Daily task: ${challenge.dailyTask}`,
+          `Duration:   ${challenge.durationDays} days`,
+          '',
+          'Join here:',
+          joinUrl,
+          '',
+          '— Vital30',
+        ].join('\n'),
+      });
+
+      return invite;
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new ConflictException('That person is already invited.');
+      }
+      throw e;
+    }
+  }
+
   async listInvites(challengeId: string, userId: string) {
     await this.assertOwnership(challengeId, userId);
     return this.prisma.challengeInvite.findMany({

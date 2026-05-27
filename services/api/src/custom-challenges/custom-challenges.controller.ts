@@ -17,6 +17,7 @@ import type { Auth } from '../auth/auth';
 import { CustomChallengesService } from './custom-challenges.service';
 import { CreateCustomChallengeDto } from './dto/create-custom-challenge.dto';
 import { InviteToChallengeDto } from './dto/invite-to-challenge.dto';
+import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateCustomChallengeDto } from './dto/update-custom-challenge.dto';
 
 @Controller('custom-challenges')
@@ -67,6 +68,22 @@ export class CustomChallengesController {
     @Body() dto: InviteToChallengeDto,
   ) {
     return this.svc.invite(session.user.id, id, dto);
+  }
+
+  /**
+   * Invite an existing user by their userId (no email exposed to the
+   * inviter). Used by the chat Members sheet. Same 20-per-hour
+   * throttle as the by-email path so a user can't sidestep the
+   * rate limit by using a different endpoint.
+   */
+  @Throttle({ default: { limit: 20, ttl: 60 * 60 * 1000 } })
+  @Post(':id/invites/by-user')
+  inviteUser(
+    @Session() session: UserSession<Auth>,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: InviteUserDto,
+  ) {
+    return this.svc.inviteUser(session.user.id, id, dto.userId);
   }
 
   @Get(':id/invites')

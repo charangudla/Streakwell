@@ -5,9 +5,11 @@ import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import type {
   ChatChannel,
+  ChatMember,
   ChatMessage,
   ChatPreset,
   ChatReactionEmoji,
+  CustomChallenge,
   ToggleReactionResult,
 } from "@/lib/web-types";
 
@@ -67,6 +69,7 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [postingCode, setPostingCode] = useState<string | null>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -197,7 +200,10 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
   // whatever's given.
   return (
     <div className="flex h-full min-h-[400px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <ChannelHeader poll={channel.poll} />
+      <ChannelHeader
+        poll={channel.poll}
+        onOpenMembers={() => setMembersOpen(true)}
+      />
 
       <div
         ref={scrollRef}
@@ -244,6 +250,13 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
           {err}
         </p>
       ) : null}
+
+      {membersOpen ? (
+        <MembersSheet
+          challengeId={challengeId}
+          onClose={() => setMembersOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -252,16 +265,83 @@ export function ChallengeChat({ challengeId, refreshNonce = 0 }: Props) {
 // Sticky header — channel title + summary stats
 // =========================================================================
 
-function ChannelHeader({ poll }: { poll: ChatChannel["poll"] }) {
+function ChannelHeader({
+  poll,
+  onOpenMembers,
+}: {
+  poll: ChatChannel["poll"];
+  onOpenMembers: () => void;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
       <div className="min-w-0">
         <p className="text-sm font-bold text-ink">Community</p>
-        <p className="text-xs text-ink-muted">
-          {poll.total} {poll.total === 1 ? "member" : "members"}
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted">
+          <span>
+            {poll.total} {poll.total === 1 ? "member" : "members"}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            <SummaryDot value={poll.completed} cls="bg-brand-500" />
+            <SummaryDot value={poll.missed} cls="bg-rose-400" />
+            <SummaryDot value={poll.skipped} cls="bg-slate-400" />
+            <SummaryDot value={poll.pending} cls="bg-streak" />
+          </span>
         </p>
       </div>
+      <button
+        type="button"
+        onClick={onOpenMembers}
+        className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-slate-200"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Members
+      </button>
     </div>
+  );
+}
+
+/**
+ * Compact poll-summary glyph: coloured dot + count. Anchors the user's
+ * eye to non-zero buckets without taking real estate. The empty
+ * (count===0) variant renders as a faded ring so the four-stat layout
+ * stays consistent regardless of which buckets are filled today.
+ */
+function SummaryDot({ value, cls }: { value: number; cls: string }) {
+  if (value === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-ink-muted/60">
+        <span
+          aria-hidden="true"
+          className="inline-block h-2 w-2 rounded-full ring-1 ring-inset ring-slate-300"
+        />
+        0
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink">
+      <span
+        aria-hidden="true"
+        className={`inline-block h-2 w-2 rounded-full ${cls}`}
+      />
+      {value}
+    </span>
   );
 }
 
@@ -619,4 +699,334 @@ function optimisticToggle(
   if (wasMine) delete mine[emoji];
   else mine[emoji] = true;
   return { counts, mine };
+}
+
+// =========================================================================
+// Members sheet — modal listing everyone in the channel
+// =========================================================================
+
+/**
+ * Side-sheet modal that lists every member of this challenge. Each
+ * row shows the member's avatar + name + today's check-in status; the
+ * viewer's own row is pinned at the top with a "(you)" tag.
+ *
+ * Action per row: "Invite to your challenge" opens a sub-picker of
+ * the viewer's own custom challenges and posts to
+ * /custom-challenges/:id/invites/by-user with the target's userId
+ * (no email exposed). Members you've already invited to a given
+ * challenge get a "Already invited" tag.
+ */
+function MembersSheet({
+  challengeId,
+  onClose,
+}: {
+  challengeId: string;
+  onClose: () => void;
+}) {
+  const [members, setMembers] = useState<ChatMember[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  // Open the "invite to which challenge?" picker for a specific
+  // member; null = closed.
+  const [invitingMember, setInvitingMember] = useState<ChatMember | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await apiClient<ChatMember[]>(
+          `/challenges/${challengeId}/members`,
+        );
+        if (!cancelled) setMembers(rows);
+      } catch (e) {
+        if (!cancelled) setErr((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [challengeId]);
+
+  // Esc to close. Body-scroll lock keeps the page underneath still.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="members-sheet-title"
+        className="flex h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:h-[640px] sm:rounded-3xl"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+          <h2
+            id="members-sheet-title"
+            className="text-base font-bold text-ink"
+          >
+            Members
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-8 w-8 place-items-center rounded-full text-ink-muted hover:bg-slate-100"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {err ? (
+            <p className="m-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              {err}
+            </p>
+          ) : null}
+          {members === null ? (
+            <div className="space-y-2 p-4">
+              <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
+              <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
+              <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
+            </div>
+          ) : members.length === 0 ? (
+            <p className="p-6 text-center text-sm text-ink-muted">
+              No members yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {members.map((m) => (
+                <MemberRow
+                  key={m.userId}
+                  member={m}
+                  onInvite={() => setInvitingMember(m)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {invitingMember ? (
+        <InvitePicker
+          member={invitingMember}
+          onClose={() => setInvitingMember(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function MemberRow({
+  member,
+  onInvite,
+}: {
+  member: ChatMember;
+  onInvite: () => void;
+}) {
+  const initials = initialsFrom(member.name);
+  const status = member.todayCheckinStatus;
+  const pillCls =
+    status === "COMPLETED"
+      ? "bg-brand-50 text-brand-700"
+      : status === "MISSED"
+        ? "bg-rose-50 text-rose-700"
+        : status === "SKIPPED"
+          ? "bg-slate-100 text-ink-muted"
+          : "bg-streak/15 text-streak";
+  const pillText =
+    status === "COMPLETED"
+      ? "Done today"
+      : status === "MISSED"
+        ? "Missed"
+        : status === "SKIPPED"
+          ? "Skipped"
+          : "Not in yet";
+  return (
+    <li className="flex items-center gap-3 px-5 py-3">
+      <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">
+        {initials}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-ink">
+          {member.name}
+          {member.isYou ? (
+            <span className="ml-1.5 text-[11px] font-normal text-ink-muted">
+              (you)
+            </span>
+          ) : null}
+        </p>
+        <span
+          className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${pillCls}`}
+        >
+          {pillText}
+        </span>
+      </div>
+      {member.isYou ? null : (
+        <button
+          type="button"
+          onClick={onInvite}
+          className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100"
+        >
+          Invite
+        </button>
+      )}
+    </li>
+  );
+}
+
+/**
+ * "Pick a challenge to invite this person to" sub-picker. Loads the
+ * viewer's own custom challenges (the only ones they can invite
+ * others to — invites for seeded PUBLIC challenges don't make sense
+ * since anyone can join those directly).
+ */
+function InvitePicker({
+  member,
+  onClose,
+}: {
+  member: ChatMember;
+  onClose: () => void;
+}) {
+  const [mine, setMine] = useState<CustomChallenge[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [done, setDone] = useState<Record<string, "ok" | string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await apiClient<CustomChallenge[]>(
+          "/custom-challenges/mine",
+        );
+        if (!cancelled) setMine(rows);
+      } catch {
+        if (!cancelled) setMine([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function send(challengeId: string) {
+    if (busy !== null) return;
+    setBusy(challengeId);
+    try {
+      await apiClient(`/custom-challenges/${challengeId}/invites/by-user`, {
+        method: "POST",
+        body: { userId: member.userId },
+      });
+      setDone((d) => ({ ...d, [challengeId]: "ok" }));
+    } catch (e) {
+      setDone((d) => ({
+        ...d,
+        [challengeId]: (e as Error).message,
+      }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Invite ${member.name} to a challenge`}
+        className="flex max-h-[70vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">
+              Invite {member.name}
+            </p>
+            <p className="mt-1 text-sm text-ink">
+              Pick a challenge of yours to invite them to.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-8 w-8 place-items-center rounded-full text-ink-muted hover:bg-slate-100"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3">
+          {mine === null ? (
+            <div className="space-y-2">
+              <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
+              <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
+            </div>
+          ) : mine.length === 0 ? (
+            <p className="p-3 text-center text-sm text-ink-muted">
+              You haven&rsquo;t created any challenges yet — create one
+              first to invite others.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {mine.map((c) => {
+                const state = done[c.id];
+                const isBusy = busy === c.id;
+                return (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onClick={() => send(c.id)}
+                      disabled={isBusy || state === "ok"}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-sm hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-ink">
+                          {c.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                          {c.durationDays}-day · {c.difficulty.toLowerCase()}
+                        </p>
+                      </div>
+                      <span className="flex-none text-xs font-semibold">
+                        {isBusy ? (
+                          <span className="text-ink-muted">Sending…</span>
+                        ) : state === "ok" ? (
+                          <span className="text-brand-700">Invited ✓</span>
+                        ) : state ? (
+                          <span className="text-rose-700">{state}</span>
+                        ) : (
+                          <span className="text-brand-700">Invite →</span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
