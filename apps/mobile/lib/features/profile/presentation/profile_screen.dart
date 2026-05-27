@@ -80,6 +80,16 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.push('/reminder-time'),
               ),
               _SettingsRow(
+                title: 'Challenges you created',
+                icon: Icons.flag_outlined,
+                onTap: () => context.push('/my-created-challenges'),
+              ),
+              _SettingsRow(
+                title: 'Challenge invites',
+                icon: Icons.mail_outline,
+                onTap: () => context.push('/invites'),
+              ),
+              _SettingsRow(
                 title: 'Invite friends',
                 icon: Icons.share_outlined,
                 onTap: () => context.push('/invite'),

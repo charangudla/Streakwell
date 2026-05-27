@@ -387,4 +387,73 @@ class ApiService {
       () => const <AchievementEntry>[],
     );
   }
+
+  // 11. Custom challenges + invites
+  Future<CustomChallenge> createCustomChallenge({
+    required String title,
+    required String shortDescription,
+    String? description,
+    required String dailyTask,
+    required int durationDays,
+    required String difficulty,
+    required String categoryId,
+    String visibility = 'PRIVATE',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/custom-challenges',
+      data: {
+        'title': title,
+        'shortDescription': shortDescription,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        'dailyTask': dailyTask,
+        'durationDays': durationDays,
+        'difficulty': difficulty,
+        'categoryId': categoryId,
+        'visibility': visibility,
+      },
+    );
+    return CustomChallenge.fromJson(res.data ?? {});
+  }
+
+  Future<List<CustomChallenge>> getMyCreatedChallenges() async {
+    return _apiCall(
+      () async {
+        final res = await _dio.get<List<dynamic>>('/custom-challenges/mine');
+        return (res.data ?? [])
+            .map((j) => CustomChallenge.fromJson(j as Map<String, dynamic>))
+            .toList();
+      },
+      () => const <CustomChallenge>[],
+    );
+  }
+
+  Future<void> inviteToChallenge(String challengeId, String email) async {
+    await _dio.post(
+      '/custom-challenges/$challengeId/invites',
+      data: {'email': email},
+    );
+  }
+
+  Future<List<IncomingInvite>> getMyInvites() async {
+    return _apiCall(
+      () async {
+        final res = await _dio.get<List<dynamic>>('/invites');
+        return (res.data ?? [])
+            .map((j) => IncomingInvite.fromJson(j as Map<String, dynamic>))
+            .toList();
+      },
+      () => const <IncomingInvite>[],
+    );
+  }
+
+  /// Returns the userChallengeId when the decision is ACCEPTED, null on
+  /// DECLINED.
+  Future<String?> respondToInvite(String inviteId, String decision) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/invites/$inviteId/respond',
+      data: {'decision': decision},
+    );
+    return res.data?['userChallengeId'] as String?;
+  }
 }

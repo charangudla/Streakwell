@@ -13,6 +13,9 @@ import '../../features/celebrations/presentation/challenge_complete_screen.dart'
 import '../../features/celebrations/presentation/day_complete_screen.dart';
 import '../../features/challenges/presentation/challenge_detail_screen.dart';
 import '../../features/challenges/presentation/favorites_screen.dart';
+import '../../features/custom_challenges/presentation/create_challenge_screen.dart';
+import '../../features/custom_challenges/presentation/invites_inbox_screen.dart';
+import '../../features/custom_challenges/presentation/my_created_challenges_screen.dart';
 import '../../features/checkins/presentation/daily_checkin_screen.dart';
 import '../../features/my_challenges/presentation/progress_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -201,6 +204,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/favorites',
         builder: (context, state) => const FavoritesScreen(),
+      ),
+      GoRoute(
+        path: '/create-challenge',
+        builder: (context, state) => const CreateChallengeScreen(),
+      ),
+      GoRoute(
+        path: '/my-created-challenges',
+        builder: (context, state) => const MyCreatedChallengesScreen(),
+      ),
+      GoRoute(
+        path: '/invites',
+        builder: (context, state) => const InvitesInboxScreen(),
       ),
     ],
   );

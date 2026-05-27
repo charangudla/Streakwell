@@ -318,6 +318,107 @@ class FavoriteEntry {
   }
 }
 
+class CustomChallenge {
+  const CustomChallenge({
+    required this.id,
+    required this.title,
+    required this.shortDescription,
+    required this.description,
+    required this.dailyTask,
+    required this.durationDays,
+    required this.difficulty,
+    required this.categoryId,
+    required this.visibility,
+    required this.inviteToken,
+    required this.isActive,
+    this.inviteCount = 0,
+    this.joinedCount = 0,
+  });
+
+  final String id;
+  final String title;
+  final String shortDescription;
+  final String description;
+  final String dailyTask;
+  final int durationDays;
+  final String difficulty;
+  final String categoryId;
+  /// 'PRIVATE' | 'PUBLIC'
+  final String visibility;
+  final String? inviteToken;
+  final bool isActive;
+  final int inviteCount;
+  final int joinedCount;
+
+  factory CustomChallenge.fromJson(Map<String, dynamic> json) {
+    return CustomChallenge(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      shortDescription: json['shortDescription'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      dailyTask: json['dailyTask'] as String? ?? '',
+      durationDays: json['durationDays'] as int? ?? 30,
+      difficulty: json['difficulty'] as String? ?? 'EASY',
+      categoryId: json['categoryId'] as String? ?? '',
+      visibility: json['visibility'] as String? ?? 'PRIVATE',
+      inviteToken: json['inviteToken'] as String?,
+      isActive: json['isActive'] as bool? ?? true,
+      inviteCount: json['inviteCount'] as int? ?? 0,
+      joinedCount: json['joinedCount'] as int? ?? 0,
+    );
+  }
+}
+
+class IncomingInvite {
+  const IncomingInvite({
+    required this.id,
+    required this.status,
+    required this.invitedEmail,
+    required this.invitedByName,
+    required this.challengeId,
+    required this.challengeTitle,
+    required this.challengeShortDescription,
+    required this.challengeDailyTask,
+    required this.challengeDurationDays,
+    this.challengeInviteToken,
+    required this.createdAt,
+  });
+
+  final String id;
+  /// 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  final String status;
+  final String invitedEmail;
+  final String invitedByName;
+  final String challengeId;
+  final String challengeTitle;
+  final String challengeShortDescription;
+  final String challengeDailyTask;
+  final int challengeDurationDays;
+  final String? challengeInviteToken;
+  final DateTime createdAt;
+
+  bool get isPending => status == 'PENDING';
+
+  factory IncomingInvite.fromJson(Map<String, dynamic> json) {
+    final challenge = json['challenge'] as Map<String, dynamic>? ?? {};
+    final invitedBy = json['invitedBy'] as Map<String, dynamic>? ?? {};
+    return IncomingInvite(
+      id: json['id'] as String,
+      status: json['status'] as String? ?? 'PENDING',
+      invitedEmail: json['invitedEmail'] as String? ?? '',
+      invitedByName: invitedBy['name'] as String? ?? 'A friend',
+      challengeId: challenge['id'] as String? ?? '',
+      challengeTitle: challenge['title'] as String? ?? '',
+      challengeShortDescription:
+          challenge['shortDescription'] as String? ?? '',
+      challengeDailyTask: challenge['dailyTask'] as String? ?? '',
+      challengeDurationDays: challenge['durationDays'] as int? ?? 30,
+      challengeInviteToken: challenge['inviteToken'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
+}
+
 class AchievementEntry {
   const AchievementEntry({
     required this.id,
