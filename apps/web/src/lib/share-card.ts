@@ -118,16 +118,8 @@ export async function generateShareCardBlob(
     opts.currentStreak,
   );
 
-  // Seeded RNG keyed on the user's state so the SAME card always
-  // renders with the SAME confetti pattern — re-generating doesn't
-  // shuffle the visual.
-  const rand = seededRandom(
-    latestCompletedDay * 1009 + opts.totalDays * 31 + opts.currentStreak,
-  );
-
   drawBackground(ctx, w, h);
   drawDecor(ctx, w, h);
-  drawConfetti(ctx, w, h, format, latestCompletedDay, milestone, rand);
 
   const render: RenderContext = {
     ctx,
@@ -746,163 +738,6 @@ function drawCheckBadge(
   ctx.restore();
 }
 
-// =========================================================================
-// Confetti — scattered shapes around the card border, more on milestones
-// =========================================================================
-
-type ConfettiShape = "circle" | "square" | "streamer" | "triangle" | "star";
-
-/**
- * Scatters confetti pieces around the card. Density grows with
- * progress (and jumps on milestones) so the visual energy of the
- * card matches what the user is celebrating: Day 1 is gentle, week
- * boundaries get a lot of pieces, completion is a full party.
- *
- * Pieces concentrate in the OUTER RING of the canvas — we reject any
- * placement that would fall in the central content rectangle — so the
- * confetti reads as celebration around the card without making the
- * title or stats hard to read.
- */
-function drawConfetti(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  format: ShareFormat,
-  latestCompletedDay: number,
-  milestone: Milestone | null,
-  rand: () => number,
-) {
-  if (latestCompletedDay <= 0 && !milestone) return;
-
-  // Density baseline scales with canvas area so Story doesn't feel
-  // sparser than Square.
-  const area = W * H;
-  const baseDensity = Math.round((area / 1_166_400) * 55);
-  let density = baseDensity;
-  if (milestone?.type === "week") density = Math.round(baseDensity * 1.8);
-  if (milestone?.type === "half") density = Math.round(baseDensity * 2.4);
-  if (milestone?.type === "complete")
-    density = Math.round(baseDensity * 3.2);
-
-  // Outer-ring band: confetti only outside the central content rect.
-  // The band gets wider on Story (more vertical breathing room).
-  const sidePad = format === "story" ? 60 : 50;
-  const innerLeft = sidePad;
-  const innerRight = W - sidePad;
-  const innerTop = 160;
-  const innerBottom = H - 160;
-
-  const baseColors = [
-    "#ffffff",
-    BRAND_100,
-    STREAK,
-    "#fbbf24",
-    BRAND_400,
-  ];
-  const partyColors = [
-    ...baseColors,
-    "#fda4af", // rose
-    "#a78bfa", // violet
-    "#60a5fa", // sky
-  ];
-  const palette = milestone ? partyColors : baseColors;
-
-  const shapes: ConfettiShape[] = [
-    "circle",
-    "circle",
-    "square",
-    "streamer",
-    "streamer",
-    "triangle",
-    "star",
-  ];
-
-  let placed = 0;
-  let attempts = 0;
-  const attemptCap = density * 8;
-  while (placed < density && attempts < attemptCap) {
-    attempts += 1;
-    const x = rand() * W;
-    const y = rand() * H;
-    // Reject if inside the central content rect — but always accept
-    // along the very top/bottom strips because that's where confetti
-    // looks most celebratory.
-    const inX = x > innerLeft && x < innerRight;
-    const inY = y > innerTop && y < innerBottom;
-    if (inX && inY) continue;
-
-    const shape = shapes[Math.floor(rand() * shapes.length)];
-    const color = palette[Math.floor(rand() * palette.length)];
-    const size = 8 + rand() * 18;
-    const rotation = rand() * Math.PI * 2;
-    drawConfettiPiece(ctx, x, y, shape, size, color, rotation);
-    placed += 1;
-  }
-
-  // Milestone corner starbursts — bigger sparkle accents in the four
-  // corners so the eye is drawn outward and the card feels framed by
-  // the celebration.
-  if (milestone) {
-    const cornerInset = format === "story" ? 110 : 90;
-    const starColor = milestone.type === "complete" ? "#fbbf24" : "#ffffff";
-    const starSize = format === "story" ? 38 : 30;
-    drawStar(ctx, cornerInset, cornerInset, 6, starSize, starSize * 0.4, starColor);
-    drawStar(ctx, W - cornerInset, cornerInset, 6, starSize, starSize * 0.4, starColor);
-    drawStar(ctx, cornerInset, H - cornerInset, 6, starSize, starSize * 0.4, starColor);
-    drawStar(ctx, W - cornerInset, H - cornerInset, 6, starSize, starSize * 0.4, starColor);
-  }
-}
-
-function drawConfettiPiece(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  shape: ConfettiShape,
-  size: number,
-  color: string,
-  rotation: number,
-) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
-  ctx.fillStyle = color;
-  // Soft shadow so confetti reads as foreground on the gradient bg
-  // rather than blending into it.
-  ctx.shadowColor = "rgba(0,0,0,0.18)";
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetY = 2;
-
-  switch (shape) {
-    case "circle":
-      ctx.beginPath();
-      ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    case "square":
-      ctx.fillRect(-size / 2, -size / 2, size, size);
-      break;
-    case "streamer": {
-      const sw = size * 2.6;
-      const sh = size * 0.36;
-      roundRect(ctx, -sw / 2, -sh / 2, sw, sh, sh / 2);
-      ctx.fill();
-      break;
-    }
-    case "triangle":
-      ctx.beginPath();
-      ctx.moveTo(0, -size / 2);
-      ctx.lineTo(size / 2, size / 2);
-      ctx.lineTo(-size / 2, size / 2);
-      ctx.closePath();
-      ctx.fill();
-      break;
-    case "star":
-      drawStar(ctx, 0, 0, 5, size / 2, size / 4, color);
-      break;
-  }
-  ctx.restore();
-}
-
 /** Filled N-point star centred at (cx, cy). */
 function drawStar(
   ctx: CanvasRenderingContext2D,
@@ -927,21 +762,6 @@ function drawStar(
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-}
-
-/**
- * mulberry32 — a tiny seeded PRNG. We seed with a hash of the user's
- * progress state so the same card always renders identical confetti
- * (no shuffle on re-generate).
- */
-function seededRandom(seed: number): () => number {
-  let s = seed | 0;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 function drawCtaBanner(
