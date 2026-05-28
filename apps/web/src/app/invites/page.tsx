@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { BackLink } from "@/components/BackLink";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import type { IncomingInvite } from "@/lib/web-types";
@@ -66,6 +67,7 @@ function Inner() {
   return (
     <section className="py-10 sm:py-12">
       <Container className="max-w-2xl">
+        <BackLink />
         <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           Challenge invites
         </h1>

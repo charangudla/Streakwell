@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { BackLink } from "@/components/BackLink";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
 import { UserProfileModal } from "@/components/UserProfileModal";
@@ -50,15 +50,16 @@ function FriendsInner() {
   const [viewing, setViewing] = useState<ViewedProfile>(null);
 
   /*
-   * NOTE: back button below uses a hard Link to /dashboard instead
-   * of router.back() — /friends is a hub page reachable from the
-   * header 👥 icon anywhere in the app, and router.back() created
-   * a loop:
+   * NOTE: the back link below is a <BackLink> with a hard fallback to
+   * /dashboard rather than router.back() — /friends is a hub page
+   * reachable from the header 👥 icon anywhere in the app, and
+   * router.back() created a loop:
    *   /friends → tap an accepted row → /users/[id]
    *   /users/[id] → "← Back" → /friends
    *   /friends → "← Back" → router.back() → /users/[id]   (LOOP)
-   * Going to /dashboard is the canonical "exit the friends surface"
-   * destination.
+   * /dashboard is the canonical "exit the friends surface" destination,
+   * except when the user arrived from /profile (?from=profile) — then
+   * BackLink sends them back to /profile instead.
    */
 
   const load = useCallback(async () => {
@@ -159,13 +160,8 @@ function FriendsInner() {
   return (
     <section className="py-8 sm:py-10">
       <Container className="max-w-2xl">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-        >
-          ← Dashboard
-        </Link>
-        <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+        <BackLink fallbackHref="/dashboard" fallbackLabel="Dashboard" />
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Challenge friends
         </h1>
         <p className="mt-1 text-sm text-ink-muted">

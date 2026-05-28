@@ -277,38 +277,38 @@ function ProfileInner() {
           <RowItem
             icon={<TrophyIcon />}
             label="Achievements"
-            href="/achievements"
+            href="/achievements?from=profile"
           />
           <Divider />
           <RowItem
             icon={<HeartIcon />}
             label="Saved challenges"
-            href="/favorites"
+            href="/favorites?from=profile"
           />
           <Divider />
           <RowItem
             icon={<FlagIcon />}
             label="Challenges you created"
-            href="/my-created-challenges"
+            href="/my-created-challenges?from=profile"
           />
           <Divider />
           <RowItem
             icon={<InboxIcon />}
             label="Challenge invites"
-            href="/invites"
+            href="/invites?from=profile"
           />
           <Divider />
           <RowItem
             icon={<UsersIcon />}
             label="Challenge friends"
-            href="/friends"
+            href="/friends?from=profile"
             hint="Manage requests + see your friends"
           />
           <Divider />
           <RowItem
             icon={<ShareIcon />}
             label="Invite friends"
-            href="/invite"
+            href="/invite?from=profile"
           />
         </SectionCard>
 
@@ -316,17 +316,29 @@ function ProfileInner() {
             lists, plus Privacy / Terms which the web has as routes but
             never linked from /profile before. */}
         <SectionCard title="Help & legal">
-          <RowItem icon={<HelpIcon />} label="Help & FAQ" href="/faq" />
+          <RowItem
+            icon={<HelpIcon />}
+            label="Help & FAQ"
+            href="/faq?from=profile"
+          />
           <Divider />
           <RowItem
             icon={<ShieldIcon />}
             label="Health disclaimer"
-            href="/health-disclaimer"
+            href="/health-disclaimer?from=profile"
           />
           <Divider />
-          <RowItem icon={<LockIcon />} label="Privacy policy" href="/privacy" />
+          <RowItem
+            icon={<LockIcon />}
+            label="Privacy policy"
+            href="/privacy?from=profile"
+          />
           <Divider />
-          <RowItem icon={<DocIcon />} label="Terms of service" href="/terms" />
+          <RowItem
+            icon={<DocIcon />}
+            label="Terms of service"
+            href="/terms?from=profile"
+          />
         </SectionCard>
 
         {/* Sign out — own card, berry/rose accent so it stands apart from

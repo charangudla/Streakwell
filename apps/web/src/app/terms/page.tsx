@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/BackLink";
 import { Container } from "@/components/Container";
 import { LegalArticle } from "@/components/LegalArticle";
 import { loadDocAsHtml } from "@/lib/markdown";
@@ -15,6 +16,7 @@ export default async function TermsPage() {
   return (
     <section className="py-16 sm:py-20">
       <Container className="max-w-3xl">
+        <BackLink />
         <h1 className="text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           Terms of service
         </h1>

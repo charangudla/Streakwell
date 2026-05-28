@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/BackLink";
 import { Container } from "@/components/Container";
 
 export const metadata: Metadata = {
@@ -68,6 +69,7 @@ export default function FaqPage() {
     <>
       <section className="bg-gradient-to-b from-brand-50 via-white to-white py-16 sm:py-20">
         <Container className="max-w-3xl text-center">
+          <BackLink />
           <h1 className="text-4xl font-bold tracking-tight text-ink sm:text-5xl">
             Frequently asked questions
           </h1>

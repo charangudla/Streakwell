@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { BackLink } from "@/components/BackLink";
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
@@ -50,6 +51,7 @@ function FavoritesInner() {
   return (
     <section className="py-10 sm:py-12">
       <Container className="max-w-3xl">
+        <BackLink />
         <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           Saved challenges
         </h1>
