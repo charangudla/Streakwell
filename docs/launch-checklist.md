@@ -160,7 +160,7 @@ These should land before the App Store submission, but won't block a closed beta
 
 - [ ] Attorney review of `/docs/{privacy-policy,terms-of-service,health-disclaimer}.md`
 - [ ] App Store screenshots (1290×2796 and 1170×2532) + Play Store screenshots
-- [ ] Real testimonials (replace the composite text on the landing page)
+- [x] Testimonials removed from the landing page (no fake/composite reviews — FTC). Add back only real, consented testimonials if desired.
 - [ ] Contact form backend (currently uses `mailto:`)
 - [ ] Push notifications (FCM/APNs — current notifications are local only)
 - [ ] Web admin restyle to the design system

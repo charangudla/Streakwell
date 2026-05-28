@@ -3,7 +3,6 @@ import { ButtonLink } from "@/components/Button";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { Container } from "@/components/Container";
 import { PhoneMockup } from "@/components/PhoneMockup";
-import { Testimonials } from "@/components/Testimonials";
 import { fetchChallenges } from "@/lib/api";
 import { APP_NAME, APP_TAGLINE, HEALTH_DISCLAIMER } from "@/lib/constants";
 import { FALLBACK_POPULAR_CHALLENGES } from "@/lib/fallback-challenges";
@@ -165,8 +164,6 @@ export default async function HomePage() {
           </div>
         </Container>
       </section>
-
-      <Testimonials />
 
       <section className="bg-surface-soft py-12">
         <Container>

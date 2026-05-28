@@ -68,7 +68,7 @@ Once the visual checks above pass, the platform is feature-complete for:
 
 Still owed before a public App Store listing:
 - Attorney review of `/docs/{privacy,terms,health-disclaimer}.md`
-- Real testimonials (replace composites on landing)
+- Testimonials removed from landing (no fake/composite reviews — FTC). Add back only real, consented ones if desired.
 - App Store screenshots + metadata
 - Contact form backend (currently `mailto:`)
 - Push notifications (FCM/APNs — only local notifications work today)
