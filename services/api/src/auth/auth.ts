@@ -235,8 +235,12 @@ export function createAuth(
     },
 
     // Enforce Vital30's password policy (upper + lower + number + symbol)
-    // before Better Auth ever hashes the credential. Runs on /sign-up/email
-    // and on /reset-password — the two paths that accept a new password.
+    // before Better Auth ever hashes the credential. Runs on the three
+    // paths that accept a new password: /sign-up/email (field `password`),
+    // and /reset-password + /change-password (field `newPassword`). The
+    // last one matters because a logged-in user changes their password
+    // through the in-app form (/change-password on the web) — without this
+    // they could set a weaker password than signup allows.
     hooks: {
       // createAuthMiddleware requires an async handler signature even when
       // the body has no actual awaits — validatePassword is sync. Disable
@@ -251,7 +255,7 @@ export function createAuth(
             throw new APIError('BAD_REQUEST', { message: result.reason });
           }
         }
-        if (path === '/reset-password') {
+        if (path === '/reset-password' || path === '/change-password') {
           const body = ctx.body as { newPassword?: unknown } | undefined;
           const result = validatePassword(body?.newPassword);
           if (!result.ok) {

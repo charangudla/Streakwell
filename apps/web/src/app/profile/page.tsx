@@ -214,10 +214,11 @@ function ProfileInner() {
           <RowItem
             icon={<KeyIcon />}
             label="Change password"
-            href="/forgot-password"
-            // /forgot-password works for logged-in users too — Better
-            // Auth emails the reset link to the address on file.
-            hint="We'll email you a reset link"
+            href="/change-password?from=profile"
+            // In-app current → new → confirm form (the logged-in
+            // counterpart to /forgot-password, which is still linked
+            // from there for people who can't sign in).
+            hint="Enter your current + a new password"
           />
           <Divider />
           {/* DISABLED — Username (read-only row) + Phone (editor)
