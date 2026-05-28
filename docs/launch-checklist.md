@@ -80,7 +80,15 @@ sudo certbot certonly --standalone \
   -d api.challenge.charangudla.com -d admin.challenge.charangudla.com
 ```
 
-Then update `deploy/nginx/prod.conf`: add `listen 443 ssl http2;` to each server block and mount `/etc/letsencrypt` into the Nginx container in `docker-compose.prod.yml`. Restart:
+The HTTPS config (`deploy/nginx/prod-ssl.conf`) and the `/etc/letsencrypt`
+mount are already in the repo. Once the certs above exist, just point nginx
+at the SSL config and restart — change this one line in
+`docker-compose.prod.yml` (nginx `volumes:`):
+
+```yaml
+#   - ./deploy/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro      # was
+    - ./deploy/nginx/prod-ssl.conf:/etc/nginx/conf.d/default.conf:ro  # now
+```
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d nginx

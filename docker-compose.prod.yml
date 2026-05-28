@@ -114,7 +114,13 @@ services:
       - "443:443"
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Active config. For HTTPS, switch this line to prod-ssl.conf AFTER
+      # certs are issued (see docs/launch-checklist.md):
+      #   - ./deploy/nginx/prod-ssl.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      # Let's Encrypt certs (read-only). Harmless before certs exist; the
+      # active prod.conf doesn't reference them — only prod-ssl.conf does.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - api
       - admin
