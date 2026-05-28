@@ -17,14 +17,12 @@ export default function ProfilePage() {
   );
 }
 
-type MeView = {
-  id: string;
-  name: string;
-  email: string;
-  username: string | null;
-  phone: string | null;
-  createdAt: string;
-};
+// NOTE — username + phone editing is DISABLED for now (matches the
+// signup form). The "/users/me" fetch, the username read-only row, and
+// the phone editor were removed from the Account section below. The
+// full version is in git at commit 75a778a; the backend GET/PATCH
+// /users/me endpoints + DB columns remain in place, just unused by
+// this page.
 
 function ProfileInner() {
   const router = useRouter();
@@ -41,18 +39,6 @@ function ProfileInner() {
 
   const [signingOut, setSigningOut] = useState(false);
 
-  // The Better Auth session.user doesn't carry our custom username +
-  // phone fields, so the profile page fetches /users/me for those.
-  // One extra round-trip on mount; treated as authoritative for
-  // editing those two fields.
-  const [me, setMe] = useState<MeView | null>(null);
-  const [phoneInput, setPhoneInput] = useState("");
-  const [phoneSaving, setPhoneSaving] = useState(false);
-  const [phoneSavedMessage, setPhoneSavedMessage] = useState<string | null>(
-    null,
-  );
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-
   // Pull just the counts the identity card needs. Same /user-challenges
   // endpoint the dashboard hits, so this is usually warm-cached by the
   // browser by the time the user lands here.
@@ -61,15 +47,8 @@ function ProfileInner() {
     let cancelled = false;
     (async () => {
       try {
-        const [rows, meRes] = await Promise.all([
-          apiClient<UserChallenge[]>("/user-challenges"),
-          apiClient<MeView>("/users/me"),
-        ]);
-        if (!cancelled) {
-          setUcs(rows);
-          setMe(meRes);
-          setPhoneInput(meRes.phone ?? "");
-        }
+        const rows = await apiClient<UserChallenge[]>("/user-challenges");
+        if (!cancelled) setUcs(rows);
       } catch {
         // Silent — profile page still works without the count tiles;
         // they just render as "—" until next reload.
@@ -104,36 +83,6 @@ function ProfileInner() {
     }
     setSavedMessage("Saved.");
     await refetch();
-  }
-
-  async function onSavePhone(e: React.FormEvent) {
-    e.preventDefault();
-    if (!me || phoneSaving) return;
-    const trimmed = phoneInput.trim();
-    if (trimmed === (me.phone ?? "")) {
-      setPhoneSavedMessage("Nothing to save.");
-      return;
-    }
-    setPhoneSaving(true);
-    setPhoneError(null);
-    setPhoneSavedMessage(null);
-    try {
-      const updated = await apiClient<MeView>("/users/me", {
-        method: "PATCH",
-        // Empty string CLEARS the phone server-side — see backend
-        // UsersService.updateMe.
-        body: { phone: trimmed },
-      });
-      setMe(updated);
-      setPhoneInput(updated.phone ?? "");
-      setPhoneSavedMessage(
-        updated.phone ? "Phone saved." : "Phone removed.",
-      );
-    } catch (e) {
-      setPhoneError((e as Error).message);
-    } finally {
-      setPhoneSaving(false);
-    }
   }
 
   async function onDelete() {
@@ -262,77 +211,10 @@ function ProfileInner() {
             hint="We'll email you a reset link"
           />
           <Divider />
-          {/* Username — read-only after signup. Editing handles
-              encourages link rot and squatting; we'll add a
-              cooldown-gated edit later. For now, set-it-once. */}
-          <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
-            <RowIconWrap>
-              <AtIcon />
-            </RowIconWrap>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink">
-                Username
-              </p>
-              <p className="truncate text-xs text-ink-muted">
-                {me?.username ? `@${me.username}` : "—"}
-              </p>
-            </div>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-              Read-only
-            </span>
-          </div>
-          <Divider />
-          {/* Phone — editable. Empty input + Save clears it. Validated
-              server-side (E.164) so format errors surface as
-              phoneError below. */}
-          <form
-            onSubmit={onSavePhone}
-            noValidate
-            className="px-5 py-4 sm:px-6"
-          >
-            <div className="flex items-center gap-3">
-              <RowIconWrap>
-                <PhoneIcon />
-              </RowIconWrap>
-              <label
-                htmlFor="phone"
-                className="flex-1 truncate text-sm font-semibold text-ink"
-              >
-                Phone
-              </label>
-            </div>
-            <input
-              id="phone"
-              type="tel"
-              value={phoneInput}
-              onChange={(e) => setPhoneInput(e.target.value)}
-              disabled={phoneSaving}
-              placeholder="+1 415 555 0123"
-              className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
-            />
-            <p className="mt-1 text-xs text-ink-muted">
-              International format (e.g. +14155551234). Saved to your
-              profile.
-            </p>
-            {phoneError ? (
-              <p className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-                {phoneError}
-              </p>
-            ) : null}
-            {phoneSavedMessage ? (
-              <p className="mt-2 text-xs font-semibold text-brand-700">
-                {phoneSavedMessage}
-              </p>
-            ) : null}
-            <button
-              type="submit"
-              disabled={phoneSaving}
-              className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-brand-500 px-4 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
-            >
-              {phoneSaving ? "Saving…" : "Save phone"}
-            </button>
-          </form>
-          <Divider />
+          {/* DISABLED — Username (read-only row) + Phone (editor)
+              lived here, between Change password and Email. Restore
+              from commit 75a778a along with the /users/me fetch +
+              onSavePhone handler. */}
           <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
             <RowIconWrap>
               <MailIcon />
@@ -609,21 +491,6 @@ function KeyIcon() {
       <circle cx="8" cy="15" r="4" />
       <path d="m21 2-9.6 9.6" />
       <path d="m15.5 7.5 3 3L22 7l-3-3" />
-    </svg>
-  );
-}
-function AtIcon() {
-  return (
-    <svg {...ICON_PROPS}>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
-    </svg>
-  );
-}
-function PhoneIcon() {
-  return (
-    <svg {...ICON_PROPS}>
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }
