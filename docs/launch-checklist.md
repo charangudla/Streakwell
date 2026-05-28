@@ -8,12 +8,12 @@ A single-page production launch flow. Tick each box top-to-bottom — order matt
 
 ## Pre-flight — once per project, ahead of time
 
-- [ ] Domain registered (vital30.com) and DNS panel accessible
+- [ ] Domain registered (challenge.charangudla.com) and DNS panel accessible
 - [ ] Hostinger KVM 4 VPS provisioned, Ubuntu 22.04/24.04
 - [ ] SSH key uploaded; root password login disabled
 - [ ] UFW configured to allow only 22, 80, 443
 - [ ] Docker + Docker Compose installed (`docker --version`, `docker compose version`)
-- [ ] Resend account created at https://resend.com; sending domain `vital30.com` verified
+- [ ] Resend account created at https://resend.com; sending domain `challenge.charangudla.com` verified
 
 ---
 
@@ -32,7 +32,7 @@ Add **four A records** in the domain registrar, each pointing to the VPS IP:
 
 Wait for propagation. Verify:
 ```bash
-for h in vital30.com www.vital30.com api.vital30.com admin.vital30.com; do
+for h in challenge.charangudla.com www.challenge.charangudla.com api.challenge.charangudla.com admin.challenge.charangudla.com; do
   printf "%-25s %s\n" "$h" "$(dig +short $h | head -1)"
 done
 ```
@@ -65,9 +65,9 @@ Script validates `.env`, builds all images, starts the stack, runs migrations, a
 
 Smoke test:
 ```bash
-curl http://api.vital30.com/health             # → {"status":"ok",...}
-curl -I http://vital30.com/                    # → 200
-curl -I http://admin.vital30.com/              # → 200
+curl http://api.challenge.charangudla.com/health             # → {"status":"ok",...}
+curl -I http://challenge.charangudla.com/                    # → 200
+curl -I http://admin.challenge.charangudla.com/              # → 200
 ```
 
 ### 4. SSL via Let's Encrypt
@@ -76,8 +76,8 @@ curl -I http://admin.vital30.com/              # → 200
 docker compose -f docker-compose.prod.yml stop nginx
 sudo apt install -y certbot
 sudo certbot certonly --standalone \
-  -d vital30.com -d www.vital30.com \
-  -d api.vital30.com -d admin.vital30.com
+  -d challenge.charangudla.com -d www.challenge.charangudla.com \
+  -d api.challenge.charangudla.com -d admin.challenge.charangudla.com
 ```
 
 Then update `deploy/nginx/prod.conf`: add `listen 443 ssl http2;` to each server block and mount `/etc/letsencrypt` into the Nginx container in `docker-compose.prod.yml`. Restart:
@@ -88,9 +88,9 @@ docker compose -f docker-compose.prod.yml up -d nginx
 
 Verify:
 ```bash
-curl -I https://vital30.com/
-curl -I https://api.vital30.com/health
-curl -I https://admin.vital30.com/
+curl -I https://challenge.charangudla.com/
+curl -I https://api.challenge.charangudla.com/health
+curl -I https://admin.challenge.charangudla.com/
 ```
 All three should return 200 with a valid TLS cert (no `-k` needed).
 
@@ -105,17 +105,17 @@ sudo crontab -e
 
 ### 6. Smoke test the app end-to-end
 
-- [ ] `https://vital30.com` loads, hero + popular challenges render
+- [ ] `https://challenge.charangudla.com` loads, hero + popular challenges render
 - [ ] `/challenges`, `/categories`, `/faq`, `/privacy` all 200
-- [ ] `https://admin.vital30.com` loads (login flow if implemented)
-- [ ] Register a real user via the mobile app pointed at `https://api.vital30.com`
+- [ ] `https://admin.challenge.charangudla.com` loads (login flow if implemented)
+- [ ] Register a real user via the mobile app pointed at `https://api.challenge.charangudla.com`
 - [ ] Check Resend dashboard — verification email was delivered
 - [ ] Complete a check-in → notification appears in inbox → achievement awarded
 - [ ] Visit `/sitemap.xml` and confirm it lists all challenge URLs
 
 ### 7. App Store / Play Store
 
-- [ ] Update `apps/mobile/assets/env/production.env`: `API_BASE_URL=https://api.vital30.com`
+- [ ] Update `apps/mobile/assets/env/production.env`: `API_BASE_URL=https://api.challenge.charangudla.com`
 - [ ] `flutter build ipa --release` (iOS) / `flutter build appbundle --release` (Android)
 - [ ] Upload via Transporter / Play Console (see [app-store-submission.md](./app-store-submission.md))
 

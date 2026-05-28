@@ -64,4 +64,4 @@ If you are experiencing a life-threatening medical emergency or feel you are in 
 
 ## 7. Contact Support
 
-For non-medical questions or suggestions about our app's safety resources, you can reach our support team at [support@vital30.com](mailto:support@vital30.com). Vital30 is operated by **Prodigi Solutions LLC**.
+For non-medical questions or suggestions about our app's safety resources, you can reach our support team at [support@challenge.charangudla.com](mailto:support@challenge.charangudla.com). Vital30 is operated by **Prodigi Solutions LLC**.

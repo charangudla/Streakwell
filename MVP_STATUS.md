@@ -74,7 +74,7 @@ sign-up, sign-in, sign-out, request-password-reset, reset-password, send-verific
 
 **Authenticated (wrapped in `<AuthGuard>`):** `/dashboard`, `/my-challenges`, `/my-challenges/[id]/checkin`, `/my-challenges/[id]/progress`, `/notifications`, `/achievements`, `/favorites`, `/invite`, `/profile`.
 
-**Auth architecture:** Better Auth React client. Dev uses Next.js rewrites so cookies are first-party. Prod uses cross-subdomain cookies (`Domain=.vital30.com; SameSite=Lax; Secure`) via the API's `COOKIE_DOMAIN` env var.
+**Auth architecture:** Better Auth React client. Dev uses Next.js rewrites so cookies are first-party. Prod uses cross-subdomain cookies (`Domain=.challenge.charangudla.com; SameSite=Lax; Secure`) via the API's `COOKIE_DOMAIN` env var.
 
 **PWA-installable:** web manifest + dynamic icons + InstallPrompt component (Chrome `beforeinstallprompt` + iOS Safari "Add to Home Screen" hint).
 

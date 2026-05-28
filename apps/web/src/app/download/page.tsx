@@ -48,7 +48,7 @@ export default function DownloadPage() {
           <p className="mt-8 text-sm text-ink-muted">
             Want to be notified at launch?{" "}
             <a
-              href="mailto:hello@vital30.com?subject=Vital30%20launch%20notification"
+              href="mailto:hello@challenge.charangudla.com?subject=Vital30%20launch%20notification"
               className="font-semibold text-brand-700 hover:text-brand-800"
             >
               Email us

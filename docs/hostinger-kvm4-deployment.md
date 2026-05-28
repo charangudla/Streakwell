@@ -15,9 +15,9 @@ Our architecture isolates database layers and exposes only static and reverse-pr
 - **Databases**: PostgreSQL (`5432`) and Redis (`6379`) do **not** map any public ports and are completely isolated.
 
 Four subdomains are served by the same VPS:
-- `vital30.com` + `www.vital30.com` → Next.js public site
-- `api.vital30.com` → NestJS API (with `/api/auth/*` owned by Better Auth)
-- `admin.vital30.com` → React admin SPA
+- `challenge.charangudla.com` + `www.challenge.charangudla.com` → Next.js public site
+- `api.challenge.charangudla.com` → NestJS API (with `/api/auth/*` owned by Better Auth)
+- `admin.challenge.charangudla.com` → React admin SPA
 
 ---
 
@@ -141,9 +141,9 @@ docker compose version
    > - **`POSTGRES_PASSWORD`** — `openssl rand -base64 24`. Update **both**
    >   `POSTGRES_PASSWORD` and the password embedded in `DATABASE_URL`.
    > - **`RESEND_API_KEY`** — get from https://resend.com/api-keys.
-   >   Verify your sending domain (`vital30.com`) in the Resend dashboard
+   >   Verify your sending domain (`challenge.charangudla.com`) in the Resend dashboard
    >   before sending production email.
-   > - **`BETTER_AUTH_URL`** — leave as `https://api.vital30.com` once DNS
+   > - **`BETTER_AUTH_URL`** — leave as `https://api.challenge.charangudla.com` once DNS
    >   + SSL are live. Password-reset email links use this.
    > - **`CORS_ORIGIN`** — must include every public origin (web, www, admin).
    > - **`NEXT_PUBLIC_*`** + **`VITE_API_BASE_URL`** — baked into the web
@@ -164,10 +164,10 @@ Point your domains to your Hostinger VPS public IP. Add **four** A records in yo
 
 Wait for DNS to propagate (often a few minutes; up to 1 hour). Verify with:
 ```bash
-dig +short vital30.com
-dig +short www.vital30.com
-dig +short api.vital30.com
-dig +short admin.vital30.com
+dig +short challenge.charangudla.com
+dig +short www.challenge.charangudla.com
+dig +short api.challenge.charangudla.com
+dig +short admin.challenge.charangudla.com
 ```
 All four should return your VPS IP before continuing to SSL.
 
@@ -209,10 +209,10 @@ Once DNS has propagated, obtain a secure, free SSL certificate using Let's Encry
 3. Obtain certificates for **all four** hostnames in one shot (single cert covers everything):
    ```bash
    sudo certbot certonly --standalone \
-     -d vital30.com -d www.vital30.com \
-     -d api.vital30.com -d admin.vital30.com
+     -d challenge.charangudla.com -d www.challenge.charangudla.com \
+     -d api.challenge.charangudla.com -d admin.challenge.charangudla.com
    ```
-   *Certificates will be saved under `/etc/letsencrypt/live/vital30.com/` (the cert path uses the first `-d` value as the lineage name).*
+   *Certificates will be saved under `/etc/letsencrypt/live/challenge.charangudla.com/` (the cert path uses the first `-d` value as the lineage name).*
 
 4. Add cert auto-renewal cron (Certbot installs a systemd timer on Ubuntu by default; verify with `systemctl list-timers | grep certbot`).
 
@@ -233,16 +233,16 @@ Update `/opt/vital30/deploy/nginx/prod.conf` to handle SSL:
 ```text
 server {
     listen 80;
-    server_name api.vital30.com admin.vital30.com;
+    server_name api.challenge.charangudla.com admin.challenge.charangudla.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name api.vital30.com;
+    server_name api.challenge.charangudla.com;
 
-    ssl_certificate /etc/letsencrypt/live/api.vital30.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.vital30.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.challenge.charangudla.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.challenge.charangudla.com/privkey.pem;
 
     location / {
         proxy_pass http://vital30_api;

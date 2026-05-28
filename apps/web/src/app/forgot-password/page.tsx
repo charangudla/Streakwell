@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
       // Better Auth uses this to build the link inside the reset email.
       redirectTo:
         typeof window === "undefined"
-          ? "https://vital30.com/reset-password"
+          ? "https://challenge.charangudla.com/reset-password"
           : `${window.location.origin}/reset-password`,
     });
     if (err) {

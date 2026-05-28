@@ -32,12 +32,12 @@ export async function adminLogin(email: string, password: string) {
   } catch (error) {
     console.warn('Auth API failed, executing fallback matching...', error);
     // Simulate validation
-    if (email === 'superadmin@vital30.com' && password === 'Vital30AdminSecured!') {
+    if (email === 'superadmin@challenge.charangudla.com' && password === 'Vital30AdminSecured!') {
       return {
         token: 'mock-jwt-token-abcd',
         user: {
           id: 'usr-6',
-          email: 'superadmin@vital30.com',
+          email: 'superadmin@challenge.charangudla.com',
           name: 'Vital30 Super Admin',
           role: 'SUPER_ADMIN' as const,
           isActive: true,

@@ -58,7 +58,7 @@ const auth = betterAuth({
   },
 });
 
-const TEST_EMAIL = 'milestone-tester@vital30.com';
+const TEST_EMAIL = 'milestone-tester@challenge.charangudla.com';
 const TEST_PASSWORD = 'TesterVital30!';
 const TEST_NAME = 'Milestone Tester';
 
@@ -72,7 +72,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * appear in each other's Members sheet.
  *
  * Friendships are seeded against the primary tester so opening the
- * Members sheet as `milestone-tester@vital30.com` shows ALL FOUR
+ * Members sheet as `milestone-tester@challenge.charangudla.com` shows ALL FOUR
  * friend-button states in a single screen:
  *   alice    ACCEPTED         → "✓ Friend"
  *   bob      pending_received → "Accept ✓"  (he sent you a request)
@@ -99,7 +99,7 @@ interface CompanionSpec {
 
 const COMPANIONS: CompanionSpec[] = [
   {
-    email: 'alice@vital30.com',
+    email: 'alice@challenge.charangudla.com',
     password: TEST_PASSWORD,
     name: 'Alice Companion',
     username: 'alice',
@@ -108,7 +108,7 @@ const COMPANIONS: CompanionSpec[] = [
     friendshipWithTester: { kind: 'ACCEPTED' },
   },
   {
-    email: 'bob@vital30.com',
+    email: 'bob@challenge.charangudla.com',
     password: TEST_PASSWORD,
     name: 'Bob Companion',
     username: 'bob',
@@ -117,7 +117,7 @@ const COMPANIONS: CompanionSpec[] = [
     friendshipWithTester: { kind: 'PENDING_FROM_THEM' },
   },
   {
-    email: 'charlie@vital30.com',
+    email: 'charlie@challenge.charangudla.com',
     password: TEST_PASSWORD,
     name: 'Charlie Companion',
     username: 'charlie',
@@ -126,7 +126,7 @@ const COMPANIONS: CompanionSpec[] = [
     friendshipWithTester: { kind: 'PENDING_FROM_TESTER' },
   },
   {
-    email: 'diana@vital30.com',
+    email: 'diana@challenge.charangudla.com',
     password: TEST_PASSWORD,
     name: 'Diana Companion',
     username: 'diana',
@@ -683,16 +683,16 @@ async function main() {
     '   • Chat header: "5 members" + summary chips (✓ ✗ ⌀ ◯) → tap "Members" → all 4 friend states visible',
   );
   console.log(
-    '   • Tap "+ Add friend" on Diana → sign in as diana@vital30.com → /friends → Accept → log back in as tester to see "✓ Friend"',
+    '   • Tap "+ Add friend" on Diana → sign in as diana@challenge.charangudla.com → /friends → Accept → log back in as tester to see "✓ Friend"',
   );
   console.log(
     '   • Tap "Accept ✓" on Bob in members sheet → friend request resolved without leaving chat',
   );
   console.log(
-    '   • Tap "Invite" next to Alice (already friend) → pick one of your custom challenges → sign in as alice@vital30.com → /invites → accept',
+    '   • Tap "Invite" next to Alice (already friend) → pick one of your custom challenges → sign in as alice@challenge.charangudla.com → /invites → accept',
   );
   console.log(
-    '   • Sign in as charlie@vital30.com → /friends → see milestone-tester\'s incoming request → accept or decline',
+    '   • Sign in as charlie@challenge.charangudla.com → /friends → see milestone-tester\'s incoming request → accept or decline',
   );
 }
 

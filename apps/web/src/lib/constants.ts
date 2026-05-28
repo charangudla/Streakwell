@@ -8,4 +8,4 @@ export const API_BASE_URL =
 export const HEALTH_DISCLAIMER =
   "Vital30 provides general wellness and habit-building guidance only. It is not medical advice and does not replace care from a qualified healthcare professional. If you have a medical condition, are pregnant, take medication, or experience concerning symptoms, consult a healthcare professional.";
 
-export const CONTACT_EMAIL = "hello@vital30.com";
+export const CONTACT_EMAIL = "hello@challenge.charangudla.com";

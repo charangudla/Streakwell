@@ -56,7 +56,7 @@ export class PublicContactService {
         dto.message,
         '',
         '---',
-        'Sent via the vital30.com contact form.',
+        'Sent via the challenge.charangudla.com contact form.',
       ]
         .filter((line) => line !== null)
         .join('\n'),

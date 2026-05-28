@@ -770,7 +770,7 @@ function drawCtaBanner(
   y: number,
   w: number,
 ) {
-  // Pill banner that draws the eye to vital30.com. Story format only —
+  // Pill banner that draws the eye to challenge.charangudla.com. Story format only —
   // square + portrait rely on the footer for the URL since space is
   // tighter.
   const h = 96;
@@ -782,7 +782,7 @@ function drawCtaBanner(
   ctx.font = `800 36px ${FONT_STACK}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("Join me at vital30.com", x + w / 2, y + h / 2 + 2);
+  ctx.fillText("Join me at challenge.charangudla.com", x + w / 2, y + h / 2 + 2);
 }
 
 function drawFooter(
@@ -795,7 +795,7 @@ function drawFooter(
   ctx.font = `600 20px ${FONT_STACK}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
-  ctx.fillText("vital30.com", x, y);
+  ctx.fillText("challenge.charangudla.com", x, y);
 
   ctx.fillStyle = "rgba(255,255,255,0.7)";
   ctx.font = `500 18px ${FONT_STACK}`;

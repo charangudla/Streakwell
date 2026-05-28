@@ -61,7 +61,7 @@ const ORGANIZATION_LD = {
   contactPoint: [
     {
       "@type": "ContactPoint",
-      email: "hello@vital30.com",
+      email: "hello@challenge.charangudla.com",
       contactType: "customer support",
       availableLanguage: ["English"],
     },

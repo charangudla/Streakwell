@@ -80,7 +80,7 @@ export function LoginPage() {
               }`}
               id="email"
               name="email"
-              placeholder="e.g. superadmin@vital30.com"
+              placeholder="e.g. superadmin@challenge.charangudla.com"
               onChange={(event) => setEmail(event.target.value)}
               type="email"
               value={email}
@@ -134,7 +134,7 @@ export function LoginPage() {
 
         <div className="mt-6 flex flex-col gap-3 text-center border-t border-slate-800/50 pt-5">
           <p className="text-xs text-slate-500">
-            For local testing, use: <span className="font-mono text-emerald-400">superadmin@vital30.com</span>
+            For local testing, use: <span className="font-mono text-emerald-400">superadmin@challenge.charangudla.com</span>
             <br />
             with: <span className="font-mono text-emerald-400">Vital30AdminSecured!</span>
           </p>

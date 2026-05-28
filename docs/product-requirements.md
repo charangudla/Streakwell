@@ -264,7 +264,7 @@ erDiagram
 * **Token Storage**: Hashed and stored in iOS Keychain / Android Keystore using `flutter_secure_storage` on mobile devices.
 * **Network Encryption**: 100% of external traffic encrypted in transit via SSL/TLS (`https` for API, `wss` for secure sockets) behind hard-coded Nginx proxies.
 * **Database Isolation**: PostgreSQL and Redis services are locked inside local Docker networks, exposing zero external ports to the public internet. Access is restricted to internal api containers.
-* **Cross-Origin Security**: NestJS CORS filters explicitly restrict origins to `admin.vital30.com` and the mobile app's API client wrappers.
+* **Cross-Origin Security**: NestJS CORS filters explicitly restrict origins to `admin.challenge.charangudla.com` and the mobile app's API client wrappers.
 
 ---
 

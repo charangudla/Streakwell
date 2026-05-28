@@ -10,7 +10,7 @@ How `apps/mobile` (Flutter) talks to `services/api` (NestJS + Better Auth). Read
 
 - **Transport:** REST over HTTPS in production, HTTP over LAN in dev.
 - **Auth scheme:** Bearer token. The mobile reads it from the JSON body of sign-up / sign-in responses, stores it in iOS Keychain / Android Keystore via `flutter_secure_storage`, and attaches it to every subsequent request via a Dio interceptor.
-- **Base URL:** `--dart-define=API_BASE_URL=https://api.vital30.com` (or your LAN IP in dev). See [local-development.md](local-development.md) for the simulator-vs-physical-device gotchas.
+- **Base URL:** `--dart-define=API_BASE_URL=https://api.challenge.charangudla.com` (or your LAN IP in dev). See [local-development.md](local-development.md) for the simulator-vs-physical-device gotchas.
 - **No cookies on mobile.** Better Auth also issues a `Set-Cookie` for web clients; Dio on iOS/Android ignores them and uses the bearer token exclusively.
 
 ---
@@ -135,9 +135,9 @@ Right now Vital30 uses **paste-the-code**: Better Auth includes both a URL and a
 
 If we later want **tap-to-open-app** (deep linking):
 
-1. iOS: set up [Universal Links](https://developer.apple.com/ios/universal-links/) with an Apple App Site Association file hosted at `https://vital30.com/.well-known/apple-app-site-association`.
+1. iOS: set up [Universal Links](https://developer.apple.com/ios/universal-links/) with an Apple App Site Association file hosted at `https://challenge.charangudla.com/.well-known/apple-app-site-association`.
 2. Android: set up [App Links](https://developer.android.com/training/app-links) with the equivalent assetlinks.json.
-3. Configure Better Auth's `emailAndPassword.resetPasswordRedirectURL` to a route like `https://vital30.com/auth/reset?token=...` — the universal link will intercept this and open the Flutter app with the token in the URL.
+3. Configure Better Auth's `emailAndPassword.resetPasswordRedirectURL` to a route like `https://challenge.charangudla.com/auth/reset?token=...` — the universal link will intercept this and open the Flutter app with the token in the URL.
 4. Flutter route handler reads the token from the URI and pre-fills the New Password screen.
 
 That's a half-day-to-day of work and only worth it once the app is in TestFlight and we want to optimise UX. Until then, paste-the-code is fine.

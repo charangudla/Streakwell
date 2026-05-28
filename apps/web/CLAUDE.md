@@ -6,7 +6,7 @@
 
 **UPDATED 2026-05-26 PM: scope expanded from marketing-only to full app parity.**
 
-This is the public site at `vital30.com`. Users can sign up + use Vital30
+This is the public site at `challenge.charangudla.com`. Users can sign up + use Vital30
 fully in the browser, then optionally download the mobile app and sign in
 with the same account. Marketing pages stay public + indexable; the
 authenticated app surface is gated behind `<AuthGuard>`.
@@ -51,15 +51,15 @@ authenticated app surface is gated behind `<AuthGuard>`.
 
 - `src/lib/auth-client.ts` — Better Auth React client. baseURL is the
   website's own origin (`http://localhost:3001/api/auth` in dev,
-  `https://api.vital30.com/api/auth` in prod).
+  `https://api.challenge.charangudla.com/api/auth` in prod).
 - Dev: Next.js rewrites in `next.config.ts` proxy `/api/auth/*` →
   `http://localhost:3000/api/auth/*` and `/api/proxy/*` →
   `http://localhost:3000/*`. Browser sees same-origin requests → session
   cookie is first-party, no CORS preflight, no SameSite=None.
-- Prod: API sets cookie with `Domain=.vital30.com; SameSite=Lax; Secure`
+- Prod: API sets cookie with `Domain=.challenge.charangudla.com; SameSite=Lax; Secure`
   via Better Auth's `crossSubDomainCookies` config (gated on the API's
-  `COOKIE_DOMAIN` env var). Browser at `vital30.com` sends the cookie to
-  `api.vital30.com` naturally.
+  `COOKIE_DOMAIN` env var). Browser at `challenge.charangudla.com` sends the cookie to
+  `api.challenge.charangudla.com` naturally.
 - `<AuthGuard>` wraps every authenticated page. Checks `useSession()`,
   redirects unauthed users to `/login?next=<current>`.
 
@@ -117,10 +117,10 @@ The Markdown source of truth is `/docs/{privacy-policy,terms-of-service,health-d
 
 ## Deploy
 
-- Production domain: `vital30.com` (+ `www.` redirect)
-- Container in `docker-compose.prod.yml`; nginx in `deploy/nginx/prod.conf` proxies vital30.com to the web container.
-- SSL via Let's Encrypt — issue **one SAN cert** for `vital30.com`, `www.vital30.com`, `api.vital30.com`, `admin.vital30.com`.
+- Production domain: `challenge.charangudla.com` (+ `www.` redirect)
+- Container in `docker-compose.prod.yml`; nginx in `deploy/nginx/prod.conf` proxies challenge.charangudla.com to the web container.
+- SSL via Let's Encrypt — issue **one SAN cert** for `challenge.charangudla.com`, `www.challenge.charangudla.com`, `api.challenge.charangudla.com`, `admin.challenge.charangudla.com`.
 - Env vars to set in production `.env`:
-  - `NEXT_PUBLIC_SITE_URL=https://vital30.com`
-  - `NEXT_PUBLIC_API_BASE_URL=https://api.vital30.com`
-  - On the API side, `COOKIE_DOMAIN=.vital30.com` and CORS_ORIGIN include all three subdomains
+  - `NEXT_PUBLIC_SITE_URL=https://challenge.charangudla.com`
+  - `NEXT_PUBLIC_API_BASE_URL=https://api.challenge.charangudla.com`
+  - On the API side, `COOKIE_DOMAIN=.challenge.charangudla.com` and CORS_ORIGIN include all three subdomains

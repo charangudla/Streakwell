@@ -67,7 +67,7 @@ export default function ShareLandingPage({ params }: PageProps) {
           href="/"
           className="mt-4 inline-block text-sm font-semibold text-brand-700"
         >
-          Go to vital30.com →
+          Go to challenge.charangudla.com →
         </Link>
       </Container>
     );

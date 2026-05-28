@@ -82,5 +82,5 @@ We may also revise these Terms from time to time. If we make material changes, w
 If you have any questions or feedback regarding these Terms, please contact us at:
 
 * **Company:** Prodigi Solutions LLC
-* **Email:** [support@vital30.com](mailto:support@vital30.com)
+* **Email:** [support@challenge.charangudla.com](mailto:support@challenge.charangudla.com)
 * **Postal address:** [REGISTERED ADDRESS]

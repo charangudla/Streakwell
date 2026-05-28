@@ -62,7 +62,7 @@ To sign your release bundle in a production environment:
 1. **Create Application**: Set type as **App**, category as **Free**, and default language.
 2. **Data Safety Form**:
    * Vital30 collects Account details (Name, Email) and App Activity (Habit check-ins, challenge joins).
-   * State that all data is encrypted in transit and users can request account deletion (deletion link: `https://vital30.com/delete-account`).
+   * State that all data is encrypted in transit and users can request account deletion (deletion link: `https://challenge.charangudla.com/delete-account`).
    * Declare that **no data is shared with third parties** and **no data is sold**.
 3. **Age Rating**:
    * Complete the questionnaire. Vital30 is classified as **3+ (PEGI)** or **Everyone (ESRB)** because it contains no offensive materials or adult content.
@@ -85,7 +85,7 @@ To sign your release bundle in a production environment:
 1. **App Metadata**:
    * **Title**: Vital30
    * **Subtitle**: 30-Day Wellness Habit Tracker (must not contain keywords that violate guidelines).
-   * **Privacy Policy URL**: Link to a public host displaying the exact text of `docs/privacy-policy.md` (e.g., `https://vital30.com/privacy`).
+   * **Privacy Policy URL**: Link to a public host displaying the exact text of `docs/privacy-policy.md` (e.g., `https://challenge.charangudla.com/privacy`).
 2. **Age Rating**:
    * Vital30 has no objectionable content, but because it tracks personal health habits and general fitness, select **4+**.
 3. **App Privacy (Data Collection)**:
@@ -105,12 +105,12 @@ Wellness and habit-tracking apps face close scrutiny from Apple and Google revie
 ### 2. Lack of Public Privacy Policy & Deletion Link
 > [!WARNING]
 > Both Apple (Guideline 5.1.1) and Google require a publicly accessible Privacy Policy URL. They also require an in-app option or web link allowing users to request complete account deletion.
-* **Mitigation**: Publish the content of `docs/privacy-policy.md` to `https://vital30.com/privacy` and support an "Account Deletion" option in the profile settings that deletes user records from PostgreSQL database.
+* **Mitigation**: Publish the content of `docs/privacy-policy.md` to `https://challenge.charangudla.com/privacy` and support an "Account Deletion" option in the profile settings that deletes user records from PostgreSQL database.
 
 ### 3. Missing Test Accounts for App Reviewers
 > [!IMPORTANT]
 > If reviewers cannot log in to inspect the main app features because your sign-up or login requires an active server or invitation, the build will be rejected.
-* **Mitigation**: Provide a pre-configured, valid test account (e.g., username: `tester@vital30.com` / password: `Password123!`) in the App Store Connect and Google Play Console App Access Credentials fields.
+* **Mitigation**: Provide a pre-configured, valid test account (e.g., username: `tester@challenge.charangudla.com` / password: `Password123!`) in the App Store Connect and Google Play Console App Access Credentials fields.
 
 ---
 

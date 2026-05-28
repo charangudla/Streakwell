@@ -114,6 +114,6 @@ export class ReferralsService {
   }
 
   private buildShareText(name: string, code: string): string {
-    return `${name} is on Vital30. Join with code ${code} — pick a 30-day wellness challenge and check in daily. https://vital30.com/download`;
+    return `${name} is on Vital30. Join with code ${code} — pick a 30-day wellness challenge and check in daily. https://challenge.charangudla.com/download`;
   }
 }

@@ -117,7 +117,7 @@ describe('ProtectedRoute Behavior', () => {
 
   it('renders child components for authenticated users with allowed roles', () => {
     mockedUseAuth.mockReturnValue({
-      user: { id: '1', email: 'admin@vital30.com', name: 'Admin', role: 'ADMIN' },
+      user: { id: '1', email: 'admin@challenge.charangudla.com', name: 'Admin', role: 'ADMIN' },
       token: 'jwt-token',
       isAuthenticated: true,
       isLoading: false,
@@ -141,7 +141,7 @@ describe('ProtectedRoute Behavior', () => {
 
   it('redirects to /404 if authenticated user does not have allowed role', () => {
     mockedUseAuth.mockReturnValue({
-      user: { id: '1', email: 'user@vital30.com', name: 'User', role: 'USER' },
+      user: { id: '1', email: 'user@challenge.charangudla.com', name: 'User', role: 'USER' },
       token: 'jwt-token',
       isAuthenticated: true,
       isLoading: false,

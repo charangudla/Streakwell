@@ -52,7 +52,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "How do I delete my account?",
-    a: "In the mobile app: Profile → Edit Profile → Delete Account. This permanently removes your account, challenges, check-ins, and share events. You can also email hello@vital30.com with the subject ‘Data Deletion Request’.",
+    a: "In the mobile app: Profile → Edit Profile → Delete Account. This permanently removes your account, challenges, check-ins, and share events. You can also email hello@challenge.charangudla.com with the subject ‘Data Deletion Request’.",
   },
   {
     q: "Why is the website read-only?",
@@ -60,7 +60,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "When does the app launch?",
-    a: "Submission to the App Store and Google Play is in progress. Email hello@vital30.com to be notified at launch.",
+    a: "Submission to the App Store and Google Play is in progress. Email hello@challenge.charangudla.com to be notified at launch.",
   },
 ];
 
@@ -76,10 +76,10 @@ export default function FaqPage() {
           <p className="mt-4 text-base text-ink-muted sm:text-lg">
             The short version. If something is missing, email{" "}
             <a
-              href="mailto:hello@vital30.com"
+              href="mailto:hello@challenge.charangudla.com"
               className="font-semibold text-brand-700 hover:text-brand-800"
             >
-              hello@vital30.com
+              hello@challenge.charangudla.com
             </a>
             .
           </p>

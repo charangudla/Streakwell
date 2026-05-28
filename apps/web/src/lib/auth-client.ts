@@ -7,8 +7,8 @@ import { createAuthClient } from "better-auth/react";
  *   that to `http://localhost:3000/api/auth/*`. The browser sees a
  *   same-origin request → the session cookie is first-party, no CORS
  *   preflight, no SameSite=None song-and-dance.
- * - **In prod**, baseURL is `https://api.vital30.com/api/auth` and the
- *   cookie is set with `Domain=.vital30.com; SameSite=Lax` so both the
+ * - **In prod**, baseURL is `https://api.challenge.charangudla.com/api/auth` and the
+ *   cookie is set with `Domain=.challenge.charangudla.com; SameSite=Lax` so both the
  *   website and the API share the session.
  *
  * `useSession`, `signIn`, `signUp`, `signOut`, `forgetPassword`,
@@ -26,10 +26,10 @@ import { createAuthClient } from "better-auth/react";
 // avoids the SameSite=None requirement that comes with cross-origin.
 //
 // In prod we point at the API directly. The cookie is set with
-// `Domain=.vital30.com; SameSite=Lax` so it crosses subdomains naturally.
+// `Domain=.challenge.charangudla.com; SameSite=Lax` so it crosses subdomains naturally.
 const isProd = process.env.NODE_ENV === "production";
 const baseURL = isProd
-  ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.vital30.com"}/api/auth`
+  ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.challenge.charangudla.com"}/api/auth`
   : `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001"}/api/auth`;
 
 export const authClient = createAuthClient({

@@ -46,7 +46,7 @@ async function main() {
   // 2. Create SUPER_ADMIN User via Better Auth so the password lands in the
   // Account table with the algorithm Better Auth verifies against.
   console.log('👤 Seeding super admin user...');
-  const adminEmail = 'superadmin@vital30.com';
+  const adminEmail = 'superadmin@challenge.charangudla.com';
   await auth.api.signUpEmail({
     body: {
       email: adminEmail,

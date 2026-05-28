@@ -19,8 +19,8 @@ const nextConfig: NextConfig = {
   // hell on http://localhost) and keeps fetch() calls simple — no CORS
   // preflight, no credentials gymnastics.
   //
-  // In prod, the API is at api.vital30.com (separate subdomain) and the
-  // cookie is set with `Domain=.vital30.com; SameSite=Lax`, so this rewrite
+  // In prod, the API is at api.challenge.charangudla.com (separate subdomain) and the
+  // cookie is set with `Domain=.challenge.charangudla.com; SameSite=Lax`, so this rewrite
   // is not used.
   async rewrites() {
     if (!isDev) return [];

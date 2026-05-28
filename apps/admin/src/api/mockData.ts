@@ -233,7 +233,7 @@ export const mockUsers: MockUser[] = [
   { id: 'usr-3', email: 'charlie.brown@yahoo.com', name: 'Charlie Brown', role: 'USER', isActive: true, createdAt: '2026-05-22T07:15:00.000Z' },
   { id: 'usr-4', email: 'diana.prince@outlook.com', name: 'Diana Prince', role: 'USER', isActive: false, createdAt: '2026-05-22T14:32:00.000Z' },
   { id: 'usr-5', email: 'evan.wright@icloud.com', name: 'Evan Wright', role: 'USER', isActive: true, createdAt: '2026-05-23T11:45:00.000Z' },
-  { id: 'usr-6', email: 'superadmin@vital30.com', name: 'Vital30 Super Admin', role: 'SUPER_ADMIN', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
+  { id: 'usr-6', email: 'superadmin@challenge.charangudla.com', name: 'Vital30 Super Admin', role: 'SUPER_ADMIN', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
 ];
 
 // Mock User Joined Challenges
@@ -264,6 +264,6 @@ export const mockDailyCheckins: MockDailyCheckin[] = [
 export const mockShareEvents: MockShareEvent[] = [
   { id: 'se-1', userId: 'usr-1', type: 'DAILY_PROGRESS', platform: 'Twitter', payload: { challengeTitle: 'No Refined Sugar', day: 4 }, createdAt: '2026-05-24T18:15:00.000Z' },
   { id: 'se-2', userId: 'usr-1', type: 'COMPLETION', platform: 'Facebook', payload: { challengeTitle: 'Daily 10k Steps' }, createdAt: '2026-05-20T17:30:00.000Z' },
-  { id: 'se-3', userId: 'usr-2', type: 'CHALLENGE_INVITE', platform: 'WhatsApp', payload: { inviteLink: 'http://vital30.com/join/ch-1' }, createdAt: '2026-05-22T11:00:00.000Z' },
+  { id: 'se-3', userId: 'usr-2', type: 'CHALLENGE_INVITE', platform: 'WhatsApp', payload: { inviteLink: 'http://challenge.charangudla.com/join/ch-1' }, createdAt: '2026-05-22T11:00:00.000Z' },
   { id: 'se-4', userId: 'usr-3', type: 'DAILY_PROGRESS', platform: 'Instagram', payload: { challengeTitle: 'Daily Gratitude Journal', day: 2 }, createdAt: '2026-05-24T19:00:00.000Z' },
 ];

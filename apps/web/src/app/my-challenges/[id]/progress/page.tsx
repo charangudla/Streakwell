@@ -138,7 +138,7 @@ function ProgressInner({ params }: PageProps) {
   // free variables once you cross a function boundary.
   const challengeTitle = challenge.title;
   const challengeDailyTask = challenge.dailyTask;
-  const shareText = `I'm on Day ${today} of ${challengeTitle} on Vital30. ${stats.activeDays} active days so far. Join me — https://vital30.com/download`;
+  const shareText = `I'm on Day ${today} of ${challengeTitle} on Vital30. ${stats.activeDays} active days so far. Join me — https://challenge.charangudla.com/download`;
 
   async function onShare(format: ShareFormat) {
     if (sharingFormat !== null) return;

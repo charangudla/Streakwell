@@ -179,7 +179,7 @@ export function createAuth(
       },
       // Cross-subdomain cookie config — only kicks in when COOKIE_DOMAIN
       // is set (i.e. in production where the API and website share a
-      // parent domain, e.g. `.vital30.com`). In dev the website proxies
+      // parent domain, e.g. `.challenge.charangudla.com`). In dev the website proxies
       // through Next.js so cookies are first-party and this isn't needed.
       ...(config.get<string>('COOKIE_DOMAIN')
         ? {

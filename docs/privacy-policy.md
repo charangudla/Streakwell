@@ -5,7 +5,7 @@
 
 **Last Updated:** May 28, 2026
 
-Welcome to **Vital30**, a service operated by **Prodigi Solutions LLC** ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, share, and protect your information when you use the Vital30 **mobile app and the website at vital30.com** (together, the "Service").
+Welcome to **Vital30**, a service operated by **Prodigi Solutions LLC** ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, share, and protect your information when you use the Vital30 **mobile app and the website at challenge.charangudla.com** (together, the "Service").
 
 Vital30 is a general wellness and habit-tracking service. It is **not** a medical service and does not provide medical advice (see our Health Disclaimer). By using the Service you agree to this Policy.
 
@@ -132,7 +132,7 @@ Passwords are stored using industry-standard hashing. Access to the Service is p
 
 ## 11. Contact Us
 
-- **Email:** [privacy@vital30.com]
+- **Email:** [privacy@challenge.charangudla.com]
 - **Postal address:** [REGISTERED ADDRESS]
 - **Data controller:** Prodigi Solutions LLC
 

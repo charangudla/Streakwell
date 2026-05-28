@@ -9,8 +9,8 @@
  * - Routes through `/api/proxy/*` in dev (Next.js rewrite → API), so the
  *   browser sees a same-origin request and the session cookie is sent.
  * - Hits `NEXT_PUBLIC_API_BASE_URL` directly in prod, where the cookie is
- *   set with `Domain=.vital30.com` and naturally crosses the
- *   `vital30.com` ↔ `api.vital30.com` boundary.
+ *   set with `Domain=.challenge.charangudla.com` and naturally crosses the
+ *   `challenge.charangudla.com` ↔ `api.challenge.charangudla.com` boundary.
  * - Always `credentials: "include"` so the Better Auth session cookie
  *   rides along.
  * - Throws `ApiClientError` on non-2xx so callers can catch + display.
@@ -18,7 +18,7 @@
 
 const isProd = process.env.NODE_ENV === "production";
 const API_BASE = isProd
-  ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.vital30.com")
+  ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.challenge.charangudla.com")
   : "/api/proxy";
 
 export class ApiClientError extends Error {

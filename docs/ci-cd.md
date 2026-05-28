@@ -114,4 +114,4 @@ flowchart LR
      ./scripts/deploy-prod.sh
      ```
 3. **Instant Slack / Discord Notifications**:
-   - Integrate automated webhooks to notify the product team as soon as the live server health check returns `200 OK` on `https://api.vital30.com/health`.
+   - Integrate automated webhooks to notify the product team as soon as the live server health check returns `200 OK` on `https://api.challenge.charangudla.com/health`.

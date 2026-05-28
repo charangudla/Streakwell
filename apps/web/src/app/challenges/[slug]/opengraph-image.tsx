@@ -137,7 +137,7 @@ export default async function OgImage({ params }: Props) {
           }}
         >
           <span>30 days. Better habits. Healthier you.</span>
-          <span>vital30.com</span>
+          <span>challenge.charangudla.com</span>
         </div>
       </div>
     ),
