@@ -372,6 +372,12 @@ async function main() {
       primaryGoal: 'BUILD_FITNESS',
       dailyMinutes: 30,
       onboardingCompletedAt: new Date(),
+      // Optional personal details so the Profile "Personal details"
+      // card + age (year-only, data-minimised) render with content.
+      gender: 'PREFER_NOT_TO_SAY',
+      birthYear: 1990,
+      heightCm: 178,
+      weightKg: 74,
     },
   });
 

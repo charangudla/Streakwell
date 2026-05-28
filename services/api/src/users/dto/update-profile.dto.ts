@@ -2,7 +2,6 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsInt,
   IsNumber,
@@ -12,6 +11,9 @@ import {
   Min,
 } from 'class-validator';
 import { Gender, PrimaryGoal, UnitPreference } from '@prisma/client';
+
+// Evaluated once at module load — fine for an upper bound on birth year.
+const CURRENT_YEAR = new Date().getUTCFullYear();
 
 /**
  * Personal details + onboarding signals. Every field is optional —
@@ -25,10 +27,16 @@ export class UpdateProfileDto {
   @IsEnum(Gender)
   gender?: Gender;
 
-  /** ISO date (YYYY-MM-DD). Empty string clears it. */
+  /**
+   * Year of birth (data-minimised — we never store the full DOB). 0
+   * clears it. Structural bounds here; the 13+ rule is enforced in the
+   * service via the shared age policy so there's one source of truth.
+   */
   @IsOptional()
-  @IsString()
-  dateOfBirth?: string;
+  @IsInt()
+  @Min(0)
+  @Max(CURRENT_YEAR)
+  birthYear?: number;
 
   @IsOptional()
   @IsInt()

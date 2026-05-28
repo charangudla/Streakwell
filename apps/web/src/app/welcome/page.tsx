@@ -83,7 +83,7 @@ function WelcomeInner() {
   // Step 2 — about you
   const [unit, setUnit] = useState<UnitPreference>("METRIC");
   const [gender, setGender] = useState<Gender | null>(null);
-  const [dob, setDob] = useState(""); // yyyy-mm-dd
+  const [birthYear, setBirthYear] = useState(""); // year only (minimised)
   const [cm, setCm] = useState(""); // metric height
   const [kg, setKg] = useState(""); // metric weight
   const [ft, setFt] = useState(""); // imperial height
@@ -110,7 +110,7 @@ function WelcomeInner() {
             setInterests(new Set(me.interestCategoryIds));
           if (me.dailyMinutes) setDailyMinutes(me.dailyMinutes);
           if (me.gender) setGender(me.gender);
-          if (me.dateOfBirth) setDob(me.dateOfBirth.slice(0, 10));
+          if (me.birthYear) setBirthYear(String(me.birthYear));
           setUnit(me.unitPreference);
           // Seed the unit-appropriate inputs from the stored metric
           // values so an editor shows what's already saved.
@@ -163,7 +163,7 @@ function WelcomeInner() {
     if (interests.size > 0) body.interestCategoryIds = [...interests];
     if (dailyMinutes) body.dailyMinutes = dailyMinutes;
     if (gender) body.gender = gender;
-    if (dob.trim()) body.dateOfBirth = dob.trim();
+    if (birthYear.trim()) body.birthYear = Number(birthYear);
 
     if (unit === "METRIC") {
       if (cm.trim()) body.heightCm = Math.round(Number(cm));
@@ -336,8 +336,9 @@ function WelcomeInner() {
               A bit about you
             </h1>
             <p className="mt-2 text-sm text-ink-muted">
-              Optional — helps tailor your experience. Stays private; only
-              you and friends you accept can see your profile.
+              All optional — these help tailor your experience. You can edit
+              or remove them anytime in Profile, and only you and friends you
+              accept can see your profile.
             </p>
 
             {/* Unit toggle */}
@@ -379,21 +380,26 @@ function WelcomeInner() {
               ))}
             </div>
 
-            {/* DOB */}
+            {/* Year of birth — we store only the year, not a full DOB */}
             <div className="mt-6 flex flex-col gap-1.5">
               <label
-                htmlFor="dob"
+                htmlFor="birthYear"
                 className="text-xs font-bold uppercase tracking-wide text-ink-muted"
               >
-                Date of birth
+                Year of birth
               </label>
               <input
-                id="dob"
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                id="birthYear"
+                type="number"
+                inputMode="numeric"
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                placeholder="1995"
+                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               />
+              <p className="text-xs text-ink-muted">
+                Year only — we never store your full date of birth.
+              </p>
             </div>
 
             {/* Height + weight — layout depends on unit */}

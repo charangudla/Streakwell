@@ -15,6 +15,7 @@ import {
   UserChallengeStatus,
 } from '@prisma/client';
 
+import { validateBirthYear } from '../auth/age-policy';
 import { FriendsService } from '../friends/friends.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalisePhone, validatePhoneFormat } from './phone-validation';
@@ -241,7 +242,7 @@ export class UsersService {
         phone: true,
         createdAt: true,
         gender: true,
-        dateOfBirth: true,
+        birthYear: true,
         heightCm: true,
         weightKg: true,
         unitPreference: true,
@@ -256,16 +257,232 @@ export class UsersService {
   }
 
   /**
+   * Full data export for the signed-in user (GDPR Art. 15 access / Art.
+   * 20 portability). Returns a single JSON object with every piece of
+   * personal data we hold that's tied to this account — the web wraps
+   * it in a downloadable file. Reads only the caller's own rows.
+   *
+   * Note on what's included: a friend row names the *other* party (the
+   * relationship is the requester's data too), and audit logs include
+   * the caller's own IP / user-agent. Community chat history the user
+   * authored is included; we don't include other people's messages.
+   */
+  async exportData(userId: string) {
+    const account = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        username: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true,
+        gender: true,
+        birthYear: true,
+        heightCm: true,
+        weightKg: true,
+        unitPreference: true,
+        primaryGoal: true,
+        interestCategoryIds: true,
+        dailyMinutes: true,
+        onboardingCompletedAt: true,
+        role: true,
+        referralCode: true,
+        referredById: true,
+      },
+    });
+    if (!account) throw new NotFoundException('User not found.');
+
+    const [
+      challenges,
+      shareEvents,
+      achievements,
+      notifications,
+      favorites,
+      createdChallenges,
+      invitesSent,
+      invitesReceived,
+      chatMessages,
+      chatReactions,
+      friendRequestsSent,
+      friendRequestsReceived,
+      referredUsers,
+      auditLogs,
+    ] = await Promise.all([
+      this.prisma.userChallenge.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          createdAt: true,
+          challenge: { select: { title: true, slug: true } },
+          checkins: {
+            select: {
+              checkinDate: true,
+              status: true,
+              notes: true,
+              createdAt: true,
+            },
+            orderBy: { checkinDate: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.shareEvent.findMany({
+        where: { userId },
+        select: { type: true, platform: true, payload: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.achievement.findMany({
+        where: { userId },
+        select: { kind: true, data: true, earnedAt: true },
+        orderBy: { earnedAt: 'asc' },
+      }),
+      this.prisma.notification.findMany({
+        where: { userId },
+        select: {
+          type: true,
+          title: true,
+          body: true,
+          data: true,
+          readAt: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.favorite.findMany({
+        where: { userId },
+        select: {
+          createdAt: true,
+          challenge: { select: { title: true, slug: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.challenge.findMany({
+        where: { createdById: userId },
+        select: {
+          title: true,
+          slug: true,
+          shortDescription: true,
+          dailyTask: true,
+          durationDays: true,
+          visibility: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.challengeInvite.findMany({
+        where: { invitedById: userId },
+        select: {
+          invitedEmail: true,
+          status: true,
+          createdAt: true,
+          respondedAt: true,
+          challenge: { select: { title: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.challengeInvite.findMany({
+        where: { invitedUserId: userId },
+        select: {
+          status: true,
+          createdAt: true,
+          respondedAt: true,
+          challenge: { select: { title: true } },
+          invitedBy: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.challengeChatMessage.findMany({
+        where: { userId },
+        select: {
+          kind: true,
+          presetCode: true,
+          body: true,
+          createdAt: true,
+          challenge: { select: { title: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.chatReaction.findMany({
+        where: { userId },
+        select: { emoji: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.challengeFriendship.findMany({
+        where: { requesterId: userId },
+        select: {
+          status: true,
+          createdAt: true,
+          respondedAt: true,
+          recipient: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.challengeFriendship.findMany({
+        where: { recipientId: userId },
+        select: {
+          status: true,
+          createdAt: true,
+          respondedAt: true,
+          requester: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: { referredById: userId },
+        select: { name: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.auditLog.findMany({
+        where: { userId },
+        select: {
+          action: true,
+          ipAddress: true,
+          userAgent: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      account,
+      challenges,
+      shareEvents,
+      achievements,
+      notifications,
+      favorites,
+      createdChallenges,
+      invitesSent,
+      invitesReceived,
+      chatMessages,
+      chatReactions,
+      friendRequestsSent,
+      friendRequestsReceived,
+      referredUsers,
+      auditLogs,
+    };
+  }
+
+  /**
    * Patch personal-details + onboarding fields. Each is independent;
-   * only provided keys are written. dateOfBirth accepts an empty
-   * string to CLEAR it. markOnboardingComplete stamps the completion
-   * timestamp so the welcome flow stops redirecting.
+   * only provided keys are written. birthYear === 0 CLEARS it; any
+   * other value must pass the shared age policy (13+). markOnboarding-
+   * Complete stamps the completion timestamp so the welcome flow stops
+   * redirecting.
    */
   async updateProfile(
     userId: string,
     dto: {
       gender?: Gender;
-      dateOfBirth?: string;
+      birthYear?: number;
       heightCm?: number;
       weightKg?: number;
       unitPreference?: UnitPreference;
@@ -277,9 +494,14 @@ export class UsersService {
   ) {
     const data: Prisma.UserUpdateInput = {};
     if (dto.gender !== undefined) data.gender = dto.gender;
-    if (dto.dateOfBirth !== undefined) {
-      data.dateOfBirth =
-        dto.dateOfBirth.trim() === '' ? null : new Date(dto.dateOfBirth);
+    if (dto.birthYear !== undefined) {
+      if (dto.birthYear === 0) {
+        data.birthYear = null; // explicit clear
+      } else {
+        const res = validateBirthYear(dto.birthYear);
+        if (!res.ok) throw new BadRequestException(res.reason);
+        data.birthYear = dto.birthYear;
+      }
     }
     if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
     if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;

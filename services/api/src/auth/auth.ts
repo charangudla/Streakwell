@@ -8,6 +8,7 @@ import { bearer } from 'better-auth/plugins';
 import type { AuditLogService } from '../audit/audit-log.service';
 import type { EmailService } from '../email/email.service';
 import { generateReferralCode } from '../referrals/referral-code';
+import { validateBirthYear } from './age-policy';
 import { validatePassword } from './password-policy';
 
 /**
@@ -138,6 +139,17 @@ export function createAuth(
           defaultValue: 'USER',
           input: false,
         },
+        // Year of birth, captured at signup purely to gate under-13
+        // accounts (see the age check in `hooks.before` below). `input:
+        // true` lets the web signup form supply it; `required: false`
+        // so the mobile client (not yet sending it) and the seed don't
+        // break. We store ONLY the year — never the full date — as a
+        // data-minimisation measure.
+        birthYear: {
+          type: 'number',
+          required: false,
+          input: true,
+        },
       },
       // App Store guideline 5.1.1(v): users must be able to delete their
       // account from inside the app. Better Auth gates the route off by
@@ -249,10 +261,23 @@ export function createAuth(
       before: createAuthMiddleware(async (ctx) => {
         const path = ctx.path;
         if (path === '/sign-up/email') {
-          const body = ctx.body as { password?: unknown } | undefined;
+          const body = ctx.body as
+            | { password?: unknown; birthYear?: unknown }
+            | undefined;
           const result = validatePassword(body?.password);
           if (!result.ok) {
             throw new APIError('BAD_REQUEST', { message: result.reason });
+          }
+          // Age gate (COPPA / GDPR-K): block under-13 signups. birthYear
+          // is captured as a user additionalField. We enforce it when
+          // present — the web signup form always sends it; the mobile
+          // client will once it's updated to collect the year too.
+          const by = body?.birthYear;
+          if (by !== undefined && by !== null && by !== '') {
+            const ageResult = validateBirthYear(by);
+            if (!ageResult.ok) {
+              throw new APIError('BAD_REQUEST', { message: ageResult.reason });
+            }
           }
         }
         if (path === '/reset-password' || path === '/change-password') {

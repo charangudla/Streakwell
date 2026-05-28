@@ -38,6 +38,9 @@ function ProfileInner() {
 
   const [signingOut, setSigningOut] = useState(false);
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
   // Pull just the counts the identity card needs. Same /user-challenges
   // endpoint the dashboard hits, so this is usually warm-cached by the
   // browser by the time the user lands here.
@@ -105,6 +108,35 @@ function ProfileInner() {
     }
     router.replace("/");
     router.refresh();
+  }
+
+  async function onExportData() {
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      // GDPR access/portability — pull the full JSON and hand the browser
+      // a downloadable file. apiClient returns parsed JSON; we re-stringify
+      // it pretty-printed so the file is human-readable.
+      const data = await apiClient<unknown>("/users/me/export");
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vital30-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(
+        (e as Error).message ?? "Could not export your data. Please try again.",
+      );
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function onSignOut() {
@@ -252,7 +284,7 @@ function ProfileInner() {
                 value={me?.dailyMinutes ? `${me.dailyMinutes} min` : "—"}
               />
               <DetailRow label="Gender" value={genderLabel(me?.gender)} />
-              <DetailRow label="Age" value={ageLabel(me?.dateOfBirth)} />
+              <DetailRow label="Age" value={ageLabel(me?.birthYear)} />
               <DetailRow
                 label="Height"
                 value={heightLabel(me?.heightCm, me?.unitPreference)}
@@ -269,6 +301,36 @@ function ProfileInner() {
               Edit details & goals
             </Link>
           </div>
+        </SectionCard>
+
+        {/* Data & privacy — self-service data export (GDPR access /
+            portability). Deleting the account lives in the danger zone
+            below; the privacy policy is linked under Help & legal. */}
+        <SectionCard title="Data & privacy">
+          <button
+            type="button"
+            onClick={onExportData}
+            disabled={exporting}
+            className="group flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50 disabled:opacity-60 sm:px-6"
+          >
+            <RowIconWrap>
+              <DownloadIcon />
+            </RowIconWrap>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-ink group-hover:text-brand-700">
+                {exporting ? "Preparing your data…" : "Download my data"}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-ink-muted">
+                A JSON copy of everything tied to your account
+              </p>
+            </div>
+            <ChevronIcon />
+          </button>
+          {exportError ? (
+            <p className="px-5 pb-4 text-xs text-rose-700 sm:px-6">
+              {exportError}
+            </p>
+          ) : null}
         </SectionCard>
 
         {/* Your activity — surfaces the screens that used to be reachable
@@ -479,14 +541,10 @@ function genderLabel(g: MeAccount["gender"] | undefined): string {
   }
 }
 
-function ageLabel(dob: string | null | undefined): string {
-  if (!dob) return "—";
-  const d = new Date(dob);
-  if (Number.isNaN(d.getTime())) return "—";
-  const now = new Date();
-  let age = now.getUTCFullYear() - d.getUTCFullYear();
-  const m = now.getUTCMonth() - d.getUTCMonth();
-  if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) age -= 1;
+function ageLabel(birthYear: number | null | undefined): string {
+  if (!birthYear) return "—";
+  // Year-based (we store only the year) — accurate to within a year.
+  const age = new Date().getFullYear() - birthYear;
   return age >= 0 && age < 130 ? `${age}` : "—";
 }
 
@@ -734,6 +792,15 @@ function LogoutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+function DownloadIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   );
 }

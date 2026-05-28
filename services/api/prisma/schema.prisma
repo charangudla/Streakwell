@@ -107,7 +107,11 @@ model User {
   // -- Personal details + onboarding (all optional; collected via the
   //    skippable /welcome flow and editable from /profile) ------------
   gender          Gender?
-  dateOfBirth     DateTime?   @db.Date
+  // Data minimisation: we store only the YEAR of birth, never the full
+  // date. Year alone is enough to (a) gate under-13 signups (COPPA /
+  // GDPR-K) and (b) show an approximate age, while dropping the precise
+  // day+month that makes a full DOB an identity-grade data point.
+  birthYear       Int?
   // Stored canonical in METRIC; the client converts for display based
   // on unitPreference. Height in whole centimetres, weight in kg (one
   // decimal of precision is plenty — Float).

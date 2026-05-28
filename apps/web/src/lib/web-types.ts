@@ -296,7 +296,8 @@ export type MeAccount = {
   phone: string | null;
   createdAt: string;
   gender: Gender | null;
-  dateOfBirth: string | null;
+  /** Data-minimised: year of birth only (no full DOB stored). */
+  birthYear: number | null;
   heightCm: number | null;
   weightKg: number | null;
   unitPreference: UnitPreference;

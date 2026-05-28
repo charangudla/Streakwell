@@ -4,7 +4,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Container } from "@/components/Container";
+import { validateBirthYear } from "@/lib/age-policy";
 import { signUp } from "@/lib/auth-client";
+
+// signUp.email is typed from the client's known fields; birthYear is a
+// server-side `additionalField` (see services/api/src/auth/auth.ts), so
+// we widen the arg type to include it.
+type SignUpEmailArgs = Parameters<typeof signUp.email>[0] & {
+  birthYear: number;
+};
 
 // ============================================================================
 // NOTE — username + phone capture is DISABLED for now.
@@ -38,19 +46,37 @@ function RegisterInner() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
-    setSubmitting(true);
     setError(null);
+
+    // Age gate (COPPA / GDPR-K) — server enforces the same rule, this is
+    // just instant feedback.
+    const yearNum = Number(birthYear);
+    const ageResult = validateBirthYear(yearNum);
+    if (!ageResult.ok) {
+      setError(ageResult.reason);
+      return;
+    }
+    // Explicit consent — replaces "agree by clicking the button".
+    if (!agreed) {
+      setError("Please agree to the Terms and Privacy Policy to continue.");
+      return;
+    }
+
+    setSubmitting(true);
     const { error: signUpError } = await signUp.email({
       name: name.trim(),
       email: email.trim(),
       password,
-    });
+      birthYear: yearNum,
+    } as SignUpEmailArgs);
     if (signUpError) {
       setError(signUpError.message ?? "Could not create account.");
       setSubmitting(false);
@@ -98,6 +124,17 @@ function RegisterInner() {
             required
             disabled={submitting}
           />
+          <Field
+            id="birthYear"
+            label="Year of birth"
+            type="number"
+            value={birthYear}
+            onChange={setBirthYear}
+            required
+            disabled={submitting}
+            placeholder="e.g. 1995"
+            hint="You must be at least 13 to use Vital30. We store only the year — never your full date of birth."
+          />
           {/* DISABLED — username + phone capture. Restore from commit
               75a778a (debounced /users/check-username availability cue +
               a two-step submit that PATCHes /users/me with the values).
@@ -116,6 +153,33 @@ function RegisterInner() {
             disabled={submitting}
             hint="At least 8 characters, with upper + lower + number + symbol."
           />
+
+          <label className="flex items-start gap-2.5 text-sm text-ink-muted">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              disabled={submitting}
+              className="mt-0.5 h-4 w-4 flex-none rounded border-slate-300 text-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
+            <span>
+              I&rsquo;m at least 13 years old and I agree to the{" "}
+              <Link
+                href="/terms"
+                className="font-semibold text-brand-700 underline hover:text-brand-800"
+              >
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="font-semibold text-brand-700 underline hover:text-brand-800"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
 
           {error ? (
             <div
@@ -142,18 +206,6 @@ function RegisterInner() {
             >
               Sign in
             </Link>
-          </p>
-
-          <p className="text-center text-xs text-ink-muted">
-            By creating an account, you agree to our{" "}
-            <Link href="/terms" className="underline">
-              Terms
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline">
-              Privacy
-            </Link>
-            .
           </p>
         </form>
       </Container>

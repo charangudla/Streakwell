@@ -63,6 +63,17 @@ export class UsersController {
   }
 
   /**
+   * Full personal-data export for the caller (GDPR access/portability).
+   * Tight throttle — this is a heavy multi-table read and a user only
+   * needs it occasionally; 5/min is plenty for a legitimate download.
+   */
+  @Get('me/export')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  exportData(@Session() session: UserSession<Auth>) {
+    return this.users.exportData(session.user.id);
+  }
+
+  /**
    * Personalised "Recommended for you" challenge list, scored against
    * the caller's goal + interests + time budget. Falls back to the
    * catalog's recommended/popular flags when the user has no profile
