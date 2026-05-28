@@ -5,7 +5,7 @@
 
 **Last Updated:** May 25, 2026
 
-Welcome to **Vital30**! These Terms of Service ("Terms") govern your access to and use of the Vital30 mobile application, website, and related wellness tracking services (collectively, the "Service"). 
+Welcome to **Vital30**, a service operated by **Prodigi Solutions LLC** ("we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of the Vital30 mobile application, website, and related wellness tracking services (collectively, the "Service"). 
 
 Please read these Terms carefully before using the Service. By accessing or using Vital30, you agree to be bound by these Terms and our Privacy Policy. If you do not agree to these Terms, do not use the Service.
 
@@ -81,4 +81,6 @@ We may also revise these Terms from time to time. If we make material changes, w
 
 If you have any questions or feedback regarding these Terms, please contact us at:
 
+* **Company:** Prodigi Solutions LLC
 * **Email:** [support@vital30.com](mailto:support@vital30.com)
+* **Postal address:** [REGISTERED ADDRESS]

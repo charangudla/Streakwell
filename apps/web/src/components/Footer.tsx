@@ -70,8 +70,8 @@ export function Footer() {
         </div>
 
         <div className="mt-6 border-t border-slate-200 pt-4 text-xs text-ink-muted">
-          &copy; {new Date().getFullYear()} Vital30. Wellness guidance, not
-          medical advice.
+          &copy; {new Date().getFullYear()} Prodigi Solutions LLC. Vital30 is
+          wellness guidance, not medical advice.
         </div>
       </Container>
     </footer>

@@ -5,11 +5,11 @@
 
 **Last Updated:** May 28, 2026
 
-Welcome to **Vital30** ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, share, and protect your information when you use the Vital30 **mobile app and the website at vital30.com** (together, the "Service").
+Welcome to **Vital30**, a service operated by **Prodigi Solutions LLC** ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, share, and protect your information when you use the Vital30 **mobile app and the website at vital30.com** (together, the "Service").
 
 Vital30 is a general wellness and habit-tracking service. It is **not** a medical service and does not provide medical advice (see our Health Disclaimer). By using the Service you agree to this Policy.
 
-**Data controller:** [LEGAL ENTITY NAME], [REGISTERED ADDRESS]. **EU/UK representative (if required under GDPR Art. 27 / UK GDPR):** [NAME / ADDRESS, or "not yet appointed"].
+**Data controller:** Prodigi Solutions LLC, [REGISTERED ADDRESS]. **EU/UK representative (if required under GDPR Art. 27 / UK GDPR):** [NAME / ADDRESS, or "not yet appointed"].
 
 ---
 
@@ -134,7 +134,7 @@ Passwords are stored using industry-standard hashing. Access to the Service is p
 
 - **Email:** [privacy@vital30.com]
 - **Postal address:** [REGISTERED ADDRESS]
-- **Data controller:** [LEGAL ENTITY NAME]
+- **Data controller:** Prodigi Solutions LLC
 
 ---
 
