@@ -311,8 +311,8 @@ function ProfileInner() {
               className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
             />
             <p className="mt-1 text-xs text-ink-muted">
-              International format (e.g. +14155551234). Used for
-              phone-OTP sign-in once that lands.
+              International format (e.g. +14155551234). Saved to your
+              profile.
             </p>
             {phoneError ? (
               <p className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">

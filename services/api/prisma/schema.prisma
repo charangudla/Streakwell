@@ -100,7 +100,8 @@ model User {
   username      String?  @unique
   // E.164 phone (e.g. +14155552671). Unique across users. Optional —
   // user can sign up without a phone and add it later from /profile.
-  // Used by the future phone-OTP login flow (a separate task).
+  // Profile/contact field only — there is intentionally NO phone-OTP
+  // or SMS login (descoped; auth is email/username + password).
   phone         String?  @unique
 
   role UserRole @default(USER)

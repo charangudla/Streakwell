@@ -11,10 +11,10 @@
  * before sending, so by the time the value hits this validator it
  * should already be canonicalised.
  *
- * We're NOT pulling in libphonenumber-js for v1 — adds ~150kb to the
- * web bundle for what is a presence check on signup. If we later
- * need per-country formatting + carrier checks for SMS OTP, that's
- * the time to add it.
+ * We're NOT pulling in libphonenumber-js — adds ~150kb to the web
+ * bundle for what is a presence check on signup. Phone is a
+ * profile/contact field only (no SMS OTP / phone login — that was
+ * descoped), so loose E.164 validation is plenty.
  */
 
 const E164_RE = /^\+[1-9]\d{6,14}$/;

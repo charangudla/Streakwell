@@ -191,7 +191,7 @@ function RegisterInner() {
             autoComplete="tel"
             disabled={submitting}
             placeholder="+1 415 555 0123"
-            hint="International format. Add now to enable phone sign-in later."
+            hint="International format. Stored on your profile — you can add or change it later."
           />
 
           <Field
