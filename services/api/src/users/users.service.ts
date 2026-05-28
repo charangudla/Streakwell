@@ -1,8 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { AchievementKind, CheckinStatus, UserChallengeStatus } from '@prisma/client';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { AchievementKind, CheckinStatus, Prisma, UserChallengeStatus } from '@prisma/client';
 
 import { FriendsService } from '../friends/friends.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalisePhone, validatePhoneFormat } from './phone-validation';
+import {
+  usernameReasonMessage,
+  validateUsernameFormat,
+} from './username-validation';
 
 /**
  * Public-facing user profile data for the friend-discovery UX.
@@ -202,4 +212,140 @@ export class UsersService {
     return map.get(targetId)?.state === 'accepted';
   }
 
+  // -------------------------------------------------------------------
+  // Username + phone (self-management — see UsersController for routes)
+  // -------------------------------------------------------------------
+
+  /**
+   * The viewer's own full user row — includes username + phone, which
+   * the Better Auth session.user doesn't carry. The web profile page
+   * uses this to render the read-only username and editable phone.
+   */
+  async getMe(userId: string) {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        phone: true,
+        createdAt: true,
+      },
+    });
+    if (!u) throw new NotFoundException('User not found.');
+    return u;
+  }
+
+  /**
+   * Live "is this username available?" check used by the signup form.
+   * Returns BOTH whether it's available AND why-not when it's not, so
+   * the UI can show "Already taken" vs "Too short" vs "Reserved" with
+   * one round-trip. Doesn't reserve the name (no holds, no expiring
+   * locks) — race protection lives on the unique constraint at write.
+   */
+  async checkUsername(raw: string) {
+    const normalised = raw.trim().toLowerCase();
+    const formatReason = validateUsernameFormat(normalised);
+    if (formatReason) {
+      return {
+        available: false,
+        reason: formatReason,
+        message: usernameReasonMessage(formatReason),
+      } as const;
+    }
+    const taken = await this.prisma.user.findUnique({
+      where: { username: normalised },
+      select: { id: true },
+    });
+    if (taken) {
+      return {
+        available: false,
+        reason: 'taken' as const,
+        message: 'That username is already taken.',
+      };
+    }
+    return { available: true } as const;
+  }
+
+  /**
+   * Patch the caller's own username and/or phone with full validation.
+   * Either field can be passed independently; missing fields aren't
+   * touched. Phone can be CLEARED by passing an empty string.
+   *
+   * Race protection: validateUsernameFormat + the unique index. If two
+   * users race for the same handle, the slower request hits a P2002
+   * and we re-throw as a ConflictException with a clear message.
+   */
+  async updateMe(
+    userId: string,
+    patch: { username?: string; phone?: string },
+  ) {
+    const data: Prisma.UserUpdateInput = {};
+
+    if (patch.username !== undefined) {
+      const normalised = patch.username.trim().toLowerCase();
+      const reason = validateUsernameFormat(normalised);
+      if (reason) {
+        throw new BadRequestException(usernameReasonMessage(reason));
+      }
+      // Skip the DB roundtrip if nothing actually changed.
+      const me = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+      if (me?.username !== normalised) {
+        data.username = normalised;
+      }
+    }
+
+    if (patch.phone !== undefined) {
+      const trimmed = patch.phone.trim();
+      if (trimmed === '') {
+        // Empty string = clear phone. Skip if it was already null.
+        data.phone = null;
+      } else {
+        const normalised = normalisePhone(trimmed);
+        if (!validatePhoneFormat(normalised)) {
+          throw new BadRequestException(
+            'Phone must be in international format, e.g. +14155552671.',
+          );
+        }
+        data.phone = normalised;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      // Nothing to do — return current state for client consistency.
+      return this.getMe(userId);
+    }
+
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data,
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        // Race on the username or phone unique index. Tell the user
+        // which one collided when possible — Prisma puts the field
+        // name in `meta.target`.
+        const target = (e.meta as { target?: string[] } | undefined)?.target;
+        if (target?.includes('username')) {
+          throw new ConflictException('That username is already taken.');
+        }
+        if (target?.includes('phone')) {
+          throw new ConflictException(
+            'That phone number is linked to another account.',
+          );
+        }
+        throw new ConflictException('That value is already in use.');
+      }
+      throw e;
+    }
+    return this.getMe(userId);
+  }
 }

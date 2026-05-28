@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Container } from "@/components/Container";
+import { apiClient } from "@/lib/api-client";
 import { signUp } from "@/lib/auth-client";
 
 export default function RegisterPage() {
@@ -14,25 +15,88 @@ export default function RegisterPage() {
   );
 }
 
+/**
+ * Username availability state — UI surfaces each phase with a tiny
+ * inline cue under the input (✓ / ✕ / spinner / hint).
+ */
+type UsernameCheck =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "ok" }
+  | { kind: "bad"; message: string };
+
 function RegisterInner() {
   const router = useRouter();
   const params = useSearchParams();
-  // Where to send the user after a successful signup. The share-link
-  // landing (`/c/<token>`) sends them here with `?next=/c/<token>` so we
-  // bounce them straight back to complete the join. Default to /dashboard.
   const next = safeNext(params.get("next")) ?? "/dashboard";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usernameCheck, setUsernameCheck] = useState<UsernameCheck>({
+    kind: "idle",
+  });
+
+  // Debounced live username availability check. Fires 350ms after the
+  // last keystroke so we don't beat the server with one request per
+  // character. Lowercases on the fly to match server-side
+  // normalisation — what the server treats as "alice" must look like
+  // "alice" in the input too.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = username.trim().toLowerCase();
+    if (trimmed === "") {
+      setUsernameCheck({ kind: "idle" });
+      return;
+    }
+    if (trimmed.length < 3) {
+      setUsernameCheck({
+        kind: "bad",
+        message: "At least 3 characters.",
+      });
+      return;
+    }
+    setUsernameCheck({ kind: "checking" });
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await apiClient<
+          | { available: true }
+          | { available: false; reason: string; message: string }
+        >(`/users/check-username?username=${encodeURIComponent(trimmed)}`);
+        if (res.available) {
+          setUsernameCheck({ kind: "ok" });
+        } else {
+          setUsernameCheck({ kind: "bad", message: res.message });
+        }
+      } catch {
+        // Network blip — clear back to idle so the form doesn't lock.
+        // Server still validates on submit anyway.
+        setUsernameCheck({ kind: "idle" });
+      }
+    }, 350);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [username]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    if (usernameCheck.kind === "bad") {
+      setError("Pick a valid username first.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
+
+    // Step 1 — Better Auth signup. autoSignIn:true (in
+    // services/api/src/auth/auth.ts) means the session cookie lands
+    // here too, which lets the follow-up PATCH below authenticate.
     const { error: signUpError } = await signUp.email({
       name: name.trim(),
       email: email.trim(),
@@ -43,8 +107,33 @@ function RegisterInner() {
       setSubmitting(false);
       return;
     }
-    // Better Auth's autoSignIn:true (in services/api/src/auth/auth.ts) means
-    // we land authenticated immediately.
+
+    // Step 2 — patch the just-created user with username + phone.
+    // Two-step on purpose: Better Auth's signUp.email doesn't accept
+    // arbitrary extra fields, and rolling a custom signup endpoint
+    // would mean reimplementing password hashing + session cookie.
+    // If the patch fails, the account still exists; the user can
+    // continue and fill these in from /profile later. We surface
+    // the specific reason so they know what to fix.
+    try {
+      await apiClient("/users/me", {
+        method: "PATCH",
+        body: {
+          username: username.trim().toLowerCase(),
+          ...(phone.trim() ? { phone: phone.trim() } : {}),
+        },
+      });
+    } catch (e) {
+      const err = e as { message?: string };
+      setError(
+        err.message ??
+          "Account created, but we couldn't save your handle. You can set it from your profile.",
+      );
+      // Don't bail — let them land in the app. Profile page will let
+      // them retry.
+      router.replace(next);
+      return;
+    }
     router.replace(next);
   }
 
@@ -68,6 +157,20 @@ function RegisterInner() {
             required
             disabled={submitting}
           />
+
+          <Field
+            id="username"
+            label="Username"
+            value={username}
+            onChange={setUsername}
+            autoComplete="username"
+            required
+            disabled={submitting}
+            placeholder="e.g. alex_rivera"
+            hint="Lowercase letters, numbers, periods, underscores. 3–30 chars."
+            below={<UsernameStatus check={usernameCheck} />}
+          />
+
           <Field
             id="email"
             label="Email"
@@ -78,6 +181,19 @@ function RegisterInner() {
             required
             disabled={submitting}
           />
+
+          <Field
+            id="phone"
+            label="Phone (optional)"
+            type="tel"
+            value={phone}
+            onChange={setPhone}
+            autoComplete="tel"
+            disabled={submitting}
+            placeholder="+1 415 555 0123"
+            hint="International format. Add now to enable phone sign-in later."
+          />
+
           <Field
             id="password"
             label="Password"
@@ -101,7 +217,7 @@ function RegisterInner() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || usernameCheck.kind === "bad"}
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-brand-500 px-6 text-base font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
           >
             {submitting ? "Creating account…" : "Create account"}
@@ -134,6 +250,26 @@ function RegisterInner() {
   );
 }
 
+function UsernameStatus({ check }: { check: UsernameCheck }) {
+  if (check.kind === "idle") return null;
+  if (check.kind === "checking") {
+    return (
+      <p className="text-xs text-ink-muted">
+        <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-brand-500 align-middle" />{" "}
+        Checking…
+      </p>
+    );
+  }
+  if (check.kind === "ok") {
+    return (
+      <p className="text-xs font-semibold text-brand-700">✓ Available</p>
+    );
+  }
+  return (
+    <p className="text-xs font-semibold text-rose-700">✕ {check.message}</p>
+  );
+}
+
 type FieldProps = {
   id: string;
   label: string;
@@ -144,6 +280,9 @@ type FieldProps = {
   required?: boolean;
   disabled?: boolean;
   hint?: string;
+  placeholder?: string;
+  /** Extra slot below the hint — used for username availability cue. */
+  below?: React.ReactNode;
 };
 
 function Field({
@@ -156,6 +295,8 @@ function Field({
   required,
   disabled,
   hint,
+  placeholder,
+  below,
 }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -173,9 +314,11 @@ function Field({
         autoComplete={autoComplete}
         required={required}
         disabled={disabled}
-        className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-base text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
+        placeholder={placeholder}
+        className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
       />
       {hint ? <p className="text-xs text-ink-muted">{hint}</p> : null}
+      {below}
     </div>
   );
 }

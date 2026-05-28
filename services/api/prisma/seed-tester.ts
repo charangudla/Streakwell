@@ -83,6 +83,10 @@ interface CompanionSpec {
   email: string;
   password: string;
   name: string;
+  /** Instagram-style handle (lowercase, unique). */
+  username: string;
+  /** Sample E.164 phone — uses 555-0xxx prefix (US fictional range). */
+  phone: string;
   /** Today's check-in status on the shared challenge. null = not in yet. */
   todayStatus: CheckinStatus | null;
   /** Friendship state relative to the primary tester. */
@@ -98,6 +102,8 @@ const COMPANIONS: CompanionSpec[] = [
     email: 'alice@vital30.com',
     password: TEST_PASSWORD,
     name: 'Alice Companion',
+    username: 'alice',
+    phone: '+15550100001',
     todayStatus: CheckinStatus.COMPLETED,
     friendshipWithTester: { kind: 'ACCEPTED' },
   },
@@ -105,6 +111,8 @@ const COMPANIONS: CompanionSpec[] = [
     email: 'bob@vital30.com',
     password: TEST_PASSWORD,
     name: 'Bob Companion',
+    username: 'bob',
+    phone: '+15550100002',
     todayStatus: CheckinStatus.MISSED,
     friendshipWithTester: { kind: 'PENDING_FROM_THEM' },
   },
@@ -112,6 +120,8 @@ const COMPANIONS: CompanionSpec[] = [
     email: 'charlie@vital30.com',
     password: TEST_PASSWORD,
     name: 'Charlie Companion',
+    username: 'charlie',
+    phone: '+15550100003',
     todayStatus: null,
     friendshipWithTester: { kind: 'PENDING_FROM_TESTER' },
   },
@@ -119,6 +129,8 @@ const COMPANIONS: CompanionSpec[] = [
     email: 'diana@vital30.com',
     password: TEST_PASSWORD,
     name: 'Diana Companion',
+    username: 'diana',
+    phone: '+15550100004',
     todayStatus: CheckinStatus.SKIPPED,
     friendshipWithTester: { kind: 'NONE' },
   },
@@ -348,7 +360,11 @@ async function main() {
   });
   const user = await prisma.user.update({
     where: { email: TEST_EMAIL },
-    data: { emailVerified: true },
+    data: {
+      emailVerified: true,
+      username: 'milestone_tester',
+      phone: '+15550100000',
+    },
   });
 
   // Create the 4 companions up front so their user IDs are available
@@ -364,7 +380,11 @@ async function main() {
     });
     const created = await prisma.user.update({
       where: { email: spec.email },
-      data: { emailVerified: true },
+      data: {
+        emailVerified: true,
+        username: spec.username,
+        phone: spec.phone,
+      },
     });
     companions.push({ spec, id: created.id });
   }

@@ -89,6 +89,20 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Public-facing Instagram-style handle. Lowercase, 3-30 chars,
+  // alphanumeric + `.` `_`. Unique across users. Optional in the DB
+  // (so existing rows + the migration don't trip) but enforced as
+  // required in the signup form. Profile editing for username is
+  // intentionally NOT exposed in this iteration — handle squatting
+  // and link rot are real problems we'll address with a cooldown
+  // policy later. New rows get one at signup or are auto-backfilled
+  // by the seed script.
+  username      String?  @unique
+  // E.164 phone (e.g. +14155552671). Unique across users. Optional —
+  // user can sign up without a phone and add it later from /profile.
+  // Used by the future phone-OTP login flow (a separate task).
+  phone         String?  @unique
+
   role UserRole @default(USER)
 
   // Vital30 — referral system. `referralCode` is auto-assigned on signup
