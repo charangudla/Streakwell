@@ -7,7 +7,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Container } from "@/components/Container";
 import { apiClient } from "@/lib/api-client";
 import { authClient, signOut, useSession } from "@/lib/auth-client";
-import type { UserChallenge } from "@/lib/web-types";
+import type { MeAccount, UserChallenge } from "@/lib/web-types";
 
 export default function ProfilePage() {
   return (
@@ -17,12 +17,11 @@ export default function ProfilePage() {
   );
 }
 
-// NOTE — username + phone editing is DISABLED for now (matches the
-// signup form). The "/users/me" fetch, the username read-only row, and
-// the phone editor were removed from the Account section below. The
-// full version is in git at commit 75a778a; the backend GET/PATCH
-// /users/me endpoints + DB columns remain in place, just unused by
-// this page.
+// NOTE — username + phone EDITING is disabled (matches the signup
+// form). We still fetch /users/me here, but only to render the
+// read-only "Personal details" summary (gender / age / height /
+// weight / goal). Username + phone rows in the Account section stay
+// commented; restore from commit 75a778a.
 
 function ProfileInner() {
   const router = useRouter();
@@ -43,12 +42,22 @@ function ProfileInner() {
   // endpoint the dashboard hits, so this is usually warm-cached by the
   // browser by the time the user lands here.
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
+  // Personal details for the read-only summary section. Editing
+  // happens via the /welcome flow (reached from the "Edit details"
+  // link) which pre-fills + saves these.
+  const [me, setMe] = useState<MeAccount | null>(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await apiClient<UserChallenge[]>("/user-challenges");
-        if (!cancelled) setUcs(rows);
+        const [rows, meRes] = await Promise.all([
+          apiClient<UserChallenge[]>("/user-challenges"),
+          apiClient<MeAccount>("/users/me").catch(() => null),
+        ]);
+        if (!cancelled) {
+          setUcs(rows);
+          setMe(meRes);
+        }
       } catch {
         // Silent — profile page still works without the count tiles;
         // they just render as "—" until next reload.
@@ -229,6 +238,38 @@ function ProfileInner() {
           </div>
         </SectionCard>
 
+        {/* Personal details — read-only summary of the onboarding
+            answers. Editing routes through the /welcome flow (pre-fills
+            + saves), so "Edit details" deep-links there with
+            ?next=/profile to come back. */}
+        <SectionCard title="Personal details">
+          <div className="px-5 py-4 sm:px-6">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <DetailRow label="Goal" value={goalLabel(me?.primaryGoal)} />
+              <DetailRow
+                label="Daily time"
+                value={me?.dailyMinutes ? `${me.dailyMinutes} min` : "—"}
+              />
+              <DetailRow label="Gender" value={genderLabel(me?.gender)} />
+              <DetailRow label="Age" value={ageLabel(me?.dateOfBirth)} />
+              <DetailRow
+                label="Height"
+                value={heightLabel(me?.heightCm, me?.unitPreference)}
+              />
+              <DetailRow
+                label="Weight"
+                value={weightLabel(me?.weightKg, me?.unitPreference)}
+              />
+            </dl>
+            <Link
+              href="/welcome?next=/profile"
+              className="mt-4 inline-flex h-9 items-center justify-center rounded-full bg-brand-50 px-4 text-xs font-bold text-brand-700 hover:bg-brand-100"
+            >
+              Edit details & goals
+            </Link>
+          </div>
+        </SectionCard>
+
         {/* Your activity — surfaces the screens that used to be reachable
             only from the desktop UserMenu dropdown. Phone users on app
             routes have a slim header so they couldn't get here otherwise. */}
@@ -374,6 +415,89 @@ function SectionCard({
 
 function Divider() {
   return <div className="ml-[60px] border-t border-slate-100" />;
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+        {label}
+      </dt>
+      <dd className="mt-0.5 font-semibold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+// ---- Personal-details label formatters ----
+
+function goalLabel(goal: MeAccount["primaryGoal"] | undefined): string {
+  switch (goal) {
+    case "LOSE_WEIGHT":
+      return "Lose weight";
+    case "BUILD_FITNESS":
+      return "Get fitter";
+    case "EAT_BETTER":
+      return "Eat better";
+    case "BETTER_SLEEP":
+      return "Sleep better";
+    case "MENTAL_WELLNESS":
+      return "Mental wellness";
+    case "BREAK_HABIT":
+      return "Break a habit";
+    case "GENERAL_WELLNESS":
+      return "General wellness";
+    default:
+      return "—";
+  }
+}
+
+function genderLabel(g: MeAccount["gender"] | undefined): string {
+  switch (g) {
+    case "FEMALE":
+      return "Female";
+    case "MALE":
+      return "Male";
+    case "NON_BINARY":
+      return "Non-binary";
+    case "PREFER_NOT_TO_SAY":
+      return "Not specified";
+    default:
+      return "—";
+  }
+}
+
+function ageLabel(dob: string | null | undefined): string {
+  if (!dob) return "—";
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return "—";
+  const now = new Date();
+  let age = now.getUTCFullYear() - d.getUTCFullYear();
+  const m = now.getUTCMonth() - d.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) age -= 1;
+  return age >= 0 && age < 130 ? `${age}` : "—";
+}
+
+function heightLabel(
+  cm: number | null | undefined,
+  unit: MeAccount["unitPreference"] | undefined,
+): string {
+  if (!cm) return "—";
+  if (unit === "IMPERIAL") {
+    const totalIn = cm / 2.54;
+    const ft = Math.floor(totalIn / 12);
+    const inches = Math.round(totalIn % 12);
+    return `${ft}′${inches}″`;
+  }
+  return `${cm} cm`;
+}
+
+function weightLabel(
+  kg: number | null | undefined,
+  unit: MeAccount["unitPreference"] | undefined,
+): string {
+  if (!kg) return "—";
+  if (unit === "IMPERIAL") return `${Math.round(kg / 0.453592)} lb`;
+  return `${kg} kg`;
 }
 
 function StatTile({

@@ -4,7 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AchievementKind, CheckinStatus, Prisma, UserChallengeStatus } from '@prisma/client';
+import {
+  AchievementKind,
+  ChallengeVisibility,
+  CheckinStatus,
+  Gender,
+  PrimaryGoal,
+  Prisma,
+  UnitPreference,
+  UserChallengeStatus,
+} from '@prisma/client';
 
 import { FriendsService } from '../friends/friends.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -231,10 +240,164 @@ export class UsersService {
         username: true,
         phone: true,
         createdAt: true,
+        gender: true,
+        dateOfBirth: true,
+        heightCm: true,
+        weightKg: true,
+        unitPreference: true,
+        primaryGoal: true,
+        interestCategoryIds: true,
+        dailyMinutes: true,
+        onboardingCompletedAt: true,
       },
     });
     if (!u) throw new NotFoundException('User not found.');
     return u;
+  }
+
+  /**
+   * Patch personal-details + onboarding fields. Each is independent;
+   * only provided keys are written. dateOfBirth accepts an empty
+   * string to CLEAR it. markOnboardingComplete stamps the completion
+   * timestamp so the welcome flow stops redirecting.
+   */
+  async updateProfile(
+    userId: string,
+    dto: {
+      gender?: Gender;
+      dateOfBirth?: string;
+      heightCm?: number;
+      weightKg?: number;
+      unitPreference?: UnitPreference;
+      primaryGoal?: PrimaryGoal;
+      interestCategoryIds?: string[];
+      dailyMinutes?: number;
+      markOnboardingComplete?: boolean;
+    },
+  ) {
+    const data: Prisma.UserUpdateInput = {};
+    if (dto.gender !== undefined) data.gender = dto.gender;
+    if (dto.dateOfBirth !== undefined) {
+      data.dateOfBirth =
+        dto.dateOfBirth.trim() === '' ? null : new Date(dto.dateOfBirth);
+    }
+    if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
+    if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
+    if (dto.unitPreference !== undefined)
+      data.unitPreference = dto.unitPreference;
+    if (dto.primaryGoal !== undefined) data.primaryGoal = dto.primaryGoal;
+    if (dto.interestCategoryIds !== undefined) {
+      // Drop any ids that aren't real categories so a stale client
+      // can't poison the recommendation scorer with junk.
+      const valid = await this.prisma.challengeCategory.findMany({
+        where: { id: { in: dto.interestCategoryIds } },
+        select: { id: true },
+      });
+      data.interestCategoryIds = valid.map((c) => c.id);
+    }
+    if (dto.dailyMinutes !== undefined) data.dailyMinutes = dto.dailyMinutes;
+    if (dto.markOnboardingComplete) data.onboardingCompletedAt = new Date();
+
+    if (Object.keys(data).length > 0) {
+      await this.prisma.user.update({ where: { id: userId }, data });
+    }
+    return this.getMe(userId);
+  }
+
+  /**
+   * Personalised challenge recommendations.
+   *
+   * Scores every PUBLIC active challenge the user HASN'T already
+   * joined, then returns the top N. Signal weights:
+   *   +10  category is in the user's selected interests
+   *   +6   category matches their primary goal (soft mapping below)
+   *   +3   difficulty fits their daily-minutes budget
+   *   +2   challenge is flagged isRecommended in the catalog
+   *   +1   challenge is flagged isPopular
+   *
+   * If the user has NO profile signal at all (skipped onboarding),
+   * we fall back to the catalog's isRecommended / isPopular ordering
+   * so the lane is never empty.
+   */
+  async recommendedChallenges(userId: string, limit = 6) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        primaryGoal: true,
+        interestCategoryIds: true,
+        dailyMinutes: true,
+      },
+    });
+
+    // Exclude challenges the user already joined (any status) — no
+    // point recommending what they're already on.
+    const joined = await this.prisma.userChallenge.findMany({
+      where: { userId },
+      select: { challengeId: true },
+    });
+    const joinedIds = new Set(joined.map((j) => j.challengeId));
+
+    const challenges = await this.prisma.challenge.findMany({
+      where: { isActive: true, visibility: ChallengeVisibility.PUBLIC },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        shortDescription: true,
+        dailyTask: true,
+        durationDays: true,
+        difficulty: true,
+        categoryId: true,
+        isPopular: true,
+        isRecommended: true,
+      },
+    });
+
+    const interests = new Set(user?.interestCategoryIds ?? []);
+    const goalCategorySlugs = user?.primaryGoal
+      ? GOAL_TO_CATEGORY_SLUGS[user.primaryGoal]
+      : [];
+    // Resolve goal slugs → category ids once.
+    const goalCategoryIds = new Set(
+      goalCategorySlugs.length > 0
+        ? (
+            await this.prisma.challengeCategory.findMany({
+              where: { slug: { in: goalCategorySlugs } },
+              select: { id: true },
+            })
+          ).map((c) => c.id)
+        : [],
+    );
+
+    const hasSignal =
+      interests.size > 0 || goalCategoryIds.size > 0 || !!user?.dailyMinutes;
+
+    const scored = challenges
+      .filter((c) => !joinedIds.has(c.id))
+      .map((c) => {
+        let score = 0;
+        if (interests.has(c.categoryId)) score += 10;
+        if (goalCategoryIds.has(c.categoryId)) score += 6;
+        if (user?.dailyMinutes && fitsTimeBudget(c.difficulty, user.dailyMinutes))
+          score += 3;
+        if (c.isRecommended) score += 2;
+        if (c.isPopular) score += 1;
+        return { challenge: c, score };
+      });
+
+    // With signal: sort by score desc, drop zero-score so we don't
+    // pad with irrelevant stuff. Without signal: fall back to the
+    // catalog's recommended/popular flags so the lane still fills.
+    const ranked = hasSignal
+      ? scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score)
+      : scored.sort(
+          (a, b) =>
+            Number(b.challenge.isRecommended) -
+              Number(a.challenge.isRecommended) ||
+            Number(b.challenge.isPopular) - Number(a.challenge.isPopular),
+        );
+
+    return ranked.slice(0, limit).map((s) => s.challenge);
   }
 
   /**
@@ -347,5 +510,39 @@ export class UsersService {
       throw e;
     }
     return this.getMe(userId);
+  }
+}
+
+/**
+ * Soft mapping from primary goal → relevant category slugs. A goal
+ * can point at multiple categories. GENERAL_WELLNESS maps to none —
+ * those users lean on interests + popularity instead.
+ */
+const GOAL_TO_CATEGORY_SLUGS: Record<PrimaryGoal, string[]> = {
+  LOSE_WEIGHT: ['diet-nutrition', 'fitness-movement'],
+  BUILD_FITNESS: ['fitness-movement'],
+  BETTER_SLEEP: ['sleep-recovery'],
+  MENTAL_WELLNESS: ['mental-wellness'],
+  EAT_BETTER: ['diet-nutrition'],
+  BREAK_HABIT: ['break-bad-habits'],
+  GENERAL_WELLNESS: [],
+};
+
+/**
+ * Rough fit between a challenge's difficulty and the user's daily-
+ * minutes budget. Harder challenges tend to demand more time, so we
+ * only call it a "fit" when the budget comfortably covers the tier.
+ */
+function fitsTimeBudget(difficulty: string, minutes: number): boolean {
+  switch (difficulty) {
+    case 'BEGINNER':
+    case 'EASY':
+      return true; // light enough for any budget
+    case 'MEDIUM':
+      return minutes >= 15;
+    case 'HARD':
+      return minutes >= 30;
+    default:
+      return true;
   }
 }

@@ -104,6 +104,29 @@ model User {
   // or SMS login (descoped; auth is email/username + password).
   phone         String?  @unique
 
+  // -- Personal details + onboarding (all optional; collected via the
+  //    skippable /welcome flow and editable from /profile) ------------
+  gender          Gender?
+  dateOfBirth     DateTime?   @db.Date
+  // Stored canonical in METRIC; the client converts for display based
+  // on unitPreference. Height in whole centimetres, weight in kg (one
+  // decimal of precision is plenty — Float).
+  heightCm        Int?
+  weightKg        Float?
+  unitPreference  UnitPreference @default(METRIC)
+  // Goal signals that power challenge recommendations.
+  primaryGoal     PrimaryGoal?
+  // Category IDs the user said they're interested in (multi-select on
+  // the welcome flow). Drives the personalised "Recommended for you"
+  // lane. String[] of ChallengeCategory.id values.
+  interestCategoryIds String[] @default([])
+  // Minutes/day the user can commit — soft-filters recommended
+  // challenges by difficulty.
+  dailyMinutes    Int?
+  // Set when the user finishes (or explicitly skips all of) the
+  // welcome flow, so we don't keep redirecting them there.
+  onboardingCompletedAt DateTime?
+
   role UserRole @default(USER)
 
   // Vital30 — referral system. `referralCode` is auto-assigned on signup
@@ -490,6 +513,31 @@ model ChatReaction {
 // already requested A) is handled in the service: an accept-on-collision
 // promotes the existing PENDING to ACCEPTED instead of creating a
 // second row.
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum UnitPreference {
+  METRIC
+  IMPERIAL
+}
+
+// Primary wellness goal — the headline answer from the onboarding
+// questionnaire. Maps (softly) to challenge categories for the
+// recommendation scorer (see challenges recommendation service).
+enum PrimaryGoal {
+  LOSE_WEIGHT
+  BUILD_FITNESS
+  BETTER_SLEEP
+  MENTAL_WELLNESS
+  EAT_BETTER
+  BREAK_HABIT
+  GENERAL_WELLNESS
+}
 
 enum FriendshipStatus {
   PENDING

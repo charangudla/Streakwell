@@ -12,6 +12,7 @@ import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 
 import type { Auth } from '../auth/auth';
 import { UpdateMeDto } from './dto/update-me.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -45,6 +46,31 @@ export class UsersController {
       username: dto.username,
       phone: dto.phone,
     });
+  }
+
+  /**
+   * Patch personal details + onboarding signals (gender, DOB, height,
+   * weight, unit preference, primary goal, interest categories, daily
+   * minutes). Used by the /welcome flow and the profile editor.
+   */
+  @Patch('me/profile')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  updateProfile(
+    @Session() session: UserSession<Auth>,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.users.updateProfile(session.user.id, dto);
+  }
+
+  /**
+   * Personalised "Recommended for you" challenge list, scored against
+   * the caller's goal + interests + time budget. Falls back to the
+   * catalog's recommended/popular flags when the user has no profile
+   * signal yet.
+   */
+  @Get('me/recommended-challenges')
+  recommendedChallenges(@Session() session: UserSession<Auth>) {
+    return this.users.recommendedChallenges(session.user.id);
   }
 
   /**

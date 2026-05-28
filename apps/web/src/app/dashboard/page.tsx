@@ -32,19 +32,30 @@ function DashboardInner() {
 
   const [ucs, setUcs] = useState<UserChallenge[] | null>(null);
   const [challenges, setChallenges] = useState<Challenge[] | null>(null);
+  // Personalised recommendations from /users/me/recommended-challenges
+  // (scored against the user's goal + interests + time budget set in
+  // the welcome flow). Falls back to the popular lane below if it's
+  // empty or errors.
+  const [recommended, setRecommended] = useState<Challenge[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [uc, all] = await Promise.all([
+        const [uc, all, recs] = await Promise.all([
           apiClient<UserChallenge[]>("/user-challenges"),
           apiClient<Challenge[]>("/challenges"),
+          // Personalised lane — its own endpoint so the scoring lives
+          // server-side. Tolerate failure independently of the rest.
+          apiClient<Challenge[]>("/users/me/recommended-challenges").catch(
+            () => [] as Challenge[],
+          ),
         ]);
         if (cancelled) return;
         setUcs(uc);
         setChallenges(all);
+        setRecommended(recs);
       } catch (e) {
         if (!cancelled) setErr((e as Error).message);
       }
@@ -57,10 +68,6 @@ function DashboardInner() {
   const activeList = useMemo(
     () => (ucs ?? []).filter((u) => u.status === "ACTIVE"),
     [ucs],
-  );
-  const recommended = useMemo(
-    () => (challenges ?? []).filter((c) => c.isRecommended).slice(0, 6),
-    [challenges],
   );
   const popular = useMemo(
     () => (challenges ?? []).filter((c) => c.isPopular).slice(0, 3),

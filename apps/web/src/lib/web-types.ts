@@ -270,6 +270,42 @@ export type ProfileAchievement = {
   earnedAt: string;
 };
 
+export type Gender =
+  | "MALE"
+  | "FEMALE"
+  | "NON_BINARY"
+  | "PREFER_NOT_TO_SAY";
+
+export type UnitPreference = "METRIC" | "IMPERIAL";
+
+export type PrimaryGoal =
+  | "LOSE_WEIGHT"
+  | "BUILD_FITNESS"
+  | "BETTER_SLEEP"
+  | "MENTAL_WELLNESS"
+  | "EAT_BETTER"
+  | "BREAK_HABIT"
+  | "GENERAL_WELLNESS";
+
+/** The caller's own full account (GET /users/me). */
+export type MeAccount = {
+  id: string;
+  name: string;
+  email: string;
+  username: string | null;
+  phone: string | null;
+  createdAt: string;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  unitPreference: UnitPreference;
+  primaryGoal: PrimaryGoal | null;
+  interestCategoryIds: string[];
+  dailyMinutes: number | null;
+  onboardingCompletedAt: string | null;
+};
+
 export type UserProfile = {
   id: string;
   name: string;

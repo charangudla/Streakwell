@@ -57,8 +57,15 @@ function RegisterInner() {
       return;
     }
     // Better Auth's autoSignIn:true (services/api/src/auth/auth.ts) means
-    // we land authenticated immediately.
-    router.replace(next);
+    // we land authenticated immediately. Route NEW signups through the
+    // skippable /welcome flow (goals + personal details → better
+    // recommendations). Preserve the original `next` so a share-link
+    // signup still lands at its join after onboarding.
+    const welcome =
+      next === "/dashboard"
+        ? "/welcome"
+        : `/welcome?next=${encodeURIComponent(next)}`;
+    router.replace(welcome);
   }
 
   return (

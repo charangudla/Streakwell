@@ -364,6 +364,14 @@ async function main() {
       emailVerified: true,
       username: 'milestone_tester',
       phone: '+15550100000',
+      // Onboarding data so the dashboard "Recommended for you" lane
+      // shows personalised (goal-scored) results out of the box.
+      // BUILD_FITNESS maps to the fitness-movement category in the
+      // recommender. onboardingCompletedAt set so they're treated as
+      // a finished-onboarding user.
+      primaryGoal: 'BUILD_FITNESS',
+      dailyMinutes: 30,
+      onboardingCompletedAt: new Date(),
     },
   });
 
