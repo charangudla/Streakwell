@@ -99,15 +99,12 @@ else
     exit 1
 fi
 
-# Optional seed check - if database is empty, seed it
-echo -e "${YELLOW}Checking if database seeding is required...${NC}"
-# We safely run database seeder. In production, we typically do this on initial setup or manually.
-# Let's seed by default to ensure the 42 starter challenges are populated.
-if docker compose -f docker-compose.prod.yml exec -T api npx prisma db seed; then
-    echo -e "${GREEN}✓ Production database seeded with starter blueprints!${NC}"
-else
-    echo -e "${YELLOW}⚠️ Seeding skipped or completed (database records already exist).${NC}"
-fi
+# Seeding is intentionally NOT automatic. The catalog seed is DESTRUCTIVE
+# (it wipes + repopulates the DB), so auto-running it on every deploy would
+# erase real user data. Seed manually ONCE on a fresh database.
+echo -e "${YELLOW}ℹ️  Skipping automatic seed — the catalog seed is destructive.${NC}"
+echo -e "${YELLOW}    First-time setup only: populate the 42 starter challenges with${NC}"
+echo -e "${BLUE}    docker compose -f docker-compose.prod.yml exec api node dist-seed/seed.js${NC}"
 
 # 6. Service Health Audit
 echo -e "\n${BLUE}[Step 6/6] Auditing production health statuses...${NC}"
