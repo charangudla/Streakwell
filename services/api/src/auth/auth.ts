@@ -246,20 +246,31 @@ export function createAuth(
       },
     },
 
-    // Enforce Vital30's password policy (upper + lower + number + symbol)
-    // before Better Auth ever hashes the credential. Runs on the three
-    // paths that accept a new password: /sign-up/email (field `password`),
-    // and /reset-password + /change-password (field `newPassword`). The
-    // last one matters because a logged-in user changes their password
-    // through the in-app form (/change-password on the web) — without this
-    // they could set a weaker password than signup allows.
+    // Pre-credential auth guards, applied before Better Auth hashes/verifies:
+    //  - Password policy (upper+lower+number+symbol) on the paths that accept
+    //    a new password: /sign-up/email (`password`) and /reset-password +
+    //    /change-password (`newPassword`).
+    //  - Age gate (under-13) on /sign-up/email.
+    //  - Suspended-account block on /sign-in/email (admin moderation): a user
+    //    an admin has deactivated (isActive=false) cannot sign in.
     hooks: {
-      // createAuthMiddleware requires an async handler signature even when
-      // the body has no actual awaits — validatePassword is sync. Disable
-      // the eslint complaint locally.
-      // eslint-disable-next-line @typescript-eslint/require-await
       before: createAuthMiddleware(async (ctx) => {
         const path = ctx.path;
+        if (path === '/sign-in/email') {
+          const email = (ctx.body as { email?: unknown } | undefined)?.email;
+          if (typeof email === 'string' && email) {
+            const u = await prisma.user.findUnique({
+              where: { email },
+              select: { isActive: true },
+            });
+            if (u && u.isActive === false) {
+              throw new APIError('FORBIDDEN', {
+                message:
+                  'This account has been suspended. Contact support if you believe this is a mistake.',
+              });
+            }
+          }
+        }
         if (path === '/sign-up/email') {
           const body = ctx.body as
             | { password?: unknown; birthYear?: unknown }

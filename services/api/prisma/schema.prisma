@@ -133,6 +133,11 @@ model User {
 
   role UserRole @default(USER)
 
+  // Admin moderation flag — false = account suspended by an admin. The
+  // sign-in hook (auth.ts) rejects suspended accounts, and suspending also
+  // revokes active sessions. Toggled from the admin dashboard.
+  isActive Boolean @default(true)
+
   // Vital30 — referral system. `referralCode` is auto-assigned on signup
   // (8-char base32-ish slug); `referredById` is set if this user signed up
   // via someone's invite code.

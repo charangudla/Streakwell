@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from '@thallesp/nestjs-better-auth';
 
 import { AchievementsModule } from './achievements/achievements.module';
+import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuditLogService } from './audit/audit-log.service';
@@ -80,6 +81,7 @@ import { UsersModule } from './users/users.module';
     CustomChallengesModule,
     ChallengeChatModule,
     UsersModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [
