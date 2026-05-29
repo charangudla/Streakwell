@@ -91,6 +91,11 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      # Server-side rendering reaches the API over the internal Docker network
+      # to avoid NAT hairpin (container -> host's own public IP blackholes, so
+      # the SSR fetch hangs -> nginx returns 502). The browser still uses the
+      # public NEXT_PUBLIC_API_BASE_URL below for client-side requests.
+      API_INTERNAL_URL: http://api:3000
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
     expose:
