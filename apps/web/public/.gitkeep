@@ -1,0 +1,5 @@
+# Keeps apps/web/public/ tracked in git even when empty.
+# The web Dockerfile copies this directory (COPY .../apps/web/public),
+# and git does not track empty directories — without this file the
+# folder vanishes on a fresh clone and the Docker build fails.
+# Safe to remove once real static assets live here.
