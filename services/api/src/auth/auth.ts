@@ -44,17 +44,35 @@ export function createAuth(
   const baseURL =
     config.get<string>('BETTER_AUTH_URL') ?? 'http://localhost:3000';
 
+  // Origins trusted for Better Auth's CSRF/origin check. Production uses
+  // exactly the configured CORS_ORIGIN list (already includes the prod
+  // subdomains). Outside production we also trust the local web (:3001) +
+  // admin (:5173) dev servers so cross-origin sign-in from the admin works.
+  const isProd = config.get<string>('NODE_ENV') === 'production';
+  const corsOrigins =
+    config
+      .get<string>('CORS_ORIGIN')
+      ?.split(',')
+      .map((o) => o.trim())
+      .filter(Boolean) ?? [];
+  const trustedOrigins = isProd
+    ? corsOrigins.length
+      ? corsOrigins
+      : ['http://localhost:5173']
+    : [
+        ...new Set([
+          ...corsOrigins,
+          'http://localhost:3001',
+          'http://localhost:5173',
+        ]),
+      ];
+
   return betterAuth({
     secret,
     baseURL,
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
 
-    trustedOrigins:
-      config
-        .get<string>('CORS_ORIGIN')
-        ?.split(',')
-        .map((o) => o.trim())
-        .filter(Boolean) ?? ['http://localhost:5173'],
+    trustedOrigins,
 
     emailAndPassword: {
       enabled: true,
