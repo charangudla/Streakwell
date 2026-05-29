@@ -1,6 +1,18 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useMemo } from 'react';
-import { useSession, signOut, readRole, type UserRole } from '../lib/auth-client';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  useSession,
+  signOut,
+  getSession,
+  readRole,
+  type UserRole,
+} from '../lib/auth-client';
 
 export type { UserRole };
 
@@ -36,6 +48,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
+  const sessionUserId = session?.user?.id ?? null;
+
+  // The reactive `useSession()` hook doesn't reliably surface custom fields
+  // (our `role` additionalField) on `session.user`. The authoritative
+  // `getSession()` does (verified: it returns role=ADMIN), so resolve the
+  // role from there whenever the signed-in user changes. We stay "loading"
+  // until it resolves so ProtectedRoute never prematurely treats an admin
+  // as a non-admin and bounces them to /404.
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [roleResolved, setRoleResolved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!sessionUserId) {
+      setRole(null);
+      setRoleResolved(true);
+      return;
+    }
+    setRoleResolved(false);
+    getSession()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setRole(readRole(data?.user));
+        setRoleResolved(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRole(readRole(session?.user));
+        setRoleResolved(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionUserId]);
 
   const value = useMemo<AuthContextType>(() => {
     const sessionUser = session?.user ?? null;
@@ -44,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: sessionUser.id,
           email: sessionUser.email,
           name: sessionUser.name ?? sessionUser.email,
-          role: readRole(sessionUser),
+          role: role ?? readRole(sessionUser),
         }
       : null;
 
@@ -52,12 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       token: user ? 'session' : null,
       isAuthenticated: !!user,
-      isLoading: isPending,
+      // Still loading while the session is pending OR while we're resolving
+      // the authoritative role for a signed-in user.
+      isLoading: isPending || (!!sessionUser && !roleResolved),
       logout: () => {
         void signOut();
       },
     };
-  }, [session, isPending]);
+  }, [session, isPending, role, roleResolved]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
