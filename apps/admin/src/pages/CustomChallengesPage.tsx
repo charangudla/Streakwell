@@ -49,10 +49,12 @@ export function CustomChallengesPage() {
 
   const filtered = list.filter((c) => {
     const term = search.toLowerCase();
+    // creatorName/creatorEmail are null when the creator's account was
+    // deleted (createdBy is SetNull) — guard so a null can't crash the page.
     return (
       c.title.toLowerCase().includes(term) ||
-      c.creatorName.toLowerCase().includes(term) ||
-      c.creatorEmail.toLowerCase().includes(term) ||
+      (c.creatorName ?? '').toLowerCase().includes(term) ||
+      (c.creatorEmail ?? '').toLowerCase().includes(term) ||
       c.shortDescription.toLowerCase().includes(term)
     );
   });

@@ -55,9 +55,11 @@ export function ChatModerationPage() {
 
   const filtered = list.filter((m) => {
     const term = search.toLowerCase();
+    // userName is null for system/celebration messages (and for deleted
+    // users) — guard every field so a null can't crash the whole page.
     return (
-      m.userName.toLowerCase().includes(term) ||
-      m.challengeTitle.toLowerCase().includes(term) ||
+      (m.userName ?? '').toLowerCase().includes(term) ||
+      (m.challengeTitle ?? '').toLowerCase().includes(term) ||
       messageText(m).toLowerCase().includes(term)
     );
   });
@@ -124,7 +126,13 @@ export function ChatModerationPage() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {filtered.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-bold text-slate-900">{m.userName}</td>
+                  <td className="p-4 font-bold text-slate-900">
+                    {m.userName ?? (
+                      <span className="italic font-medium text-slate-400">
+                        System
+                      </span>
+                    )}
+                  </td>
                   <td className="p-4 font-semibold text-slate-600">{m.challengeTitle}</td>
                   <td className="p-4">
                     <span
