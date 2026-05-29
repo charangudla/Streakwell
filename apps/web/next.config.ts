@@ -1,9 +1,21 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Pin the standalone file-tracing root to the repo root so the output
+  // ALWAYS nests under apps/web/ (i.e. server.js → apps/web/server.js),
+  // which is exactly what apps/web/Dockerfile copies and runs
+  // (`node apps/web/server.js`). Without this, Next *infers* the root from
+  // the build context: locally it lands on the repo root, but inside the
+  // Docker build — which only contains apps/web + docs, with no workspace
+  // marker above apps/web — it infers apps/web and emits a FLAT standalone
+  // (server.js at the root), causing "Cannot find module
+  // /app/apps/web/server.js" at container startup. `next build` is always
+  // invoked from apps/web here, so cwd/../.. is the repo root.
+  outputFileTracingRoot: path.join(process.cwd(), "..", ".."),
   // The legal markdown lives at ../../docs in the monorepo. Turbopack's
   // tracer refuses to include files outside the project root, so we don't
   // try — instead, the Dockerfile copies the docs/ tree into the image
