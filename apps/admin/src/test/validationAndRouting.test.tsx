@@ -96,7 +96,6 @@ describe('ProtectedRoute Behavior', () => {
       token: null,
       isAuthenticated: false,
       isLoading: false,
-      login: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -118,10 +117,9 @@ describe('ProtectedRoute Behavior', () => {
   it('renders child components for authenticated users with allowed roles', () => {
     mockedUseAuth.mockReturnValue({
       user: { id: '1', email: 'admin@challenge.charangudla.com', name: 'Admin', role: 'ADMIN' },
-      token: 'jwt-token',
+      token: 'session',
       isAuthenticated: true,
       isLoading: false,
-      login: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -142,10 +140,9 @@ describe('ProtectedRoute Behavior', () => {
   it('redirects to /404 if authenticated user does not have allowed role', () => {
     mockedUseAuth.mockReturnValue({
       user: { id: '1', email: 'user@challenge.charangudla.com', name: 'User', role: 'USER' },
-      token: 'jwt-token',
+      token: 'session',
       isAuthenticated: true,
       isLoading: false,
-      login: vi.fn(),
       logout: vi.fn(),
     });
 

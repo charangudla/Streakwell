@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHealth } from '../api/client';
-import { getDashboardStats } from '../api/service';
+import { getDashboardStats, getCategories } from '../api/service';
 import { DashboardPage } from './DashboardPage';
 
 vi.mock('../api/client', () => ({
@@ -11,26 +11,31 @@ vi.mock('../api/client', () => ({
 
 vi.mock('../api/service', () => ({
   getDashboardStats: vi.fn(),
+  getCategories: vi.fn(),
 }));
 
 const mockedGetHealth = vi.mocked(getHealth);
 const mockedGetDashboardStats = vi.mocked(getDashboardStats);
+const mockedGetCategories = vi.mocked(getCategories);
 
 describe('DashboardPage', () => {
   const mockStats = {
     totalUsers: 5,
-    totalChallenges: 40,
+    suspendedUsers: 1,
+    catalogChallenges: 40,
+    customChallenges: 2,
     activeUserChallenges: 4,
+    completedUserChallenges: 1,
     totalCheckins: 7,
-    totalShareEvents: 4,
-    popularChallenges: [],
-    categoryStats: [],
-    recentActivity: [],
+    contactTotal: 3,
+    contactUnresolved: 2,
   };
 
   beforeEach(() => {
     mockedGetHealth.mockReset();
     mockedGetDashboardStats.mockReset();
+    mockedGetCategories.mockReset();
+    mockedGetCategories.mockResolvedValue([]);
   });
 
   it('renders the dashboard details and stats', async () => {
@@ -43,7 +48,6 @@ describe('DashboardPage', () => {
 
     render(<DashboardPage />);
 
-    // Verify loading overlay disappears and stats cards are visible
     await waitFor(() => {
       expect(
         screen.getByRole('heading', { name: 'Vital30 Dashboard' }),
@@ -51,8 +55,9 @@ describe('DashboardPage', () => {
     });
 
     expect(screen.getByText('Total Users')).toBeInTheDocument();
-    expect(screen.getByText('Starter Challenges')).toBeInTheDocument();
-    expect(screen.getByText('Completed Check-ins')).toBeInTheDocument();
+    expect(screen.getByText('Catalog Challenges')).toBeInTheDocument();
+    expect(screen.getByText('Total Check-ins')).toBeInTheDocument();
+    expect(screen.getByText('Suspended Users')).toBeInTheDocument();
   });
 
   it('renders connected API health status', async () => {

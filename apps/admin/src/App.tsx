@@ -10,6 +10,10 @@ import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
 import { CheckinsPage } from './pages/CheckinsPage';
 import { ShareEventsPage } from './pages/ShareEventsPage';
+import { CustomChallengesPage } from './pages/CustomChallengesPage';
+import { ContactSubmissionsPage } from './pages/ContactSubmissionsPage';
+import { ChatModerationPage } from './pages/ChatModerationPage';
+import { FriendshipsPage } from './pages/FriendshipsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function App() {
@@ -23,10 +27,14 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/challenges" element={<ChallengesPage />} />
+              <Route path="/custom-challenges" element={<CustomChallengesPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/users/:id" element={<UserDetailPage />} />
               <Route path="/checkins" element={<CheckinsPage />} />
               <Route path="/share-events" element={<ShareEventsPage />} />
+              <Route path="/chat-moderation" element={<ChatModerationPage />} />
+              <Route path="/friendships" element={<FriendshipsPage />} />
+              <Route path="/contact-submissions" element={<ContactSubmissionsPage />} />
             </Route>
           </Route>
           <Route path="/404" element={<NotFoundPage />} />

@@ -56,6 +56,23 @@ export function StatusBadge({ value }: StatusBadgeProps) {
       case 'COMPLETION':
         return { text: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' };
 
+      // Challenge visibility
+      case 'PUBLIC':
+        return { text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' };
+      case 'PRIVATE':
+        return { text: 'text-slate-700', bg: 'bg-slate-100', border: 'border-slate-200' };
+      case 'INVITE_ONLY':
+        return { text: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-cyan-200' };
+
+      // Friendship status
+      case 'PENDING':
+        return { text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' };
+      case 'ACCEPTED':
+        return { text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' };
+      case 'REJECTED':
+      case 'BLOCKED':
+        return { text: 'text-rose-700', bg: 'bg-rose-50', border: 'border-rose-200' };
+
       // Booleans
       case 'TRUE':
       case 'YES':

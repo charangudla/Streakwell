@@ -7,12 +7,10 @@ import {
   getCategories,
   createChallenge,
   updateChallenge,
-  toggleChallengeActive,
-  toggleChallengePopular,
-  toggleChallengeRecommended,
+  deleteChallenge,
 } from '../api/service';
 import { validateChallengeForm } from '../validation/adminForms';
-import type { Challenge, Category } from '../api/mockData';
+import type { Challenge, Category, Difficulty } from '../api/mockData';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -36,7 +34,7 @@ export function ChallengesPage() {
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [durationDays, setDurationDays] = useState(30);
-  const [difficulty, setDifficulty] = useState<'BEGINNER' | 'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
+  const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
   const [dailyTask, setDailyTask] = useState('');
   const [safetyNote, setSafetyNote] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -47,13 +45,11 @@ export function ChallengesPage() {
   // Confirmation Modals State
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    chalId: string;
-    chalTitle: string;
+    chal: Challenge | null;
     actionType: 'toggle-active' | 'toggle-popular' | 'toggle-recommended';
   }>({
     isOpen: false,
-    chalId: '',
-    chalTitle: '',
+    chal: null,
     actionType: 'toggle-active',
   });
 
@@ -98,13 +94,13 @@ export function ChallengesPage() {
     setTitle(chal.title);
     setSlug(chal.slug);
     setShortDescription(chal.shortDescription);
-    setDescription(chal.description);
+    setDescription(chal.description ?? '');
     setDurationDays(chal.durationDays);
     setDifficulty(chal.difficulty);
-    setDailyTask(chal.dailyTask);
+    setDailyTask(chal.dailyTask ?? '');
     setSafetyNote(chal.safetyNote ?? '');
-    setCategoryId(chal.categoryId);
-    setBenefits(chal.benefits || []);
+    setCategoryId(chal.categoryId ?? '');
+    setBenefits(chal.benefits ?? []);
     setBenefitInput('');
     setFormErrors({});
     setIsFormOpen(true);
@@ -187,14 +183,16 @@ export function ChallengesPage() {
       benefits,
       safetyNote: safetyNote.trim() || undefined,
       categoryId,
-      isPopular: editingChallenge ? editingChallenge.isPopular : false,
-      isRecommended: editingChallenge ? editingChallenge.isRecommended : false,
-      isActive: editingChallenge ? editingChallenge.isActive : true,
     };
 
     try {
       if (editingChallenge) {
-        await updateChallenge(editingChallenge.id, payload);
+        await updateChallenge(editingChallenge.id, {
+          ...payload,
+          isPopular: editingChallenge.isPopular,
+          isRecommended: editingChallenge.isRecommended,
+          isActive: editingChallenge.isActive,
+        });
       } else {
         await createChallenge(payload);
       }
@@ -211,21 +209,27 @@ export function ChallengesPage() {
   ) => {
     setConfirmModal({
       isOpen: true,
-      chalId: chal.id,
-      chalTitle: chal.title,
+      chal,
       actionType,
     });
   };
 
   const handleConfirmAction = async () => {
+    const { actionType, chal } = confirmModal;
+    if (!chal) return;
     try {
-      const { actionType, chalId } = confirmModal;
       if (actionType === 'toggle-active') {
-        await toggleChallengeActive(chalId);
+        // No dedicated toggle endpoint: deactivate via DELETE (soft),
+        // reactivate via PATCH isActive: true.
+        if (chal.isActive) {
+          await deleteChallenge(chal.id);
+        } else {
+          await updateChallenge(chal.id, { isActive: true });
+        }
       } else if (actionType === 'toggle-popular') {
-        await toggleChallengePopular(chalId);
+        await updateChallenge(chal.id, { isPopular: !chal.isPopular });
       } else if (actionType === 'toggle-recommended') {
-        await toggleChallengeRecommended(chalId);
+        await updateChallenge(chal.id, { isRecommended: !chal.isRecommended });
       }
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       loadData();
@@ -244,6 +248,19 @@ export function ChallengesPage() {
     const matchesCategory = categoryFilter ? c.categoryId === categoryFilter : true;
     return matchesSearch && matchesDifficulty && matchesCategory;
   });
+
+  const confirmActionLabel =
+    confirmModal.actionType === 'toggle-active'
+      ? confirmModal.chal?.isActive
+        ? 'deactivate'
+        : 'reactivate'
+      : confirmModal.actionType === 'toggle-popular'
+        ? confirmModal.chal?.isPopular
+          ? 'remove the popular flag from'
+          : 'mark as popular'
+        : confirmModal.chal?.isRecommended
+          ? 'remove the recommended flag from'
+          : 'mark as recommended';
 
   if (isLoading) {
     return (
@@ -336,26 +353,49 @@ export function ChallengesPage() {
               <tr className="border-b border-slate-200 bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
                 <th className="p-4">Title & Slug</th>
                 <th className="p-4">Category</th>
+                <th className="p-4">Type</th>
                 <th className="p-4">Difficulty</th>
-                <th className="p-4">Duration</th>
+                <th className="p-4">Joined</th>
+                <th className="p-4">Status</th>
                 <th className="p-4 text-center">Promotions</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredChallenges.map((chal) => {
-                const cat = categories.find((c) => c.id === chal.categoryId);
                 return (
                   <tr key={chal.id} className={`hover:bg-slate-50 transition-colors ${chal.isActive ? '' : 'bg-slate-50/20 text-slate-400'}`}>
                     <td className="p-4">
                       <p className="font-bold text-slate-900">{chal.title}</p>
                       <p className="font-mono text-2xs text-slate-400">/{chal.slug}</p>
                     </td>
-                    <td className="p-4 font-semibold text-slate-600">{cat?.name ?? 'Unknown'}</td>
+                    <td className="p-4 font-semibold text-slate-600">{chal.categoryName ?? 'Uncategorized'}</td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-2xs font-extrabold uppercase tracking-wide border ${
+                          chal.isCustom
+                            ? 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100'
+                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                        }`}
+                      >
+                        {chal.isCustom ? 'Custom' : 'Catalog'}
+                      </span>
+                    </td>
                     <td className="p-4">
                       <StatusBadge value={chal.difficulty} />
                     </td>
-                    <td className="p-4 font-semibold text-slate-500">{chal.durationDays} Days</td>
+                    <td className="p-4 font-semibold text-slate-500">{chal.joinedCount}</td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          chal.isActive
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-rose-50 text-rose-700 border border-rose-100'
+                        }`}
+                      >
+                        {chal.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
@@ -653,10 +693,10 @@ export function ChallengesPage() {
       {/* Confirmation Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        title={confirmModal.chalTitle}
-        message={`Are you sure you want to perform this update on "${confirmModal.chalTitle}"? This will modify how users interact with this challenge.`}
+        title={confirmModal.chal?.title ?? 'Challenge'}
+        message={`Are you sure you want to ${confirmActionLabel} "${confirmModal.chal?.title ?? ''}"? This will change how users interact with this challenge.`}
         confirmText="Yes, Execute Change"
-        isDanger={confirmModal.actionType === 'toggle-active'}
+        isDanger={confirmModal.actionType === 'toggle-active' && (confirmModal.chal?.isActive ?? false)}
         onConfirm={handleConfirmAction}
         onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />

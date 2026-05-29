@@ -3,21 +3,13 @@ import { Search, Calendar, ClipboardCheck } from 'lucide-react';
 import { getCheckins } from '../api/service';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
+import type { CheckinRow } from '../api/mockData';
 
-interface CheckinWithDetails {
-  id: string;
-  userChallengeId: string;
-  checkinDate: string;
-  status: 'COMPLETED' | 'MISSED' | 'SKIPPED';
-  notes?: string;
-  createdAt: string;
-  userName: string;
-  userEmail: string;
-  challengeTitle: string;
-}
+const PAGE_SIZE = 100;
 
 export function CheckinsPage() {
-  const [checkinsList, setCheckinsList] = useState<CheckinWithDetails[]>([]);
+  const [checkinsList, setCheckinsList] = useState<CheckinRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,9 +18,10 @@ export function CheckinsPage() {
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
-    getCheckins()
+    getCheckins({ skip: 0, take: PAGE_SIZE })
       .then((data) => {
-        setCheckinsList(data);
+        setCheckinsList(data.checkins);
+        setTotal(data.total);
         setError(null);
         setIsLoading(false);
       })
@@ -64,7 +57,7 @@ export function CheckinsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Daily Check-ins Tracker"
-        description="Monitor everyday participant compliance, physical task comments, and check-in marks."
+        description={`Monitor everyday participant compliance, task comments, and check-in marks. ${total} total check-in(s) recorded.`}
       />
 
       {error && (

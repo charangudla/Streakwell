@@ -3,8 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ShieldAlert, Loader } from 'lucide-react';
 import { validateLoginForm } from '../validation/adminForms';
-import { useAuth } from '../routing/AuthProvider';
-import { adminLogin } from '../api/service';
+import { signIn, signOut, getSession, readRole } from '../lib/auth-client';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,7 +12,6 @@ export function LoginPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -29,11 +27,31 @@ export function LoginPage() {
 
     try {
       setIsSubmitting(true);
-      const data = await adminLogin(email, password);
-      login(data.token, data.user);
+
+      // Sign in via Better Auth. The session cookie is set on success and
+      // shared with the API (same `.challenge.charangudla.com` domain in prod,
+      // cross-origin localhost in dev).
+      const { error } = await signIn.email({ email, password });
+      if (error) {
+        setAuthError(error.message ?? 'Invalid email or password credentials.');
+        return;
+      }
+
+      // Confirm the signed-in account is actually an admin. Read the fresh
+      // session and reject standard users — signing them back out so no
+      // half-authenticated state lingers.
+      const { data: session } = await getSession();
+      const role = readRole(session?.user);
+      if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+        await signOut();
+        setAuthError('This account is not authorized to access the admin portal.');
+        return;
+      }
+
       navigate('/', { replace: true });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed. Please verify credentials.';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Authentication failed. Please verify credentials.';
       setAuthError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -134,13 +152,10 @@ export function LoginPage() {
 
         <div className="mt-6 flex flex-col gap-3 text-center border-t border-slate-800/50 pt-5">
           <p className="text-xs text-slate-500">
-            For local testing, use: <span className="font-mono text-emerald-400">superadmin@challenge.charangudla.com</span>
-            <br />
-            with: <span className="font-mono text-emerald-400">Vital30AdminSecured!</span>
+            Sign in with your Vital30 admin account. Standard user accounts cannot access this portal.
           </p>
         </div>
       </section>
     </main>
   );
 }
-

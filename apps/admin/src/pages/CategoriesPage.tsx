@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react';
-import { Plus, Edit2, ToggleLeft, ToggleRight, Folder } from 'lucide-react';
-import { getCategories, createCategory, updateCategory, toggleCategoryActive } from '../api/service';
+import { Plus, Edit2, Trash2, Folder, Trophy } from 'lucide-react';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../api/service';
 import { validateCategoryForm } from '../validation/adminForms';
 import type { Category } from '../api/mockData';
 import { PageHeader } from '../components/PageHeader';
-import { StatusBadge } from '../components/StatusBadge';
 import { ConfirmModal } from '../components/ConfirmModal';
 
 export function CategoriesPage() {
@@ -22,18 +21,17 @@ export function CategoriesPage() {
   const [description, setDescription] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Confirmation Modal State
+  // Delete confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     catId: string;
     catName: string;
-    actionType: 'toggle-active';
   }>({
     isOpen: false,
     catId: '',
     catName: '',
-    actionType: 'toggle-active',
   });
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadCategories = () => {
     setIsLoading(true);
@@ -119,7 +117,6 @@ export function CategoriesPage() {
           name: name.trim(),
           slug: slug.trim(),
           description: description.trim(),
-          isActive: true,
         });
       }
       setIsFormOpen(false);
@@ -129,24 +126,34 @@ export function CategoriesPage() {
     }
   };
 
-  const handleOpenConfirmToggle = (cat: Category) => {
+  const handleOpenConfirmDelete = (cat: Category) => {
+    setDeleteError(null);
     setConfirmModal({
       isOpen: true,
       catId: cat.id,
       catName: cat.name,
-      actionType: 'toggle-active',
     });
   };
 
-  const handleConfirmAction = async () => {
+  const handleConfirmDelete = async () => {
     try {
-      if (confirmModal.actionType === 'toggle-active') {
-        await toggleCategoryActive(confirmModal.catId);
+      const result = await deleteCategory(confirmModal.catId);
+      // The mock fallback always "succeeds"; a real 400 (category still has
+      // challenges) is surfaced from the thrown axios error below.
+      if (!('deleted' in result) || !result.deleted) {
+        throw new Error('Category could not be deleted.');
       }
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      setDeleteError(null);
       loadCategories();
-    } catch (err) {
-      console.error('Failed to execute confirm action', err);
+    } catch (err: unknown) {
+      // Axios errors carry the API message under response.data.message.
+      const anyErr = err as { response?: { data?: { message?: string | string[] } }; message?: string };
+      const apiMessage = anyErr.response?.data?.message;
+      const message = Array.isArray(apiMessage)
+        ? apiMessage[0]
+        : (apiMessage ?? anyErr.message ?? 'Failed to delete category.');
+      setDeleteError(message);
     }
   };
 
@@ -182,6 +189,12 @@ export function CategoriesPage() {
         </div>
       )}
 
+      {deleteError && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+          {deleteError}
+        </div>
+      )}
+
       {/* Grid List */}
       {categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 px-4 text-center">
@@ -196,46 +209,34 @@ export function CategoriesPage() {
           {categories.map((cat) => (
             <div
               key={cat.id}
-              className={`flex flex-col justify-between rounded-2xl border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md ${
-                cat.isActive ? 'border-slate-200' : 'border-slate-200 bg-slate-50/50'
-              }`}
+              className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md"
             >
               <div>
-                <div className="flex items-start justify-between">
-                  <h3 className={`text-lg font-extrabold ${cat.isActive ? 'text-slate-900' : 'text-slate-400'}`}>
-                    {cat.name}
-                  </h3>
-                  <StatusBadge value={cat.isActive ? 'ACTIVE' : 'ABANDONED'} />
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-lg font-extrabold text-slate-900">{cat.name}</h3>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-slate-500">
+                    <Trophy size={12} className="text-amber-500" />
+                    {cat.challengeCount} {cat.challengeCount === 1 ? 'challenge' : 'challenges'}
+                  </span>
                 </div>
                 <p className="mt-1.5 font-mono text-xs font-semibold text-emerald-600 bg-emerald-50 inline-block px-2 py-0.5 rounded">
                   /{cat.slug}
                 </p>
-                <p className={`mt-4 text-sm leading-relaxed ${cat.isActive ? 'text-slate-600' : 'text-slate-400'}`}>
+                <p className="mt-4 text-sm leading-relaxed text-slate-600">
                   {cat.description || 'No description provided.'}
                 </p>
               </div>
 
               <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                 <button
-                  onClick={() => handleOpenConfirmToggle(cat)}
+                  onClick={() => handleOpenConfirmDelete(cat)}
                   type="button"
-                  className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition ${
-                    cat.isActive
-                      ? 'text-slate-400 hover:text-slate-700'
-                      : 'text-emerald-600 hover:text-emerald-800'
-                  }`}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-500 hover:text-rose-700 transition disabled:opacity-40"
+                  disabled={cat.challengeCount > 0}
+                  title={cat.challengeCount > 0 ? 'Reassign or remove its challenges first' : 'Delete category'}
                 >
-                  {cat.isActive ? (
-                    <>
-                      <ToggleRight size={20} className="text-emerald-500" />
-                      Deactivate
-                    </>
-                  ) : (
-                    <>
-                      <ToggleLeft size={20} className="text-slate-300" />
-                      Activate
-                    </>
-                  )}
+                  <Trash2 size={15} />
+                  Delete
                 </button>
 
                 <button
@@ -336,14 +337,14 @@ export function CategoriesPage() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        title={confirmModal.catName}
-        message={`Are you sure you want to toggle the active status of category "${confirmModal.catName}"? This will shift its visibility across challenges.`}
-        confirmText="Confirm Status Switch"
-        isDanger={false}
-        onConfirm={handleConfirmAction}
+        title={`Delete "${confirmModal.catName}"`}
+        message={`Are you sure you want to permanently delete category "${confirmModal.catName}"? This cannot be undone. Categories that still have challenges cannot be deleted.`}
+        confirmText="Delete Category"
+        isDanger
+        onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>

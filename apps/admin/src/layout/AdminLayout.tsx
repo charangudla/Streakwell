@@ -7,9 +7,13 @@ import {
   Shield,
   FolderOpen,
   Trophy,
+  Sparkles,
   Users,
+  UserPlus,
   ClipboardCheck,
   Share2,
+  MessageSquare,
+  Mail,
   X,
 } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
@@ -19,9 +23,13 @@ const navItems = [
   { label: 'Dashboard', to: '/', icon: Home },
   { label: 'Categories', to: '/categories', icon: FolderOpen },
   { label: 'Challenges', to: '/challenges', icon: Trophy },
+  { label: 'Custom Challenges', to: '/custom-challenges', icon: Sparkles },
   { label: 'Users', to: '/users', icon: Users },
   { label: 'Check-ins', to: '/checkins', icon: ClipboardCheck },
   { label: 'Share Events', to: '/share-events', icon: Share2 },
+  { label: 'Chat Moderation', to: '/chat-moderation', icon: MessageSquare },
+  { label: 'Friendships', to: '/friendships', icon: UserPlus },
+  { label: 'Contact Inbox', to: '/contact-submissions', icon: Mail },
 ];
 
 export function AdminLayout() {
@@ -79,6 +87,7 @@ export function AdminLayout() {
               <NavLink
                 key={item.label}
                 to={item.to}
+                end={item.to === '/'}
                 onClick={() => setIsMobileOpen(false)}
                 className={({ isActive }) =>
                   [

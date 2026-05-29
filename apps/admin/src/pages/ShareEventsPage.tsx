@@ -3,10 +3,13 @@ import { Search, Share2, Heart } from 'lucide-react';
 import { getShareEvents } from '../api/service';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import type { ShareEventWithDetails } from '../api/mockData';
+import type { ShareEventRow } from '../api/mockData';
+
+const PAGE_SIZE = 100;
 
 export function ShareEventsPage() {
-  const [sharesList, setSharesList] = useState<ShareEventWithDetails[]>([]);
+  const [sharesList, setSharesList] = useState<ShareEventRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,9 +18,10 @@ export function ShareEventsPage() {
   const [typeFilter, setTypeFilter] = useState('');
 
   useEffect(() => {
-    getShareEvents()
+    getShareEvents({ skip: 0, take: PAGE_SIZE })
       .then((data) => {
-        setSharesList(data);
+        setSharesList(data.events);
+        setTotal(data.total);
         setError(null);
         setIsLoading(false);
       })
@@ -33,26 +37,16 @@ export function ShareEventsPage() {
     const matchesSearch =
       se.userName.toLowerCase().includes(term) ||
       se.userEmail.toLowerCase().includes(term) ||
-      (se.platform && se.platform.toLowerCase().includes(term));
+      (se.platform && se.platform.toLowerCase().includes(term)) ||
+      se.type.toLowerCase().includes(term);
 
     const matchesType = typeFilter ? se.type === typeFilter : true;
     return matchesSearch && matchesType;
   });
 
-  const getPayloadText = (se: ShareEventWithDetails) => {
-    if (!se.payload) return '-';
-    const p = se.payload;
-    switch (se.type) {
-      case 'CHALLENGE_INVITE':
-        return `Invite Link: ${p.inviteLink ?? 'General invite'}`;
-      case 'DAILY_PROGRESS':
-        return `Challenge: ${p.challengeTitle ?? 'Unknown'} (Day #${p.day ?? '?'})`;
-      case 'COMPLETION':
-        return `Successfully completed challenge: ${p.challengeTitle ?? 'Unknown'}`;
-      default:
-        return JSON.stringify(p);
-    }
-  };
+  // Build the type filter options dynamically from the data so we don't
+  // hard-code an enum the backend may extend.
+  const typeOptions = Array.from(new Set(sharesList.map((s) => s.type))).sort();
 
   if (isLoading) {
     return (
@@ -67,7 +61,7 @@ export function ShareEventsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Social Share Events"
-        description="Monitor participant sharing behaviors, external platform virality, and invite creations."
+        description={`Monitor participant sharing behaviors and external platform virality. ${total} total event(s).`}
       />
 
       {error && (
@@ -83,7 +77,7 @@ export function ShareEventsPage() {
           <input
             type="text"
             className="h-10 w-full rounded-lg border border-slate-300 bg-slate-50 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:bg-white"
-            placeholder="Search by username, email, or social platform..."
+            placeholder="Search by username, email, type, or platform..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -96,9 +90,11 @@ export function ShareEventsPage() {
             onChange={(e) => setTypeFilter(e.target.value)}
           >
             <option value="">All Share Types</option>
-            <option value="CHALLENGE_INVITE">Challenge Invite</option>
-            <option value="DAILY_PROGRESS">Daily Progress</option>
-            <option value="COMPLETION">Completion Highlight</option>
+            {typeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t.replace(/_/g, ' ')}
+              </option>
+            ))}
           </select>
         </div>
       </section>
@@ -120,7 +116,6 @@ export function ShareEventsPage() {
                 <th className="p-4">User Details</th>
                 <th className="p-4">Share Type</th>
                 <th className="p-4">Platform</th>
-                <th className="p-4">Event Metadata / Details</th>
                 <th className="p-4 text-right">Created At</th>
               </tr>
             </thead>
@@ -139,9 +134,6 @@ export function ShareEventsPage() {
                       <Heart size={12} className="text-slate-400" />
                       {se.platform ?? 'General'}
                     </span>
-                  </td>
-                  <td className="p-4 text-xs font-medium text-slate-600 max-w-sm break-all leading-normal">
-                    {getPayloadText(se)}
                   </td>
                   <td className="p-4 text-right font-medium text-slate-500 text-xs">
                     {se.createdAt.replace('T', ' ').slice(0, 16)}

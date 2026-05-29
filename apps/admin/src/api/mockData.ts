@@ -1,269 +1,374 @@
 import type { UserRole } from '../routing/AuthProvider';
 
+/* ------------------------------------------------------------------ *
+ * Types — aligned with the real backend `/admin/*` response shapes.
+ * Mock fallbacks below satisfy these so TypeScript stays consistent
+ * whether the API is reachable or not.
+ * ------------------------------------------------------------------ */
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
   description?: string;
-  isActive: boolean;
   createdAt: string;
+  challengeCount: number;
 }
+
+export type Difficulty = 'BEGINNER' | 'EASY' | 'MEDIUM' | 'HARD';
+export type Visibility = 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
 
 export interface Challenge {
   id: string;
   title: string;
   slug: string;
   shortDescription: string;
-  description: string;
   durationDays: number;
-  difficulty: 'BEGINNER' | 'EASY' | 'MEDIUM' | 'HARD';
-  dailyTask: string;
-  benefits: string[];
-  safetyNote?: string;
+  difficulty: Difficulty;
+  isActive: boolean;
   isPopular: boolean;
   isRecommended: boolean;
-  isActive: boolean;
-  categoryId: string;
+  visibility: Visibility;
+  isCustom: boolean;
   createdAt: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  joinedCount: number;
+  // Detail-only fields (present on create/update responses, optional in list)
+  description?: string;
+  dailyTask?: string;
+  benefits?: string[];
+  safetyNote?: string;
+}
+
+/** Body for POST /admin/challenges and (partially) PATCH /admin/challenges/:id. */
+export interface ChallengeInput {
+  title: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  dailyTask: string;
+  durationDays: number;
+  difficulty: Difficulty;
+  categoryId: string;
+  benefits: string[];
+  safetyNote?: string;
+  isPopular?: boolean;
+  isRecommended?: boolean;
+  isActive?: boolean;
 }
 
 export interface MockUser {
   id: string;
-  email: string;
   name: string;
+  email: string;
+  username: string | null;
   role: UserRole;
+  isActive: boolean;
+  emailVerified: boolean;
+  createdAt: string;
+  challengeCount: number;
+}
+
+export interface UsersListResponse {
+  total: number;
+  skip: number;
+  take: number;
+  users: MockUser[];
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  username: string | null;
+  phone: string | null;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  gender: string | null;
+  birthYear: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  unitPreference: string | null;
+  primaryGoal: string | null;
+  interestCategoryIds: string[];
+  dailyMinutes: number | null;
+  onboardingCompletedAt: string | null;
+  referralCode: string | null;
+}
+
+export interface JoinedChallenge {
+  id: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
+  startDate: string;
+  endDate: string | null;
+  challengeTitle: string;
+  durationDays: number;
+  checkinsCount: number;
+}
+
+export interface CreatedChallengeSummary {
+  id: string;
+  title: string;
+  visibility: Visibility;
   isActive: boolean;
   createdAt: string;
 }
 
-export interface MockUserChallenge {
-  id: string;
-  userId: string;
-  challengeId: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
-  startDate: string;
-  endDate?: string;
-  progressPercent: number;
-  createdAt: string;
+export interface UserDetailResponse {
+  user: UserProfile;
+  joinedChallenges: JoinedChallenge[];
+  createdChallenges: CreatedChallengeSummary[];
+  friendCount: number;
+  chatMessageCount: number;
 }
 
-export interface MockDailyCheckin {
+export interface DashboardStats {
+  totalUsers: number;
+  suspendedUsers: number;
+  catalogChallenges: number;
+  customChallenges: number;
+  activeUserChallenges: number;
+  completedUserChallenges: number;
+  totalCheckins: number;
+  contactTotal: number;
+  contactUnresolved: number;
+}
+
+export interface CheckinRow {
   id: string;
-  userChallengeId: string;
   checkinDate: string;
   status: 'COMPLETED' | 'MISSED' | 'SKIPPED';
-  notes?: string;
+  notes: string | null;
   createdAt: string;
-}
-
-export interface MockShareEvent {
-  id: string;
   userId: string;
-  type: 'CHALLENGE_INVITE' | 'DAILY_PROGRESS' | 'COMPLETION';
-  platform?: string;
-  payload?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  createdAt: string;
+  userName: string;
+  userEmail: string;
+  challengeTitle: string;
 }
 
-export interface ShareEventWithDetails extends MockShareEvent {
+export interface CheckinsResponse {
+  total: number;
+  skip: number;
+  take: number;
+  checkins: CheckinRow[];
+}
+
+export interface ShareEventRow {
+  id: string;
+  type: string;
+  platform: string | null;
+  createdAt: string;
+  userId: string;
   userName: string;
   userEmail: string;
 }
 
-// 6 Core Categories seeded in database
-export const mockCategories: Category[] = [
-  { id: 'cat-1', name: 'Diet & Nutrition', slug: 'diet-nutrition', description: 'Fuel your body with wholesome, nutrient-dense foods.', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
-  { id: 'cat-2', name: 'Fitness & Movement', slug: 'fitness-movement', description: 'Strengthen your heart and body through daily exercise.', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
-  { id: 'cat-3', name: 'Mental Wellness', slug: 'mental-wellness', description: 'Calm your mind, improve focus, and develop resilience.', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
-  { id: 'cat-4', name: 'Sleep & Recovery', slug: 'sleep-recovery', description: 'Optimize your rest periods to promote cell repair.', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
-  { id: 'cat-5', name: 'Break Bad Habits', slug: 'break-bad-habits', description: 'Overcome self-limiting habits and mindless scrolling.', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
-  { id: 'cat-6', name: 'Family Wellness', slug: 'family-wellness', description: 'Connect with loved ones and establish group habits.', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
-];
-
-// Highlight challenges matching seed list
-export const mockChallenges: Challenge[] = [
-  {
-    id: 'ch-1',
-    title: 'No Refined Sugar',
-    slug: 'no-refined-sugar',
-    shortDescription: 'Cut out all processed sugars and artificial sweeteners.',
-    description: 'Remove refined sugars from your meals and drinks. Focus on getting clean, sustained energy.',
-    durationDays: 30,
-    difficulty: 'MEDIUM',
-    dailyTask: 'Check labels and consume 0 grams of added or refined sugars today.',
-    benefits: ['Reduced inflammation', 'Stabilized insulin', 'Fewer sweet cravings'],
-    safetyNote: 'If you have type 1 or type 2 diabetes, consult your doctor before modifying sugar intake.',
-    isPopular: true,
-    isRecommended: true,
-    isActive: true,
-    categoryId: 'cat-1',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-  {
-    id: 'ch-2',
-    title: 'Hydration Hero',
-    slug: 'hydration-hero',
-    shortDescription: 'Drink 3 liters of pure water every day.',
-    description: 'Proper hydration is vital for every cell in your body. Carry a water bottle and track your intake.',
-    durationDays: 30,
-    difficulty: 'BEGINNER',
-    dailyTask: 'Drink a minimum of 3 liters (approx. 100 oz) of water.',
-    benefits: ['Clearer skin texture', 'Boosted physical performance', 'Reduced headaches'],
-    safetyNote: 'Individuals with congestive heart failure or kidney disease should adjust fluid goals with their physician.',
-    isPopular: true,
-    isRecommended: false,
-    isActive: true,
-    categoryId: 'cat-1',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-  {
-    id: 'ch-3',
-    title: 'Daily 10k Steps',
-    slug: 'daily-10k-steps',
-    shortDescription: 'Walk at least 10,000 steps every single day.',
-    description: 'Combat sedentary modern life. Increase non-exercise activity thermogenesis (NEAT) by logging 10,000 steps.',
-    durationDays: 30,
-    difficulty: 'EASY',
-    dailyTask: 'Walk a total of 10,000 steps.',
-    benefits: ['Strengthened cardiovascular system', 'Increased daily calorie burn', 'Better joint health'],
-    safetyNote: 'Wear supportive athletic shoes to avoid foot pain or blisters.',
-    isPopular: true,
-    isRecommended: true,
-    isActive: true,
-    categoryId: 'cat-2',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-  {
-    id: 'ch-4',
-    title: 'Morning Mobility Stretch',
-    slug: 'morning-mobility-stretch',
-    shortDescription: 'Spend 15 minutes stretching your muscles upon waking.',
-    description: 'Start your morning with fluidity. Loosen tight hips, hamstrings, and shoulders with a dynamic mobility sequence.',
-    durationDays: 30,
-    difficulty: 'BEGINNER',
-    dailyTask: 'Complete 15 minutes of full-body dynamic stretching.',
-    benefits: ['Increased range of joint motion', 'Stimulated blood flow', 'Alleviated muscular stiffness'],
-    safetyNote: 'Perform gentle, slow stretches; never bounce or force a joint.',
-    isPopular: true,
-    isRecommended: true,
-    isActive: true,
-    categoryId: 'cat-2',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-  {
-    id: 'ch-5',
-    title: 'Daily Gratitude Journal',
-    slug: 'daily-gratitude-journal',
-    shortDescription: 'Write down three unique things you are grateful for.',
-    description: 'Shift your mindset toward abundance. Every morning or evening, write down three specific, detailed things that brought you joy.',
-    durationDays: 30,
-    difficulty: 'BEGINNER',
-    dailyTask: 'Write 3 unique gratitude points in a journal.',
-    benefits: ['Rewires brain to focus on positives', 'Decreases anxiety and self-doubt'],
-    safetyNote: 'Focus on authentic, small details rather than broad generalizations.',
-    isPopular: true,
-    isRecommended: true,
-    isActive: true,
-    categoryId: 'cat-3',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-  {
-    id: 'ch-6',
-    title: 'Mindful Meditation',
-    slug: 'mindful-meditation',
-    shortDescription: 'Meditate quietly for 10 minutes.',
-    description: 'Cultivate presence. Sit in a comfortable position, close your eyes, and focus strictly on your breathing.',
-    durationDays: 30,
-    difficulty: 'MEDIUM',
-    dailyTask: 'Sit in silent or guided meditation for 10 minutes today.',
-    benefits: ['Enriched emotional regulation', 'Better attention span and focus'],
-    safetyNote: 'If sitting upright is painful, it is acceptable to lie down, provided you remain awake.',
-    isPopular: true,
-    isRecommended: true,
-    isActive: true,
-    categoryId: 'cat-3',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-  {
-    id: 'ch-7',
-    title: 'Early Bird Bedtime',
-    slug: 'early-bird-bedtime',
-    shortDescription: 'Be in bed with lights out by 10:30 PM.',
-    description: 'Sync with your natural circadian rhythm. Prepare your body for rest and aim to fall asleep by 10:30 PM.',
-    durationDays: 30,
-    difficulty: 'MEDIUM',
-    dailyTask: 'Turn off all room lights and lie in bed by 10:30 PM.',
-    benefits: ['Optimized release of growth hormone', 'Waking up refreshed without alarms'],
-    safetyNote: 'If you work night shifts, adjust your target time to maintain a consistent 8-hour sleep block.',
-    isPopular: true,
-    isRecommended: true,
-    isActive: true,
-    categoryId: 'cat-4',
-    createdAt: '2026-05-20T00:00:00.000Z',
-  },
-];
-
-// Seed other challenges as minimal items to satisfy "at least 40 starter challenges" requirements
-for (let i = 8; i <= 40; i++) {
-  const catIndex = (i % 6) + 1;
-  const difficulties: Array<'BEGINNER' | 'EASY' | 'MEDIUM' | 'HARD'> = ['BEGINNER', 'EASY', 'MEDIUM', 'HARD'];
-  mockChallenges.push({
-    id: `ch-${i}`,
-    title: `Starter Challenge #${i}`,
-    slug: `starter-challenge-${i}`,
-    shortDescription: `Brief guidelines for starter challenge #${i}`,
-    description: `A detailed description outlining wellness strategies for starter challenge #${i}. Perform daily tasks to secure streaks.`,
-    durationDays: 30,
-    difficulty: difficulties[i % 4],
-    dailyTask: `Complete the routine assigned for day #${i}`,
-    benefits: ['General physical wellness', 'Established structural habit'],
-    safetyNote: 'Always execute physical activities under controlled paces and consult professional specialists if unsure.',
-    isPopular: i % 7 === 0,
-    isRecommended: i % 8 === 0,
-    isActive: true,
-    categoryId: `cat-${catIndex}`,
-    createdAt: '2026-05-20T00:00:00.000Z',
-  });
+export interface ShareEventsResponse {
+  total: number;
+  skip: number;
+  take: number;
+  events: ShareEventRow[];
 }
 
-// Mock User listings
+export interface CustomChallengeRow {
+  id: string;
+  title: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  dailyTask: string;
+  visibility: Visibility;
+  isActive: boolean;
+  createdAt: string;
+  creatorId: string;
+  creatorName: string;
+  creatorEmail: string;
+  joinedCount: number;
+  inviteCount: number;
+}
+
+export interface ChatMessageRow {
+  id: string;
+  kind: 'PRESET' | 'CELEBRATION';
+  presetCode: string | null;
+  body: string | null;
+  createdAt: string;
+  challengeId: string;
+  challengeTitle: string;
+  userId: string;
+  userName: string;
+}
+
+export interface ChatMessagesResponse {
+  total: number;
+  skip: number;
+  take: number;
+  messages: ChatMessageRow[];
+}
+
+export interface FriendshipRow {
+  id: string;
+  status: string;
+  createdAt: string;
+  respondedAt: string | null;
+  requesterId: string;
+  requesterName: string;
+  recipientId: string;
+  recipientName: string;
+}
+
+export interface FriendshipsResponse {
+  total: number;
+  skip: number;
+  take: number;
+  friendships: FriendshipRow[];
+}
+
+export interface ContactSubmissionRow {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  ipAddress: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+export interface ContactSubmissionsResponse {
+  total: number;
+  skip: number;
+  take: number;
+  submissions: ContactSubmissionRow[];
+}
+
+/* ------------------------------------------------------------------ *
+ * Mock fallbacks. Used only when the API is unreachable so the app
+ * still renders during local dev without a backend.
+ * ------------------------------------------------------------------ */
+
+export const mockCategories: Category[] = [
+  { id: 'cat-1', name: 'Diet & Nutrition', slug: 'diet-nutrition', description: 'Fuel your body with wholesome, nutrient-dense foods.', createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 8 },
+  { id: 'cat-2', name: 'Fitness & Movement', slug: 'fitness-movement', description: 'Strengthen your heart and body through daily exercise.', createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 9 },
+  { id: 'cat-3', name: 'Mental Wellness', slug: 'mental-wellness', description: 'Calm your mind, improve focus, and develop resilience.', createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 7 },
+  { id: 'cat-4', name: 'Sleep & Recovery', slug: 'sleep-recovery', description: 'Optimize your rest periods to promote cell repair.', createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 5 },
+  { id: 'cat-5', name: 'Break Bad Habits', slug: 'break-bad-habits', description: 'Overcome self-limiting habits and mindless scrolling.', createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 6 },
+  { id: 'cat-6', name: 'Family Wellness', slug: 'family-wellness', description: 'Connect with loved ones and establish group habits.', createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 5 },
+];
+
+function mockChallenge(
+  partial: Partial<Challenge> & Pick<Challenge, 'id' | 'title' | 'slug' | 'categoryId'>,
+): Challenge {
+  const category = mockCategories.find((c) => c.id === partial.categoryId);
+  return {
+    shortDescription: 'A structured 30-day wellness challenge.',
+    durationDays: 30,
+    difficulty: 'MEDIUM',
+    isActive: true,
+    isPopular: false,
+    isRecommended: false,
+    visibility: 'PUBLIC',
+    isCustom: false,
+    createdAt: '2026-05-20T00:00:00.000Z',
+    categoryName: category?.name ?? null,
+    joinedCount: 0,
+    description: 'Detailed description of the challenge and how to succeed.',
+    dailyTask: 'Complete the assigned daily task.',
+    benefits: ['Improved wellness', 'Built consistency'],
+    ...partial,
+  };
+}
+
+export const mockChallenges: Challenge[] = [
+  mockChallenge({ id: 'ch-1', title: 'No Refined Sugar', slug: 'no-refined-sugar', categoryId: 'cat-1', shortDescription: 'Cut out all processed sugars and artificial sweeteners.', isPopular: true, isRecommended: true, joinedCount: 42 }),
+  mockChallenge({ id: 'ch-2', title: 'Hydration Hero', slug: 'hydration-hero', categoryId: 'cat-1', difficulty: 'BEGINNER', shortDescription: 'Drink 3 liters of pure water every day.', isPopular: true, joinedCount: 30 }),
+  mockChallenge({ id: 'ch-3', title: 'Daily 10k Steps', slug: 'daily-10k-steps', categoryId: 'cat-2', difficulty: 'EASY', shortDescription: 'Walk at least 10,000 steps every single day.', isPopular: true, isRecommended: true, joinedCount: 55 }),
+  mockChallenge({ id: 'ch-4', title: 'Morning Mobility Stretch', slug: 'morning-mobility-stretch', categoryId: 'cat-2', difficulty: 'BEGINNER', shortDescription: 'Spend 15 minutes stretching your muscles upon waking.', joinedCount: 18 }),
+  mockChallenge({ id: 'ch-5', title: 'Daily Gratitude Journal', slug: 'daily-gratitude-journal', categoryId: 'cat-3', difficulty: 'BEGINNER', shortDescription: 'Write down three unique things you are grateful for.', isRecommended: true, joinedCount: 22 }),
+  mockChallenge({ id: 'ch-6', title: 'Mindful Meditation', slug: 'mindful-meditation', categoryId: 'cat-3', shortDescription: 'Meditate quietly for 10 minutes.', joinedCount: 14 }),
+  mockChallenge({ id: 'ch-7', title: 'Early Bird Bedtime', slug: 'early-bird-bedtime', categoryId: 'cat-4', shortDescription: 'Be in bed with lights out by 10:30 PM.', isRecommended: true, joinedCount: 11 }),
+];
+
 export const mockUsers: MockUser[] = [
-  { id: 'usr-1', email: 'alice.jones@gmail.com', name: 'Alice Jones', role: 'USER', isActive: true, createdAt: '2026-05-21T08:12:00.000Z' },
-  { id: 'usr-2', email: 'bob.smith@hotmail.com', name: 'Bob Smith', role: 'USER', isActive: true, createdAt: '2026-05-21T10:14:00.000Z' },
-  { id: 'usr-3', email: 'charlie.brown@yahoo.com', name: 'Charlie Brown', role: 'USER', isActive: true, createdAt: '2026-05-22T07:15:00.000Z' },
-  { id: 'usr-4', email: 'diana.prince@outlook.com', name: 'Diana Prince', role: 'USER', isActive: false, createdAt: '2026-05-22T14:32:00.000Z' },
-  { id: 'usr-5', email: 'evan.wright@icloud.com', name: 'Evan Wright', role: 'USER', isActive: true, createdAt: '2026-05-23T11:45:00.000Z' },
-  { id: 'usr-6', email: 'superadmin@challenge.charangudla.com', name: 'Vital30 Super Admin', role: 'SUPER_ADMIN', isActive: true, createdAt: '2026-05-20T00:00:00.000Z' },
+  { id: 'usr-1', name: 'Alice Jones', email: 'alice.jones@gmail.com', username: 'alicej', role: 'USER', isActive: true, emailVerified: true, createdAt: '2026-05-21T08:12:00.000Z', challengeCount: 2 },
+  { id: 'usr-2', name: 'Bob Smith', email: 'bob.smith@hotmail.com', username: 'bobsmith', role: 'USER', isActive: true, emailVerified: true, createdAt: '2026-05-21T10:14:00.000Z', challengeCount: 2 },
+  { id: 'usr-3', name: 'Charlie Brown', email: 'charlie.brown@yahoo.com', username: null, role: 'USER', isActive: true, emailVerified: false, createdAt: '2026-05-22T07:15:00.000Z', challengeCount: 1 },
+  { id: 'usr-4', name: 'Diana Prince', email: 'diana.prince@outlook.com', username: 'wonder', role: 'USER', isActive: false, emailVerified: true, createdAt: '2026-05-22T14:32:00.000Z', challengeCount: 0 },
+  { id: 'usr-5', name: 'Evan Wright', email: 'evan.wright@icloud.com', username: null, role: 'USER', isActive: true, emailVerified: true, createdAt: '2026-05-23T11:45:00.000Z', challengeCount: 1 },
+  { id: 'usr-6', name: 'Vital30 Super Admin', email: 'superadmin@challenge.charangudla.com', username: 'superadmin', role: 'SUPER_ADMIN', isActive: true, emailVerified: true, createdAt: '2026-05-20T00:00:00.000Z', challengeCount: 0 },
 ];
 
-// Mock User Joined Challenges
-export const mockUserChallenges: MockUserChallenge[] = [
-  { id: 'uc-1', userId: 'usr-1', challengeId: 'ch-1', status: 'ACTIVE', startDate: '2026-05-21T00:00:00.000Z', progressPercent: 40, createdAt: '2026-05-21T08:30:00.000Z' },
-  { id: 'uc-2', userId: 'usr-1', challengeId: 'ch-3', status: 'COMPLETED', startDate: '2026-04-20T00:00:00.000Z', endDate: '2026-05-20T00:00:00.000Z', progressPercent: 100, createdAt: '2026-04-20T09:12:00.000Z' },
-  { id: 'uc-3', userId: 'usr-2', challengeId: 'ch-1', status: 'ACTIVE', startDate: '2026-05-22T00:00:00.000Z', progressPercent: 30, createdAt: '2026-05-22T10:15:00.000Z' },
-  { id: 'uc-4', userId: 'usr-2', challengeId: 'ch-2', status: 'ABANDONED', startDate: '2026-05-21T00:00:00.000Z', progressPercent: 10, createdAt: '2026-05-21T10:20:00.000Z' },
-  { id: 'uc-5', userId: 'usr-3', challengeId: 'ch-5', status: 'ACTIVE', startDate: '2026-05-23T00:00:00.000Z', progressPercent: 20, createdAt: '2026-05-23T08:00:00.000Z' },
-  { id: 'uc-6', userId: 'usr-5', challengeId: 'ch-7', status: 'ACTIVE', startDate: '2026-05-24T00:00:00.000Z', progressPercent: 10, createdAt: '2026-05-24T12:00:00.000Z' },
+export const mockUserProfiles: Record<string, UserProfile> = mockUsers.reduce(
+  (acc, u) => {
+    acc[u.id] = {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      emailVerified: u.emailVerified,
+      username: u.username,
+      phone: null,
+      role: u.role,
+      isActive: u.isActive,
+      createdAt: u.createdAt,
+      gender: null,
+      birthYear: null,
+      heightCm: null,
+      weightKg: null,
+      unitPreference: 'METRIC',
+      primaryGoal: null,
+      interestCategoryIds: [],
+      dailyMinutes: null,
+      onboardingCompletedAt: u.createdAt,
+      referralCode: u.id.toUpperCase().replace('-', ''),
+    };
+    return acc;
+  },
+  {} as Record<string, UserProfile>,
+);
+
+export const mockJoinedChallenges: Record<string, JoinedChallenge[]> = {
+  'usr-1': [
+    { id: 'uc-1', status: 'ACTIVE', startDate: '2026-05-21T00:00:00.000Z', endDate: null, challengeTitle: 'No Refined Sugar', durationDays: 30, checkinsCount: 3 },
+    { id: 'uc-2', status: 'COMPLETED', startDate: '2026-04-20T00:00:00.000Z', endDate: '2026-05-20T00:00:00.000Z', challengeTitle: 'Daily 10k Steps', durationDays: 30, checkinsCount: 30 },
+  ],
+  'usr-2': [
+    { id: 'uc-3', status: 'ACTIVE', startDate: '2026-05-22T00:00:00.000Z', endDate: null, challengeTitle: 'No Refined Sugar', durationDays: 30, checkinsCount: 2 },
+  ],
+};
+
+export const mockCheckins: CheckinRow[] = [
+  { id: 'ck-1', checkinDate: '2026-05-21', status: 'COMPLETED', notes: 'Feeling full of natural energy!', createdAt: '2026-05-21T20:00:00.000Z', userId: 'usr-1', userName: 'Alice Jones', userEmail: 'alice.jones@gmail.com', challengeTitle: 'No Refined Sugar' },
+  { id: 'ck-2', checkinDate: '2026-05-22', status: 'COMPLETED', notes: 'Almost ate a cookie, stayed strong!', createdAt: '2026-05-22T19:30:00.000Z', userId: 'usr-1', userName: 'Alice Jones', userEmail: 'alice.jones@gmail.com', challengeTitle: 'No Refined Sugar' },
+  { id: 'ck-3', checkinDate: '2026-05-23', status: 'SKIPPED', notes: 'Family reunion - skip allowed', createdAt: '2026-05-23T21:10:00.000Z', userId: 'usr-1', userName: 'Alice Jones', userEmail: 'alice.jones@gmail.com', challengeTitle: 'No Refined Sugar' },
+  { id: 'ck-5', checkinDate: '2026-05-22', status: 'COMPLETED', notes: 'Tough but worth it', createdAt: '2026-05-22T21:00:00.000Z', userId: 'usr-2', userName: 'Bob Smith', userEmail: 'bob.smith@hotmail.com', challengeTitle: 'No Refined Sugar' },
+  { id: 'ck-6', checkinDate: '2026-05-23', status: 'MISSED', notes: null, createdAt: '2026-05-23T23:59:59.000Z', userId: 'usr-2', userName: 'Bob Smith', userEmail: 'bob.smith@hotmail.com', challengeTitle: 'No Refined Sugar' },
 ];
 
-// Mock checkins per joined challenge
-export const mockDailyCheckins: MockDailyCheckin[] = [
-  // User challenge 1 checkins
-  { id: 'ck-1', userChallengeId: 'uc-1', checkinDate: '2026-05-21', status: 'COMPLETED', notes: 'Feeling full of natural energy!', createdAt: '2026-05-21T20:00:00.000Z' },
-  { id: 'ck-2', userChallengeId: 'uc-1', checkinDate: '2026-05-22', status: 'COMPLETED', notes: 'Almost ate a cookie, stayed strong!', createdAt: '2026-05-22T19:30:00.000Z' },
-  { id: 'ck-3', userChallengeId: 'uc-1', checkinDate: '2026-05-23', status: 'SKIPPED', notes: 'Family reunion - skip allowed', createdAt: '2026-05-23T21:10:00.000Z' },
-  { id: 'ck-4', userChallengeId: 'uc-1', checkinDate: '2026-05-24', status: 'COMPLETED', notes: 'No cravings today!', createdAt: '2026-05-24T18:00:00.000Z' },
-
-  // User challenge 3 checkins
-  { id: 'ck-5', userChallengeId: 'uc-3', checkinDate: '2026-05-22', status: 'COMPLETED', notes: 'Tough but worth it', createdAt: '2026-05-22T21:00:00.000Z' },
-  { id: 'ck-6', userChallengeId: 'uc-3', checkinDate: '2026-05-23', status: 'MISSED', createdAt: '2026-05-23T23:59:59.000Z' },
-  { id: 'ck-7', userChallengeId: 'uc-3', checkinDate: '2026-05-24', status: 'COMPLETED', notes: 'Back on track.', createdAt: '2026-05-24T20:15:00.000Z' },
+export const mockShareEvents: ShareEventRow[] = [
+  { id: 'se-1', type: 'DAILY_PROGRESS', platform: 'Twitter', createdAt: '2026-05-24T18:15:00.000Z', userId: 'usr-1', userName: 'Alice Jones', userEmail: 'alice.jones@gmail.com' },
+  { id: 'se-2', type: 'COMPLETION', platform: 'Facebook', createdAt: '2026-05-20T17:30:00.000Z', userId: 'usr-1', userName: 'Alice Jones', userEmail: 'alice.jones@gmail.com' },
+  { id: 'se-3', type: 'CHALLENGE_INVITE', platform: 'WhatsApp', createdAt: '2026-05-22T11:00:00.000Z', userId: 'usr-2', userName: 'Bob Smith', userEmail: 'bob.smith@hotmail.com' },
+  { id: 'se-4', type: 'DAILY_PROGRESS', platform: 'Instagram', createdAt: '2026-05-24T19:00:00.000Z', userId: 'usr-3', userName: 'Charlie Brown', userEmail: 'charlie.brown@yahoo.com' },
 ];
 
-// Mock Viral Share Events
-export const mockShareEvents: MockShareEvent[] = [
-  { id: 'se-1', userId: 'usr-1', type: 'DAILY_PROGRESS', platform: 'Twitter', payload: { challengeTitle: 'No Refined Sugar', day: 4 }, createdAt: '2026-05-24T18:15:00.000Z' },
-  { id: 'se-2', userId: 'usr-1', type: 'COMPLETION', platform: 'Facebook', payload: { challengeTitle: 'Daily 10k Steps' }, createdAt: '2026-05-20T17:30:00.000Z' },
-  { id: 'se-3', userId: 'usr-2', type: 'CHALLENGE_INVITE', platform: 'WhatsApp', payload: { inviteLink: 'http://challenge.charangudla.com/join/ch-1' }, createdAt: '2026-05-22T11:00:00.000Z' },
-  { id: 'se-4', userId: 'usr-3', type: 'DAILY_PROGRESS', platform: 'Instagram', payload: { challengeTitle: 'Daily Gratitude Journal', day: 2 }, createdAt: '2026-05-24T19:00:00.000Z' },
+export const mockCustomChallenges: CustomChallengeRow[] = [
+  { id: 'cc-1', title: '21-Day No Soda', slug: 'no-soda-abc', shortDescription: 'My personal soda-free streak.', description: 'Cutting out all sodas for 21 days straight.', dailyTask: 'Drink zero soda today.', visibility: 'INVITE_ONLY', isActive: true, createdAt: '2026-05-24T09:00:00.000Z', creatorId: 'usr-1', creatorName: 'Alice Jones', creatorEmail: 'alice.jones@gmail.com', joinedCount: 4, inviteCount: 6 },
+  { id: 'cc-2', title: 'Family Walk Club', slug: 'family-walk-xyz', shortDescription: 'Evening walks with the family.', description: 'A nightly 20-minute walk together.', dailyTask: 'Take an evening walk.', visibility: 'PRIVATE', isActive: true, createdAt: '2026-05-23T18:00:00.000Z', creatorId: 'usr-2', creatorName: 'Bob Smith', creatorEmail: 'bob.smith@hotmail.com', joinedCount: 3, inviteCount: 3 },
+];
+
+export const mockChatMessages: ChatMessageRow[] = [
+  { id: 'cm-1', kind: 'PRESET', presetCode: 'KEEP_GOING', body: null, createdAt: '2026-05-24T12:00:00.000Z', challengeId: 'cc-1', challengeTitle: '21-Day No Soda', userId: 'usr-1', userName: 'Alice Jones' },
+  { id: 'cm-2', kind: 'CELEBRATION', presetCode: null, body: 'Crushed day 5!', createdAt: '2026-05-24T13:30:00.000Z', challengeId: 'cc-1', challengeTitle: '21-Day No Soda', userId: 'usr-2', userName: 'Bob Smith' },
+];
+
+export const mockFriendships: FriendshipRow[] = [
+  { id: 'fr-1', status: 'ACCEPTED', createdAt: '2026-05-22T09:00:00.000Z', respondedAt: '2026-05-22T10:00:00.000Z', requesterId: 'usr-1', requesterName: 'Alice Jones', recipientId: 'usr-2', recipientName: 'Bob Smith' },
+  { id: 'fr-2', status: 'PENDING', createdAt: '2026-05-24T09:00:00.000Z', respondedAt: null, requesterId: 'usr-3', requesterName: 'Charlie Brown', recipientId: 'usr-1', recipientName: 'Alice Jones' },
+];
+
+export const mockContactSubmissions: ContactSubmissionRow[] = [
+  { id: 'cs-1', name: 'Grace Hopper', email: 'grace@example.com', message: 'Love the app! Any plans for an Android widget?', ipAddress: '203.0.113.5', resolvedAt: null, createdAt: '2026-05-25T11:00:00.000Z' },
+  { id: 'cs-2', name: 'Alan Turing', email: 'alan@example.com', message: 'I was charged twice for premium.', ipAddress: '203.0.113.9', resolvedAt: '2026-05-24T15:00:00.000Z', createdAt: '2026-05-24T08:00:00.000Z' },
 ];
