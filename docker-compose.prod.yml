@@ -105,11 +105,11 @@ services:
     networks:
       - vital30_internal
     healthcheck:
-      # Probe a lightweight metadata route, NOT "/". The home page runs a data
-      # fetch on render and can exceed the 5s timeout → false "unhealthy" even
-      # while the app serves fine. /robots.txt proves the Next.js server is up
-      # without depending on the API being reachable.
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/robots.txt || exit 1"]
+      # Use 127.0.0.1, NOT "localhost": the standalone server binds IPv4 only
+      # (HOSTNAME=0.0.0.0), but inside the container "localhost" resolves to
+      # IPv6 ::1 first → "connection refused" → false "unhealthy". /robots.txt
+      # is a lightweight route that doesn't depend on the API being reachable.
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://127.0.0.1:3000/robots.txt || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -129,6 +129,10 @@ services:
       # HTTP-only config first, deploy, get certs, then switch back:
       #   - ./deploy/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/prod-ssl.conf:/etc/nginx/conf.d/default.conf:ro
+      # Staging routing — loaded alongside default.conf via conf.d/*.conf.
+      # Reaches the staging stack over the shared vital30_edge network below.
+      # Uses a runtime resolver, so it's safe to mount even when staging is down.
+      - ./deploy/nginx/staging-ssl.conf:/etc/nginx/conf.d/staging.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - api
@@ -136,10 +140,17 @@ services:
       - web
     networks:
       - vital30_internal
+      # Shared front-door network: lets this (prod) nginx also proxy the
+      # staging hostnames to the staging-* containers. See staging.conf above.
+      - vital30_edge
 
 networks:
   vital30_internal:
     driver: bridge
+  # Created once on the VPS: `docker network create vital30_edge`.
+  # docker-compose.staging.yml references the same network (also external).
+  vital30_edge:
+    external: true
 
 volumes:
   postgres_prod_data:

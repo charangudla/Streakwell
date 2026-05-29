@@ -4,6 +4,7 @@ build
 .env
 .env.local
 .env.production
+.env.staging
 .DS_Store
 coverage
 *.tsbuildinfo
