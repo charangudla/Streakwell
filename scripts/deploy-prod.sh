@@ -85,6 +85,14 @@ docker compose -f docker-compose.prod.yml up -d
 
 echo -e "${GREEN}✓ Production service containers started.${NC}"
 
+# Recreating the app containers above assigns them fresh internal IPs. nginx
+# resolves its upstream hostnames (web/api/admin) ONCE at startup and caches
+# the IPs, so after a redeploy it keeps proxying to the OLD, now-dead
+# container IPs → 502 Bad Gateway. Restart nginx so it re-resolves them.
+echo -e "${BLUE}Refreshing nginx upstreams (clears cached container IPs)...${NC}"
+docker compose -f docker-compose.prod.yml restart nginx
+echo -e "${GREEN}✓ nginx refreshed.${NC}"
+
 # 5. Database Migrations Execution
 echo -e "\n${BLUE}[Step 5/6] Executing safe production database migrations...${NC}"
 echo -e "${YELLOW}Waiting for Postgres and API service containers to complete startup...${NC}"

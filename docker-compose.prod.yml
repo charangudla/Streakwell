@@ -105,7 +105,11 @@ services:
     networks:
       - vital30_internal
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      # Probe a lightweight metadata route, NOT "/". The home page runs a data
+      # fetch on render and can exceed the 5s timeout → false "unhealthy" even
+      # while the app serves fine. /robots.txt proves the Next.js server is up
+      # without depending on the API being reachable.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/robots.txt || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
