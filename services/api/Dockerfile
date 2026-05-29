@@ -12,11 +12,13 @@ RUN npx prisma generate
 COPY . .
 RUN npm run build
 
-# Compile the standalone catalog seed (prisma/seed.ts) to CommonJS so it
-# runs in the runner with plain `node` — the runner installs prod deps
-# only (no ts-node). Mirrors how dist/main.js runs: compiled CJS that
-# imports better-auth + @prisma/client.
-RUN npx tsc prisma/seed.ts --outDir dist-seed --rootDir prisma \
+# Compile the standalone seed scripts to CommonJS so they run in the runner
+# with plain `node` — the runner installs prod deps only (no ts-node). Mirrors
+# how dist/main.js runs: compiled CJS that imports better-auth + @prisma/client.
+#   - seed.js          → destructive full reset (LOCAL dev only)
+#   - seed-catalog.js  → non-destructive upsert (safe for PRODUCTION)
+# Both import the shared prisma/catalog-data.ts, which tsc compiles alongside.
+RUN npx tsc prisma/seed.ts prisma/seed-catalog.ts --outDir dist-seed --rootDir prisma \
     --module commonjs --moduleResolution node --esModuleInterop \
     --target es2023 --skipLibCheck
 

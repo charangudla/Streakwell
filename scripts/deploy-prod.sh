@@ -99,12 +99,14 @@ else
     exit 1
 fi
 
-# Seeding is intentionally NOT automatic. The catalog seed is DESTRUCTIVE
-# (it wipes + repopulates the DB), so auto-running it on every deploy would
-# erase real user data. Seed manually ONCE on a fresh database.
-echo -e "${YELLOW}ℹ️  Skipping automatic seed — the catalog seed is destructive.${NC}"
-echo -e "${YELLOW}    First-time setup only: populate the 42 starter challenges with${NC}"
-echo -e "${BLUE}    docker compose -f docker-compose.prod.yml exec api node dist-seed/seed.js${NC}"
+# Seeding is intentionally NOT automatic. To load/refresh the 42 starter
+# challenges WITHOUT touching any user data, run the non-destructive catalog
+# seed below — it only UPSERTs categories + challenges and is safe to re-run.
+# (Do NOT run dist-seed/seed.js in prod: that one is destructive — it wipes
+#  every table including users — and is for local dev resets only.)
+echo -e "${YELLOW}ℹ️  Skipping automatic seed.${NC}"
+echo -e "${YELLOW}    To load/refresh the 42 starter challenges (safe, non-destructive):${NC}"
+echo -e "${BLUE}    docker compose -f docker-compose.prod.yml exec -T api node dist-seed/seed-catalog.js${NC}"
 
 # 6. Service Health Audit
 echo -e "\n${BLUE}[Step 6/6] Auditing production health statuses...${NC}"
