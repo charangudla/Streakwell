@@ -1,0 +1,53 @@
+name: CodeQL Security Scan
+
+# Static analysis for the JS/TS surface (API, web, admin).
+# NOTE: CodeQL needs a PUBLIC repo or GitHub Advanced Security. On a private
+# repo without GHAS this workflow fails with a licensing error — see
+# docs/ci-testing.md for how to enable code scanning or remove this file.
+# Dart/Flutter is not a CodeQL-supported language and is intentionally excluded.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly baseline scan, Mondays 06:00 UTC.
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - javascript-typescript
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      # JS/TS is interpreted — no build step is required for analysis.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

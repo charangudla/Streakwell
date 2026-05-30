@@ -10,6 +10,20 @@ on:
       - 'apps/admin/Dockerfile'
       - 'deploy/nginx/**'
       - '.github/workflows/docker-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.prod.yml'
+      - 'services/api/Dockerfile'
+      - 'apps/admin/Dockerfile'
+      - 'deploy/nginx/**'
+      - '.github/workflows/docker-ci.yml'
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: docker-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docker-audit:

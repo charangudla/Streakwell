@@ -1,0 +1,66 @@
+name: Web E2E (Playwright)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-e2e.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-e2e.yml'
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: web-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright Smoke (public pages)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    env:
+      # Public pages render from fallback data, so no live API is needed; this
+      # only sets the base URL the (unused-at-runtime) client would resolve.
+      NEXT_PUBLIC_API_BASE_URL: https://api.challenge.charangudla.com
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Production Bundle
+        run: npm run build
+
+      - name: Run Playwright Smoke Tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright Report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
