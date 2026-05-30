@@ -62,6 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     if (!sessionUserId) {
+      // Synchronous reset on sign-out is intentional: role and roleResolved
+      // must clear in the same tick so ProtectedRoute never treats a
+      // signed-out user as a still-resolving admin (which would flash /404).
+      // There's no signed-in user to render, so the cascading-render cost the
+      // rule guards against doesn't apply here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRole(null);
       setRoleResolved(true);
       return;
