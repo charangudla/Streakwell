@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from '@thallesp/nestjs-better-auth';
 
@@ -15,6 +16,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { ChallengeChatModule } from './challenge-chat/challenge-chat.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { CheckinsModule } from './checkins/checkins.module';
+import { CleanupModule } from './cleanup/cleanup.module';
 import { CustomChallengesModule } from './custom-challenges/custom-challenges.module';
 import { EmailModule } from './email/email.module';
 import { EmailService } from './email/email.service';
@@ -42,6 +44,8 @@ import { UsersModule } from './users/users.module';
         limit: 100,
       },
     ]),
+    // Enables @Cron jobs (see CleanupModule's daily data-retention sweep).
+    ScheduleModule.forRoot(),
     PrismaModule,
     EmailModule,
     AuditModule,
@@ -73,6 +77,7 @@ import { UsersModule } from './users/users.module';
     NotificationsModule,
     AchievementsModule,
     CheckinsModule,
+    CleanupModule,
     FavoritesModule,
     FriendsModule,
     ReferralsModule,

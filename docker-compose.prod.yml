@@ -49,6 +49,8 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # Daily cleanup cron deletes READ notifications older than this (default 90).
+      NOTIFICATION_RETENTION_DAYS: ${NOTIFICATION_RETENTION_DAYS:-90}
     expose:
       - "3000"
     depends_on:

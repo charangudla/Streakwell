@@ -76,10 +76,11 @@ else
     exit 1
 fi
 
-# 5. Retention Pruning (Rolling 14-day history window)
-echo -e "${BLUE}[Backup] Executing rolling retention audit (Keeping last 14 days)...${NC}"
-# Delete backup files older than 14 days
-find "$BACKUP_DIR" -name "*.sql.gz" -mtime +14 -type f -delete
+# 5. Retention Pruning (Rolling history window; override via BACKUP_RETENTION_DAYS)
+BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
+echo -e "${BLUE}[Backup] Executing rolling retention audit (Keeping last ${BACKUP_RETENTION_DAYS} days)...${NC}"
+# Delete backup files older than the retention window
+find "$BACKUP_DIR" -name "*.sql.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -type f -delete
 echo -e "${GREEN}[Backup] Retention pruning complete.${NC}"
 
 echo -e "\n${GREEN}======================================================================${NC}"
