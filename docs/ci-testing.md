@@ -83,8 +83,22 @@ pre-existing debt. Each should be tightened to *blocking* once cleared.
    the API, ≈25 in admin). Adding the gate today would fail on untouched code.
    **Action:** run a one-time `npm run format` in each, commit the result,
    then add a `format:check` step to `backend-ci.yml` and `admin-ci.yml`.
-   (The API's `npm run lint` already auto-fixes formatting via
-   `eslint --fix`, which is why lint stays green there.)
+   (Note: the API's `npm run lint` runs with `--fix`, so it silently rewrites
+   *auto-fixable* formatting in place when run locally — CI discards those
+   edits. `--fix` only touches mechanical nits, **not** type-safety errors, so
+   it does not mask genuine lint failures: real errors still fail the build.)
+3. **API + admin lint are blocking** (no `continue-on-error`) — but only after
+   clearing pre-existing errors that were red on `main`:
+   - `@typescript-eslint/no-unsafe-return` in the custom-challenge + contact
+     DTOs, fixed **at the source** (the `@Transform` `value` params are now
+     typed `unknown` so the `typeof` guard narrows instead of inferring `any`).
+   - One `react-hooks/set-state-in-effect` in the admin `AuthProvider`, handled
+     with a **scoped, documented** eslint-disable — the synchronous sign-out
+     reset is intentional (it stops `ProtectedRoute` flashing `/404`).
+
+   Both went out as **dedicated fix PRs**, separate from the CI wiring, so the
+   concerns stay clean. The matching `set-state-in-effect` debt on `apps/web`
+   is still outstanding — see #1.
 
 ## Security note: CodeQL
 
