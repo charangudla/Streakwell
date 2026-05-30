@@ -31,7 +31,8 @@ class ChallengesScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 18),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+            padding:
+                const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
             child: _SearchBar(initialQuery: query),
           ),
           const SizedBox(height: 14),
@@ -152,8 +153,8 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
               ),
-              style:
-                  Vital30Text.body.copyWith(fontSize: 14, color: Vital30Colors.ink),
+              style: Vital30Text.body
+                  .copyWith(fontSize: 14, color: Vital30Colors.ink),
               onChanged: (v) =>
                   ref.read(challengeSearchQueryProvider.notifier).state = v,
             ),
@@ -165,8 +166,8 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
                 ref.read(challengeSearchQueryProvider.notifier).state = '';
                 setState(() {});
               },
-              child: const Icon(Icons.close,
-                  size: 18, color: Vital30Colors.muted),
+              child:
+                  const Icon(Icons.close, size: 18, color: Vital30Colors.muted),
             ),
         ],
       ),
@@ -247,4 +248,3 @@ class _EmptyResults extends StatelessWidget {
     );
   }
 }
-

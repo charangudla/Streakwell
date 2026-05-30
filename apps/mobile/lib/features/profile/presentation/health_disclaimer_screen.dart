@@ -17,7 +17,8 @@ class HealthDisclaimerScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(0, 12, 0, 40),
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
               child: Row(
                 children: [
                   VIconButton(
@@ -35,7 +36,8 @@ class HealthDisclaimerScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -89,8 +91,8 @@ class HealthDisclaimerScreen extends StatelessWidget {
             const SizedBox(height: 22),
             for (final s in _sections) ...[
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Vital30Space.screenH),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -99,7 +101,8 @@ class HealthDisclaimerScreen extends StatelessWidget {
                       style: Vital30Text.h3.copyWith(fontSize: 16),
                     ),
                     const SizedBox(height: 8),
-                    Text(s.body, style: Vital30Text.body.copyWith(fontSize: 14)),
+                    Text(s.body,
+                        style: Vital30Text.body.copyWith(fontSize: 14)),
                     if (s.bullets != null) ...[
                       const SizedBox(height: 8),
                       for (final b in s.bullets!)

@@ -4,7 +4,8 @@ import 'package:vital30/core/network/api_service.dart';
 
 void main() {
   test('ApiService falls back to mock data on DioException error', () async {
-    final dio = Dio(); // Raw unconfigured dio that will fail network calls instantly
+    final dio =
+        Dio(); // Raw unconfigured dio that will fail network calls instantly
     final apiService = ApiService(dio);
 
     // Should not crash, but print fallback warning and return seeded categories list

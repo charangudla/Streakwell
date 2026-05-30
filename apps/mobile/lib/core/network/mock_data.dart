@@ -50,7 +50,8 @@ class MockData {
       id: 'ch-1',
       title: 'No Refined Sugar',
       slug: 'no-refined-sugar',
-      shortDescription: 'Cut out all processed sugars and artificial sweeteners.',
+      shortDescription:
+          'Cut out all processed sugars and artificial sweeteners.',
       description:
           'Remove refined sugars from your meals, snacks, and beverages. Focus on getting clean, sustained energy from whole food sources like fruits, complex carbohydrates, and wholesome fats.',
       durationDays: 30,

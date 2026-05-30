@@ -30,8 +30,7 @@ class HomeScreen extends ConsumerWidget {
     final unreadCount = ref.watch(unreadNotificationCountProvider);
     final incomingFriends = ref.watch(incomingFriendCountProvider);
 
-    final firstName =
-        (auth.user?.name ?? 'there').split(' ').first;
+    final firstName = (auth.user?.name ?? 'there').split(' ').first;
     final greeting = _greeting();
 
     return Scaffold(
@@ -69,8 +68,7 @@ class HomeScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 TextSpan(
-                                  text:
-                                      'Day ${_currentDay(myChallengesAsync)}',
+                                  text: 'Day ${_currentDay(myChallengesAsync)}',
                                 ),
                               ],
                             ),
@@ -81,8 +79,8 @@ class HomeScreen extends ConsumerWidget {
                     VIconButton(
                       icon: Icons.group_outlined,
                       iconSize: 20,
-                      onPressed: () => context.push('/friends').then((_) =>
-                          ref.invalidate(incomingFriendCountProvider)),
+                      onPressed: () => context.push('/friends').then(
+                          (_) => ref.invalidate(incomingFriendCountProvider)),
                       badge: incomingFriends.maybeWhen(
                         data: (n) => n > 0,
                         orElse: () => false,
@@ -98,9 +96,8 @@ class HomeScreen extends ConsumerWidget {
                     VIconButton(
                       icon: Icons.notifications_outlined,
                       iconSize: 20,
-                      onPressed: () => context
-                          .push('/notifications')
-                          .then((_) => ref
+                      onPressed: () => context.push('/notifications').then(
+                          (_) => ref
                               .read(notificationsProvider.notifier)
                               .refresh()),
                       badge: unreadCount > 0,
@@ -165,7 +162,8 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               challengesAsync.when(
                 data: (list) {
-                  final rec = list.where((c) => c.isRecommended).take(6).toList();
+                  final rec =
+                      list.where((c) => c.isRecommended).take(6).toList();
                   if (rec.isEmpty) return const SizedBox.shrink();
                   return SizedBox(
                     height: 198,
@@ -261,10 +259,9 @@ class HomeScreen extends ConsumerWidget {
         if (list.isEmpty) return 1;
         final active = list.where((u) => u.status == 'ACTIVE').toList();
         if (active.isEmpty) return 1;
-        final days = DateTime.now()
-                .difference(active.first.startDate.toLocal())
-                .inDays +
-            1;
+        final days =
+            DateTime.now().difference(active.first.startDate.toLocal()).inDays +
+                1;
         return days.clamp(1, 30);
       },
       orElse: () => 1,
@@ -419,8 +416,7 @@ class _HeroCheckinCard extends ConsumerWidget {
                     label: 'Day $dayClamped of 30',
                     size: VPillSize.sm,
                     backgroundOverride: const Color(0x1AFFFFFF),
-                    foregroundOverride:
-                        Colors.white.withValues(alpha: 0.7),
+                    foregroundOverride: Colors.white.withValues(alpha: 0.7),
                   ),
                 ],
               ),
@@ -519,8 +515,8 @@ class _HeroCheckinCard extends ConsumerWidget {
     var streak = 0;
     var expectedDay = DateTime.now();
     for (final c in sorted) {
-      final cd = DateTime(
-          c.checkinDate.year, c.checkinDate.month, c.checkinDate.day);
+      final cd =
+          DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day);
       final ed = DateTime(expectedDay.year, expectedDay.month, expectedDay.day);
       final diff = ed.difference(cd).inDays;
       if (c.status != 'COMPLETED') break;
@@ -544,9 +540,13 @@ class _StatRow extends StatelessWidget {
         final due = active; // single hero card represents the due one
         return Row(
           children: [
-            Expanded(child: _StatCardRow(label: 'Active', value: '$active', sub: 'challenges')),
+            Expanded(
+                child: _StatCardRow(
+                    label: 'Active', value: '$active', sub: 'challenges')),
             const SizedBox(width: 10),
-            Expanded(child: _StatCardRow(label: 'Due today', value: '$due', sub: 'check-in')),
+            Expanded(
+                child: _StatCardRow(
+                    label: 'Due today', value: '$due', sub: 'check-in')),
           ],
         );
       },
@@ -556,7 +556,8 @@ class _StatRow extends StatelessWidget {
 }
 
 class _StatCardRow extends StatelessWidget {
-  const _StatCardRow({required this.label, required this.value, required this.sub});
+  const _StatCardRow(
+      {required this.label, required this.value, required this.sub});
   final String label, value, sub;
 
   @override
@@ -653,4 +654,3 @@ class _SkeletonHero extends StatelessWidget {
     );
   }
 }
-

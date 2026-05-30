@@ -70,13 +70,13 @@ class ProgressScreen extends ConsumerWidget {
               error: (e, _) => Center(child: Text('$e')),
               data: (checkins) {
                 final stats = ProgressCalculator.calculate(checkins);
-                final dayN = DateTime.now()
-                        .difference(uc.startDate.toLocal())
-                        .inDays +
-                    1;
+                final dayN =
+                    DateTime.now().difference(uc.startDate.toLocal()).inDays +
+                        1;
                 final dayClamped = dayN.clamp(1, 30);
                 final pct = stats.completedCount / 30;
-                final days = _buildDayStates(uc.startDate, checkins, dayClamped);
+                final days =
+                    _buildDayStates(uc.startDate, checkins, dayClamped);
 
                 return ListView(
                   padding: const EdgeInsets.only(bottom: 140),
@@ -389,7 +389,8 @@ class _MapCard extends StatelessWidget {
 }
 
 class _Legend extends StatelessWidget {
-  const _Legend({required this.color, required this.label, this.dashed = false});
+  const _Legend(
+      {required this.color, required this.label, this.dashed = false});
   final Color color;
   final String label;
   final bool dashed;
@@ -404,9 +405,7 @@ class _Legend extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
-            border: dashed
-                ? Border.all(color: Vital30Colors.hairline)
-                : null,
+            border: dashed ? Border.all(color: Vital30Colors.hairline) : null,
           ),
         ),
         const SizedBox(width: 5),

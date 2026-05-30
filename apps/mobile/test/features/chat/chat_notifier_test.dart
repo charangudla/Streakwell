@@ -112,7 +112,8 @@ Map<String, dynamic> _message(
       'scheduledDate': null,
       'createdAt': '2026-05-30T00:00:00.000Z',
       'user': user,
-      'reactions': reactions ?? {'counts': <String, int>{}, 'mine': <String, bool>{}},
+      'reactions':
+          reactions ?? {'counts': <String, int>{}, 'mine': <String, bool>{}},
     };
 
 Map<String, dynamic> _channel({
@@ -121,7 +122,11 @@ Map<String, dynamic> _channel({
     {
       'presets': [
         {'code': 'DONE_TODAY', 'text': "I'm done today ✅", 'tone': 'success'},
-        {'code': 'KEEP_GOING', 'text': "Let's go everyone! 🙌", 'tone': 'encourage'},
+        {
+          'code': 'KEEP_GOING',
+          'text': "Let's go everyone! 🙌",
+          'tone': 'encourage'
+        },
       ],
       'emoji': [
         {'code': 'fire', 'char': '🔥', 'label': 'Fire'},
@@ -207,8 +212,7 @@ void main() {
   });
 
   group('ChatChannelNotifier.post', () {
-    test('prepends the created message (wire order is newest-first)',
-        () async {
+    test('prepends the created message (wire order is newest-first)', () async {
       final fake = _FakeChatBackend(
         channel: _channel(messages: [
           _message('m1',
@@ -218,7 +222,9 @@ void main() {
       final container = _containerFor(fake.build());
       await container.read(chatChannelProvider('c1').future);
 
-      await container.read(chatChannelProvider('c1').notifier).post('KEEP_GOING');
+      await container
+          .read(chatChannelProvider('c1').notifier)
+          .post('KEEP_GOING');
 
       final data = container.read(chatChannelProvider('c1')).requireValue;
       expect(data.messages, hasLength(2));
@@ -232,8 +238,7 @@ void main() {
   });
 
   group('ChatChannelNotifier.toggleReaction', () {
-    test('adds then removes a reaction, reconciling with the server',
-        () async {
+    test('adds then removes a reaction, reconciling with the server', () async {
       final fake = _FakeChatBackend(
         channel: _channel(messages: [
           _message('m1',
@@ -245,12 +250,20 @@ void main() {
       final notifier = container.read(chatChannelProvider('c1').notifier);
 
       await notifier.toggleReaction('m1', 'fire');
-      var msg = container.read(chatChannelProvider('c1')).requireValue.messages.single;
+      var msg = container
+          .read(chatChannelProvider('c1'))
+          .requireValue
+          .messages
+          .single;
       expect(msg.reactions.countFor('fire'), 1);
       expect(msg.reactions.mineFor('fire'), isTrue);
 
       await notifier.toggleReaction('m1', 'fire');
-      msg = container.read(chatChannelProvider('c1')).requireValue.messages.single;
+      msg = container
+          .read(chatChannelProvider('c1'))
+          .requireValue
+          .messages
+          .single;
       expect(msg.reactions.countFor('fire'), 0);
       expect(msg.reactions.mineFor('fire'), isFalse);
 

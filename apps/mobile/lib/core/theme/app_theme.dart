@@ -163,8 +163,7 @@ class AppTheme {
             states.contains(WidgetState.selected)
                 ? Vital30Colors.primary
                 : Vital30Colors.hairline),
-        trackOutlineColor:
-            const WidgetStatePropertyAll(Colors.transparent),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
     );
 

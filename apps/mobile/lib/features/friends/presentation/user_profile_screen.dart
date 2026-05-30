@@ -144,7 +144,8 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     }
   }
 
-  Future<bool> _confirm(String title, String message, String confirmLabel) async {
+  Future<bool> _confirm(
+      String title, String message, String confirmLabel) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -203,7 +204,8 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
             Expanded(
               child: async.when(
                 loading: () => const Center(
-                  child: CircularProgressIndicator(color: Vital30Colors.primary),
+                  child:
+                      CircularProgressIndicator(color: Vital30Colors.primary),
                 ),
                 error: (e, _) => _ErrorState(
                   message: _friendlyError(e),
@@ -309,15 +311,16 @@ class _HeaderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(profile.name, style: Vital30Text.h2.copyWith(fontSize: 22)),
+                Text(profile.name,
+                    style: Vital30Text.h2.copyWith(fontSize: 22)),
                 const SizedBox(height: 3),
                 Text('Vital30 member since ${_formatMonth(profile.joinedAt)}',
                     style: Vital30Text.caption),
                 if (showFriendPill) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Vital30Colors.primaryTint,
                       borderRadius: BorderRadius.circular(999),
@@ -539,7 +542,8 @@ class _CompletedChallengesSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(c.title, style: Vital30Text.title.copyWith(fontSize: 14)),
+                  Text(c.title,
+                      style: Vital30Text.title.copyWith(fontSize: 14)),
                   const SizedBox(height: 2),
                   Text('Finished ${_formatMonth(c.endDate ?? c.startDate)}',
                       style: Vital30Text.caption.copyWith(fontSize: 12)),
@@ -749,7 +753,8 @@ class _ChallengeProgressCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('DAY $day OF ${summary.durationDays}',
-              style: Vital30Text.label.copyWith(color: Vital30Colors.primaryDeep)),
+              style:
+                  Vital30Text.label.copyWith(color: Vital30Colors.primaryDeep)),
           const SizedBox(height: 4),
           Text(summary.title,
               style: Vital30Text.title.copyWith(fontSize: 15),
@@ -800,8 +805,8 @@ class _AchievementChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = _labels[achievement.kind] ??
-        (label: achievement.kind, glyph: '✦');
+    final meta =
+        _labels[achievement.kind] ?? (label: achievement.kind, glyph: '✦');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(

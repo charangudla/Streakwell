@@ -53,11 +53,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
             return const Center(child: Text('Challenge not found'));
           }
 
-          final cat =
-              Vital30Categories.fromCategoryId(challenge.categoryId);
+          final cat = Vital30Categories.fromCategoryId(challenge.categoryId);
           final alreadyJoined = myChallengesAsync.maybeWhen(
-            data: (uc) => uc.any((u) =>
-                u.challengeId == challengeId && u.status == 'ACTIVE'),
+            data: (uc) => uc.any(
+                (u) => u.challengeId == challengeId && u.status == 'ACTIVE'),
             orElse: () => false,
           );
 
@@ -69,7 +68,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   _Hero(challenge: challenge, cat: cat),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
-                    child: Text(challenge.description, style: Vital30Text.body.copyWith(fontSize: 15)),
+                    child: Text(challenge.description,
+                        style: Vital30Text.body.copyWith(fontSize: 15)),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
@@ -121,14 +121,16 @@ class ChallengeDetailScreen extends ConsumerWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: VButton(
-                          label:
-                              alreadyJoined ? 'Already joined' : 'Join challenge',
+                          label: alreadyJoined
+                              ? 'Already joined'
+                              : 'Join challenge',
                           fullWidth: true,
                           onPressed: alreadyJoined
                               ? null
                               : () async {
                                   final ok = await ref
-                                      .read(myChallengesNotifierProvider.notifier)
+                                      .read(
+                                          myChallengesNotifierProvider.notifier)
                                       .join(challenge.id);
                                   if (ok && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -138,7 +140,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                                       ),
                                     );
                                     ref
-                                        .read(mainNavigationTabProvider.notifier)
+                                        .read(
+                                            mainNavigationTabProvider.notifier)
                                         .state = 2;
                                     context.pop();
                                   }
@@ -170,8 +173,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                       background: Colors.white.withValues(alpha: 0.7),
                       borderColor: Colors.transparent,
                       onPressed: () => SharePlus.instance.share(ShareParams(
-                          text:
-                              "I'm starting ${challenge.title} on Vital30!")),
+                          text: "I'm starting ${challenge.title} on Vital30!")),
                     ),
                   ],
                 ),
@@ -248,8 +250,7 @@ class _Hero extends StatelessWidget {
                       label: '${challenge.durationDays} days',
                       tone: VPillTone.outline,
                       size: VPillSize.sm,
-                      backgroundOverride:
-                          Colors.white.withValues(alpha: 0.4),
+                      backgroundOverride: Colors.white.withValues(alpha: 0.4),
                     ),
                   ],
                 ),

@@ -44,7 +44,8 @@ class _InMemorySecureStorage implements SecureStorage {
   }
 
   @override
-  Future<void> saveUser(Map<String, dynamic> userJson) async => _user = userJson;
+  Future<void> saveUser(Map<String, dynamic> userJson) async =>
+      _user = userJson;
   @override
   Future<Map<String, dynamic>?> getUser() async => _user;
   @override

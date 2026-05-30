@@ -3,8 +3,10 @@ import '../../../core/network/api_service.dart';
 import '../../../core/network/mock_data.dart';
 import '../../auth/presentation/auth_provider.dart';
 
-class MyChallengesNotifier extends StateNotifier<AsyncValue<List<UserChallenge>>> {
-  MyChallengesNotifier(this._apiService, this._userId, this._ref) : super(const AsyncValue.loading()) {
+class MyChallengesNotifier
+    extends StateNotifier<AsyncValue<List<UserChallenge>>> {
+  MyChallengesNotifier(this._apiService, this._userId, this._ref)
+      : super(const AsyncValue.loading()) {
     if (_userId.isNotEmpty) {
       load();
     } else {
@@ -37,7 +39,8 @@ class MyChallengesNotifier extends StateNotifier<AsyncValue<List<UserChallenge>>
     }
   }
 
-  Future<bool> checkin(String userChallengeId, String status, String? notes) async {
+  Future<bool> checkin(
+      String userChallengeId, String status, String? notes) async {
     try {
       await _apiService.checkin(userChallengeId, status, notes);
       await load();
@@ -50,13 +53,15 @@ class MyChallengesNotifier extends StateNotifier<AsyncValue<List<UserChallenge>>
   }
 }
 
-final myChallengesNotifierProvider = StateNotifierProvider<MyChallengesNotifier, AsyncValue<List<UserChallenge>>>((ref) {
+final myChallengesNotifierProvider = StateNotifierProvider<MyChallengesNotifier,
+    AsyncValue<List<UserChallenge>>>((ref) {
   final apiService = ref.watch(apiServiceProvider);
   final authState = ref.watch(authProvider);
   final userId = authState.user?.id ?? '';
   return MyChallengesNotifier(apiService, userId, ref);
 });
 
-final checkinsProvider = FutureProvider.family<List<DailyCheckin>, String>((ref, userChallengeId) async {
+final checkinsProvider = FutureProvider.family<List<DailyCheckin>, String>(
+    (ref, userChallengeId) async {
   return ref.watch(apiServiceProvider).getDailyCheckins(userChallengeId);
 });

@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import '../theme/v_colors.dart';
 
 class VTabItem {
-  const VTabItem({required this.icon, required this.label, required this.route});
+  const VTabItem(
+      {required this.icon, required this.label, required this.route});
   final IconData icon;
   final String label;
   final String route;

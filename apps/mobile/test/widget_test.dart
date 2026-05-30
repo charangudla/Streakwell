@@ -10,7 +10,8 @@ void main() {
 
   // Stub flutter_secure_storage so checkAuth() resolves cleanly during boot.
   setUp(() {
-    const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    const channel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async => null);
   });

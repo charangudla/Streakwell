@@ -52,14 +52,12 @@ class MyCreatedChallengesScreen extends ConsumerWidget {
             ),
             Expanded(
               child: list.when(
-                loading: () => const Center(
-                    child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Text('Could not load: $e',
-                        style: Vital30Text.body,
-                        textAlign: TextAlign.center),
+                        style: Vital30Text.body, textAlign: TextAlign.center),
                   ),
                 ),
                 data: (items) {
@@ -141,8 +139,7 @@ class _CreatedCard extends StatelessWidget {
                     style: Vital30Text.title.copyWith(fontSize: 15)),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: isPublic
                       ? Vital30Colors.primaryTint
@@ -195,8 +192,8 @@ class _CreatedCard extends StatelessWidget {
                     kind: VButtonKind.dark,
                     size: VButtonSize.sm,
                     icon: Icons.ios_share,
-                    onPressed: () => SharePlus.instance
-                        .share(ShareParams(text: _shareText)),
+                    onPressed: () =>
+                        SharePlus.instance.share(ShareParams(text: _shareText)),
                   ),
                 ),
               ],

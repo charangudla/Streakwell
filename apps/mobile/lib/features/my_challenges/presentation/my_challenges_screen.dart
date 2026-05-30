@@ -31,7 +31,8 @@ class MyChallengesScreen extends ConsumerWidget {
         loading: () => const Center(
           child: CircularProgressIndicator(color: Vital30Colors.primary),
         ),
-        error: (e, _) => Center(child: Text('Error: $e', style: Vital30Text.body)),
+        error: (e, _) =>
+            Center(child: Text('Error: $e', style: Vital30Text.body)),
         data: (list) {
           final active = list.where((u) => u.status == 'ACTIVE').toList();
           final completed = list.where((u) => u.status == 'COMPLETED').toList();
@@ -49,7 +50,8 @@ class MyChallengesScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               if (dueCount > 0)
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
                   child: _DueReminderStrip(),
                 ),
               const SizedBox(height: 20),
@@ -68,7 +70,8 @@ class MyChallengesScreen extends ConsumerWidget {
               if (completed.isNotEmpty) ...[
                 const SizedBox(height: 18),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
                   child: _SectionLabel(label: 'Completed'),
                 ),
                 const SizedBox(height: 12),
@@ -144,8 +147,7 @@ class _DueReminderStrip extends StatelessWidget {
               ),
             ),
           ),
-          const Icon(Icons.chevron_right,
-              color: Colors.white60, size: 18),
+          const Icon(Icons.chevron_right, color: Colors.white60, size: 18),
         ],
       ),
     );
@@ -319,7 +321,8 @@ class _CompletedCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(Vital30Radius.lg),
-        border: Border.all(color: Vital30Colors.hairline, style: BorderStyle.solid),
+        border:
+            Border.all(color: Vital30Colors.hairline, style: BorderStyle.solid),
       ),
       child: Row(
         children: [

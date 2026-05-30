@@ -15,7 +15,8 @@ void main() {
       expect(stats.completionPercentage, 0.0);
     });
 
-    test('calculate correctly counts completed, missed, and skipped checkins', () {
+    test('calculate correctly counts completed, missed, and skipped checkins',
+        () {
       final checkins = [
         DailyCheckin(
           id: '1',

@@ -113,9 +113,8 @@ class _ChallengeChatScreenState extends ConsumerState<ChallengeChatScreen> {
                   // CELEBRATION cards are written server-side but not shown
                   // in the thread (web parity). Wire order is newest-first,
                   // so a reversed ListView pins the newest at the bottom.
-                  final display = channel.messages
-                      .where((m) => !m.isCelebration)
-                      .toList();
+                  final display =
+                      channel.messages.where((m) => !m.isCelebration).toList();
                   return Column(
                     children: [
                       _ChannelBar(poll: channel.poll, onMembers: _openMembers),
@@ -125,8 +124,10 @@ class _ChallengeChatScreenState extends ConsumerState<ChallengeChatScreen> {
                             : ListView.builder(
                                 reverse: true,
                                 padding: const EdgeInsets.fromLTRB(
-                                    Vital30Space.screenH, 14,
-                                    Vital30Space.screenH, 14),
+                                    Vital30Space.screenH,
+                                    14,
+                                    Vital30Space.screenH,
+                                    14),
                                 itemCount: display.length,
                                 itemBuilder: (_, i) {
                                   final m = display[i];
@@ -202,8 +203,8 @@ class _ChannelBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(Vital30Space.screenH, 10,
-          Vital30Space.screenH, 10),
+      padding: const EdgeInsets.fromLTRB(
+          Vital30Space.screenH, 10, Vital30Space.screenH, 10),
       decoration: const BoxDecoration(
         color: Vital30Colors.card,
         border: Border(
@@ -216,7 +217,8 @@ class _ChannelBar extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Community', style: Vital30Text.title.copyWith(fontSize: 14)),
+              Text('Community',
+                  style: Vital30Text.title.copyWith(fontSize: 14)),
               const SizedBox(height: 1),
               Text(
                 '${poll.total} ${poll.total == 1 ? "member" : "members"}',
@@ -275,8 +277,7 @@ class _SummaryDots extends StatelessWidget {
     final dots = <Widget>[
       if (poll.completed > 0)
         _Dot(color: Vital30Colors.primary, count: poll.completed),
-      if (poll.missed > 0)
-        _Dot(color: Vital30Colors.berry, count: poll.missed),
+      if (poll.missed > 0) _Dot(color: Vital30Colors.berry, count: poll.missed),
       if (poll.skipped > 0)
         _Dot(color: Vital30Colors.mutedSoft, count: poll.skipped),
       if (poll.pending > 0)
@@ -351,9 +352,7 @@ class _MessageRow extends StatelessWidget {
           bottomLeft: Radius.circular(isOwn ? 4 : 16),
           bottomRight: Radius.circular(isOwn ? 16 : 4),
         ),
-        border: isOwn
-            ? null
-            : Border.all(color: Vital30Colors.hairlineSoft),
+        border: isOwn ? null : Border.all(color: Vital30Colors.hairlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,8 +706,7 @@ class _MembersSheetState extends ConsumerState<_MembersSheet> {
       final api = ref.read(apiServiceProvider);
       if (m.friendship == 'none') {
         await api.sendFriendRequest(m.userId);
-      } else if (m.friendship == 'pending_received' &&
-          m.friendshipId != null) {
+      } else if (m.friendship == 'pending_received' && m.friendshipId != null) {
         await api.respondToFriendRequest(m.friendshipId!, 'ACCEPTED');
       } else {
         return; // pending_sent / accepted / blocked_by_me — no-op
@@ -730,8 +728,7 @@ class _MembersSheetState extends ConsumerState<_MembersSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          _InvitePicker(memberUserId: m.userId, memberName: m.name),
+      builder: (_) => _InvitePicker(memberUserId: m.userId, memberName: m.name),
     );
   }
 
@@ -764,7 +761,8 @@ class _MembersSheetState extends ConsumerState<_MembersSheet> {
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                 child: Row(
                   children: [
-                    Text('Members', style: Vital30Text.h3.copyWith(fontSize: 17)),
+                    Text('Members',
+                        style: Vital30Text.h3.copyWith(fontSize: 17)),
                     const Spacer(),
                     membersAsync.maybeWhen(
                       data: (m) => Text('${m.length}',
@@ -778,8 +776,8 @@ class _MembersSheetState extends ConsumerState<_MembersSheet> {
               Expanded(
                 child: membersAsync.when(
                   loading: () => const Center(
-                    child: CircularProgressIndicator(
-                        color: Vital30Colors.primary),
+                    child:
+                        CircularProgressIndicator(color: Vital30Colors.primary),
                   ),
                   error: (_, __) => Center(
                     child: Padding(
@@ -857,8 +855,7 @@ class _MemberRow extends StatelessWidget {
                           const SizedBox(width: 6),
                           Text('(you)',
                               style: Vital30Text.caption.copyWith(
-                                  fontSize: 11.5,
-                                  color: Vital30Colors.muted)),
+                                  fontSize: 11.5, color: Vital30Colors.muted)),
                         ],
                       ],
                     ),

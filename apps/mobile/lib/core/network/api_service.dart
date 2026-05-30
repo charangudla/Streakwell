@@ -87,7 +87,8 @@ class ApiService {
     return AuthResponse.fromJson(response.data ?? {});
   }
 
-  Future<AuthResponse> register(String name, String email, String password) async {
+  Future<AuthResponse> register(
+      String name, String email, String password) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/auth/sign-up/email',
       data: {'name': name, 'email': email, 'password': password},
@@ -106,8 +107,7 @@ class ApiService {
     final session = await _dio.get<Map<String, dynamic>>(
       '/api/auth/get-session',
     );
-    final userJson =
-        session.data?['user'] as Map<String, dynamic>? ?? const {};
+    final userJson = session.data?['user'] as Map<String, dynamic>? ?? const {};
     return User.fromJson(userJson);
   }
 
@@ -176,7 +176,10 @@ class ApiService {
       },
       () {
         final existing = _mockUserChallenges.where(
-          (uc) => uc.challengeId == challengeId && uc.userId == userId && uc.status == 'ACTIVE',
+          (uc) =>
+              uc.challengeId == challengeId &&
+              uc.userId == userId &&
+              uc.status == 'ACTIVE',
         );
         if (existing.isNotEmpty) return existing.first;
         final newUc = UserChallenge(
@@ -213,7 +216,8 @@ class ApiService {
   ) async {
     return _apiCall(
       () async {
-        final response = await _dio.post<Map<String, dynamic>>('/checkins', data: {
+        final response =
+            await _dio.post<Map<String, dynamic>>('/checkins', data: {
           'userChallengeId': userChallengeId,
           'status': status,
           'notes': notes,
@@ -239,11 +243,14 @@ class ApiService {
         );
         _mockDailyCheckins.add(newCheckin);
 
-        final idx = _mockUserChallenges.indexWhere((uc) => uc.id == userChallengeId);
+        final idx =
+            _mockUserChallenges.indexWhere((uc) => uc.id == userChallengeId);
         if (idx != -1) {
           final uc = _mockUserChallenges[idx];
           final completed = _mockDailyCheckins
-              .where((c) => c.userChallengeId == userChallengeId && c.status == 'COMPLETED')
+              .where((c) =>
+                  c.userChallengeId == userChallengeId &&
+                  c.status == 'COMPLETED')
               .length;
           uc.progressPercent = (completed / 30.0 * 100.0).clamp(0.0, 100.0);
           if (uc.progressPercent >= 100.0) {
@@ -259,13 +266,15 @@ class ApiService {
   Future<List<DailyCheckin>> getDailyCheckins(String userChallengeId) async {
     return _apiCall(
       () async {
-        final response =
-            await _dio.get<List<dynamic>>('/checkins/challenge/$userChallengeId');
+        final response = await _dio
+            .get<List<dynamic>>('/checkins/challenge/$userChallengeId');
         return (response.data ?? [])
             .map((json) => DailyCheckin.fromJson(json as Map<String, dynamic>))
             .toList();
       },
-      () => _mockDailyCheckins.where((c) => c.userChallengeId == userChallengeId).toList(),
+      () => _mockDailyCheckins
+          .where((c) => c.userChallengeId == userChallengeId)
+          .toList(),
     );
   }
 
@@ -528,8 +537,7 @@ class ApiService {
   /// A user's public profile. Errors propagate (no offline fallback) so
   /// the screen can show a proper "couldn't load" state, matching the web.
   Future<UserProfile> getUserProfile(String userId) async {
-    final res =
-        await _dio.get<Map<String, dynamic>>('/users/$userId/profile');
+    final res = await _dio.get<Map<String, dynamic>>('/users/$userId/profile');
     return UserProfile.fromJson(res.data ?? const {});
   }
 
@@ -562,8 +570,8 @@ class ApiService {
   /// Members of the challenge's chat (every joiner) with the viewer's
   /// friendship state per row, for the Members sheet.
   Future<List<ChatMember>> getChatMembers(String challengeId) async {
-    final res = await _dio
-        .get<List<dynamic>>('/challenges/$challengeId/members');
+    final res =
+        await _dio.get<List<dynamic>>('/challenges/$challengeId/members');
     return (res.data ?? const [])
         .map((j) => ChatMember.fromJson(j as Map<String, dynamic>))
         .toList();

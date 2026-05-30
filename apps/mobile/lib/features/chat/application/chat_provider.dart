@@ -11,8 +11,7 @@ import '../../../core/network/models.dart';
 ///     prepend keeps the list newest-first; the screen reverses for display).
 ///   • [toggleReaction] applies an optimistic flip, then reconciles with the
 ///     server's authoritative tallies — reverting on failure.
-class ChatChannelNotifier
-    extends FamilyAsyncNotifier<ChatChannel, String> {
+class ChatChannelNotifier extends FamilyAsyncNotifier<ChatChannel, String> {
   @override
   Future<ChatChannel> build(String challengeId) async {
     return ref.watch(apiServiceProvider).getChatChannel(challengeId);
@@ -127,8 +126,9 @@ class ChatChannelNotifier
   }
 }
 
-final chatChannelProvider = AsyncNotifierProvider.family<ChatChannelNotifier,
-    ChatChannel, String>(ChatChannelNotifier.new);
+final chatChannelProvider =
+    AsyncNotifierProvider.family<ChatChannelNotifier, ChatChannel, String>(
+        ChatChannelNotifier.new);
 
 /// Members of a challenge's chat — for the Members sheet. Kept separate from
 /// the channel so friend-action mutations can re-fetch just this list

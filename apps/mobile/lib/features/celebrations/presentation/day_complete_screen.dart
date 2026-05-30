@@ -191,13 +191,15 @@ class _DayCompleteScreenState extends ConsumerState<DayCompleteScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Vital30Colors.primary.withValues(alpha: 0.55),
+                            color:
+                                Vital30Colors.primary.withValues(alpha: 0.55),
                             offset: const Offset(0, 24),
                             blurRadius: 50,
                             spreadRadius: -12,
                           ),
                           BoxShadow(
-                            color: Vital30Colors.primary.withValues(alpha: 0.10),
+                            color:
+                                Vital30Colors.primary.withValues(alpha: 0.10),
                             spreadRadius: 14,
                           ),
                         ],

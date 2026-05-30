@@ -43,7 +43,8 @@ class ProgressCalculator {
 
     final Map<String, String> dateToStatus = {};
     for (final ck in sortedCheckins) {
-      final key = '${ck.checkinDate.year}-${ck.checkinDate.month}-${ck.checkinDate.day}';
+      final key =
+          '${ck.checkinDate.year}-${ck.checkinDate.month}-${ck.checkinDate.day}';
       dateToStatus[key] = ck.status;
 
       if (ck.status == 'COMPLETED') {
@@ -125,7 +126,8 @@ class ProgressCalculator {
       best = current;
     }
 
-    final double completionPercent = (completed / 30.0 * 100.0).clamp(0.0, 100.0);
+    final double completionPercent =
+        (completed / 30.0 * 100.0).clamp(0.0, 100.0);
 
     return ProgressStats(
       completedCount: completed,

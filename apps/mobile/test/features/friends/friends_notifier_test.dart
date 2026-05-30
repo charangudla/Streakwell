@@ -101,8 +101,7 @@ class _FakeBackend {
   /// `POST /friends/block` — remove every relationship row for that user.
   void _applyBlock(String userId) {
     for (final name in const ['accepted', 'incoming', 'outgoing']) {
-      _bucket(name)
-          .removeWhere((e) => (e['user'] as Map)['id'] == userId);
+      _bucket(name).removeWhere((e) => (e['user'] as Map)['id'] == userId);
     }
   }
 }
@@ -166,8 +165,7 @@ void main() {
   });
 
   group('FriendsNotifier.respond', () {
-    test('ACCEPTED posts the decision then re-fetches into accepted',
-        () async {
+    test('ACCEPTED posts the decision then re-fetches into accepted', () async {
       final fake = _FakeBackend(
         incoming: [_entry('f-in', 'u-in', 'Grace Hopper')],
       );
@@ -246,8 +244,7 @@ void main() {
       await container.read(friendsProvider.notifier).block('u-acc');
 
       expect(container.read(friendsProvider).requireValue.accepted, isEmpty);
-      final block =
-          fake.requests.firstWhere((r) => r.path == '/friends/block');
+      final block = fake.requests.firstWhere((r) => r.path == '/friends/block');
       expect(block.method, 'POST');
       expect((block.data as Map)['userId'], 'u-acc');
     });

@@ -26,8 +26,7 @@ class CreateChallengeScreen extends ConsumerStatefulWidget {
       _CreateChallengeScreenState();
 }
 
-class _CreateChallengeScreenState
-    extends ConsumerState<CreateChallengeScreen> {
+class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
   final _title = TextEditingController();
   final _short = TextEditingController();
   final _task = TextEditingController();
@@ -54,7 +53,8 @@ class _CreateChallengeScreenState
         _short.text.trim().length < 10 ||
         _task.text.trim().length < 3 ||
         _categoryId == null) {
-      setState(() => _error = 'Fill in title, one-liner, daily task, category.');
+      setState(
+          () => _error = 'Fill in title, one-liner, daily task, category.');
       return;
     }
     setState(() {
@@ -62,9 +62,7 @@ class _CreateChallengeScreenState
       _error = null;
     });
     try {
-      final created = await ref
-          .read(apiServiceProvider)
-          .createCustomChallenge(
+      final created = await ref.read(apiServiceProvider).createCustomChallenge(
             title: _title.text.trim(),
             shortDescription: _short.text.trim(),
             description: _desc.text.trim(),
@@ -117,8 +115,8 @@ class _CreateChallengeScreenState
             ),
             const SizedBox(height: 18),
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: Vital30Space.screenH),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -155,8 +153,7 @@ class _CreateChallengeScreenState
                         ChoiceChip(
                           label: Text(d.$2),
                           selected: _difficulty == d.$1,
-                          onSelected: (_) =>
-                              setState(() => _difficulty = d.$1),
+                          onSelected: (_) => setState(() => _difficulty = d.$1),
                         ),
                     ],
                   ),
@@ -164,9 +161,8 @@ class _CreateChallengeScreenState
                   _label('Category'),
                   categoriesAsync.when(
                     loading: () => const LinearProgressIndicator(),
-                    error: (_, __) =>
-                        Text('Could not load categories.',
-                            style: Vital30Text.body),
+                    error: (_, __) => Text('Could not load categories.',
+                        style: Vital30Text.body),
                     data: (cats) {
                       _categoryId ??= cats.isNotEmpty ? cats.first.id : null;
                       return DropdownButtonFormField<String>(
@@ -331,9 +327,8 @@ class _VisibilityTile extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: selected
-                      ? Vital30Colors.primary
-                      : Vital30Colors.hairline,
+                  color:
+                      selected ? Vital30Colors.primary : Vital30Colors.hairline,
                   width: 2,
                 ),
               ),
@@ -357,8 +352,9 @@ class _VisibilityTile extends StatelessWidget {
                   Text(title,
                       style: Vital30Text.title.copyWith(
                         fontSize: 14,
-                        color:
-                            selected ? Vital30Colors.ink : Vital30Colors.inkSoft,
+                        color: selected
+                            ? Vital30Colors.ink
+                            : Vital30Colors.inkSoft,
                       )),
                   const SizedBox(height: 2),
                   Text(subtitle,

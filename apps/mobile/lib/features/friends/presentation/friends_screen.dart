@@ -42,7 +42,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     }
   }
 
-  Future<bool> _confirm(String title, String message, String confirmLabel) async {
+  Future<bool> _confirm(
+      String title, String message, String confirmLabel) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -184,8 +185,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       _busyId == fr.friendshipId || _busyId == fr.user.id;
 
   Future<void> _respond(FriendSummary fr, String decision) {
-    return _run(fr.friendshipId,
-        () => ref.read(friendsProvider.notifier).respond(fr.friendshipId, decision));
+    return _run(
+        fr.friendshipId,
+        () => ref
+            .read(friendsProvider.notifier)
+            .respond(fr.friendshipId, decision));
   }
 
   Future<void> _unfriend(FriendSummary fr) async {
@@ -207,8 +211,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         "They won't be able to send you friend requests.", 'Block')) {
       return;
     }
-    await _run(
-        userId, () => ref.read(friendsProvider.notifier).block(userId));
+    await _run(userId, () => ref.read(friendsProvider.notifier).block(userId));
   }
 
   Future<void> _unblock(FriendSummary fr) {
@@ -231,7 +234,8 @@ String _friendlyError(Object e) {
 enum _SectionTone { normal, action }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.title, this.count, {this.tone = _SectionTone.normal});
+  const _SectionLabel(this.title, this.count,
+      {this.tone = _SectionTone.normal});
   final String title;
   final int count;
   final _SectionTone tone;
@@ -426,8 +430,7 @@ class _IncomingRow extends StatelessWidget {
             children: [
               _PillButton(
                   label: 'Block', onPressed: onBlock, busy: busy, danger: true),
-              _PillButton(
-                  label: 'Decline', onPressed: onDecline, busy: busy),
+              _PillButton(label: 'Decline', onPressed: onDecline, busy: busy),
               _PillButton(
                   label: 'Accept',
                   onPressed: onAccept,

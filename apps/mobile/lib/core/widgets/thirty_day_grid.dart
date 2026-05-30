@@ -72,9 +72,8 @@ class _DayCell extends StatelessWidget {
             '$day',
             style: GoogleFonts.jetBrainsMono(
               fontSize: size * 0.32,
-              fontWeight: state == DayState.today
-                  ? FontWeight.w800
-                  : FontWeight.w600,
+              fontWeight:
+                  state == DayState.today ? FontWeight.w800 : FontWeight.w600,
               color: _textColor(),
             ),
           ),
@@ -99,7 +98,8 @@ class _DayCell extends StatelessWidget {
     final radius = BorderRadius.circular(Vital30Radius.sm);
     switch (state) {
       case DayState.done:
-        return BoxDecoration(color: Vital30Colors.primary, borderRadius: radius);
+        return BoxDecoration(
+            color: Vital30Colors.primary, borderRadius: radius);
       case DayState.missed:
         return BoxDecoration(
           color: Vital30Colors.berryTint,
@@ -119,7 +119,9 @@ class _DayCell extends StatelessWidget {
         );
       case DayState.today:
         return BoxDecoration(
-          color: darkTheme ? Colors.white.withValues(alpha: 0.08) : Vital30Colors.card,
+          color: darkTheme
+              ? Colors.white.withValues(alpha: 0.08)
+              : Vital30Colors.card,
           borderRadius: radius,
           border: Border.all(
             color: darkTheme ? Vital30Colors.surface : Vital30Colors.ink,

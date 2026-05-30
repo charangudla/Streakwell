@@ -65,7 +65,8 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     context.go('/reset-success');

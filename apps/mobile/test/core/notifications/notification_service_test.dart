@@ -25,8 +25,7 @@ void main() {
       expect(next.minute, 0);
     });
 
-    test('rolls to tomorrow when the target time has already passed today',
-        () {
+    test('rolls to tomorrow when the target time has already passed today', () {
       final now = tz.TZDateTime(fixedZone, 2026, 5, 25, 9, 0);
       final next = NotificationService.nextInstanceOfTimeFrom(
         const TimeOfDay(hour: 8, minute: 0),

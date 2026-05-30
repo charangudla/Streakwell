@@ -83,7 +83,8 @@ class InviteFriendsScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(
                     horizontal: Vital30Space.screenH),
-                child: _PlatformGrid(code: info.code, shareText: info.shareText),
+                child:
+                    _PlatformGrid(code: info.code, shareText: info.shareText),
               ),
               const SizedBox(height: 12),
               Padding(
@@ -346,4 +347,3 @@ class _PlatformGrid extends StatelessWidget {
     );
   }
 }
-

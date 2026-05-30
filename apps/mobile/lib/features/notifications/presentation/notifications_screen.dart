@@ -15,9 +15,8 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifications = ref.watch(notificationsProvider);
-    final hasUnread =
-        (notifications.valueOrNull ?? const <AppNotification>[])
-            .any((n) => n.isUnread);
+    final hasUnread = (notifications.valueOrNull ?? const <AppNotification>[])
+        .any((n) => n.isUnread);
 
     return Scaffold(
       body: SafeArea(
@@ -58,8 +57,7 @@ class NotificationsScreen extends ConsumerWidget {
             ),
             Expanded(
               child: notifications.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, _) => _ErrorState(
                   message: 'Could not load notifications.',
                   onRetry: () =>
@@ -71,8 +69,8 @@ class NotificationsScreen extends ConsumerWidget {
                   }
                   final now = DateTime.now();
                   final today = items
-                      .where((n) =>
-                          n.createdAt.isAfter(now.subtract(const Duration(hours: 24))))
+                      .where((n) => n.createdAt
+                          .isAfter(now.subtract(const Duration(hours: 24))))
                       .toList();
                   final earlier =
                       items.where((n) => !today.contains(n)).toList();
@@ -223,8 +221,7 @@ class _NotificationRow extends StatelessWidget {
                         ),
                       ),
                       Text(_relative,
-                          style: Vital30Text.caption
-                              .copyWith(fontSize: 11.5)),
+                          style: Vital30Text.caption.copyWith(fontSize: 11.5)),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -292,8 +289,7 @@ class _ErrorState extends StatelessWidget {
             const Icon(Icons.error_outline,
                 size: 48, color: Vital30Colors.inkSoft),
             const SizedBox(height: 12),
-            Text(message,
-                style: Vital30Text.body, textAlign: TextAlign.center),
+            Text(message, style: Vital30Text.body, textAlign: TextAlign.center),
             const SizedBox(height: 12),
             TextButton(onPressed: onRetry, child: const Text('Try again')),
           ],

@@ -144,7 +144,9 @@ class UserChallenge {
       challengeId: json['challengeId'] as String,
       status: json['status'] as String? ?? 'ACTIVE',
       startDate: DateTime.parse(json['startDate'] as String),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate'] as String) : null,
+      endDate: json['endDate'] != null
+          ? DateTime.parse(json['endDate'] as String)
+          : null,
       progressPercent: (json['progressPercent'] as num? ?? 0.0).toDouble(),
     );
   }
@@ -343,6 +345,7 @@ class CustomChallenge {
   final int durationDays;
   final String difficulty;
   final String categoryId;
+
   /// 'PRIVATE' | 'PUBLIC'
   final String visibility;
   final String? inviteToken;
@@ -385,6 +388,7 @@ class IncomingInvite {
   });
 
   final String id;
+
   /// 'PENDING' | 'ACCEPTED' | 'DECLINED'
   final String status;
   final String invitedEmail;
@@ -409,8 +413,7 @@ class IncomingInvite {
       invitedByName: invitedBy['name'] as String? ?? 'A friend',
       challengeId: challenge['id'] as String? ?? '',
       challengeTitle: challenge['title'] as String? ?? '',
-      challengeShortDescription:
-          challenge['shortDescription'] as String? ?? '',
+      challengeShortDescription: challenge['shortDescription'] as String? ?? '',
       challengeDailyTask: challenge['dailyTask'] as String? ?? '',
       challengeDurationDays: challenge['durationDays'] as int? ?? 30,
       challengeInviteToken: challenge['inviteToken'] as String?,
