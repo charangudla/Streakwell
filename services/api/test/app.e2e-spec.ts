@@ -17,7 +17,7 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpAdapter().getInstance())
+    return request(app.getHttpAdapter().getInstance() as App)
       .get('/')
       .expect(200)
       .expect({
@@ -26,7 +26,7 @@ describe('AppController (e2e)', () => {
   });
 
   it('/health (GET)', async () => {
-    const response = await request(app.getHttpAdapter().getInstance())
+    const response = await request(app.getHttpAdapter().getInstance() as App)
       .get('/health')
       .expect(200);
 
@@ -38,16 +38,16 @@ describe('AppController (e2e)', () => {
   });
 
   it('adds security headers with Helmet', async () => {
-    const response = await request(app.getHttpAdapter().getInstance()).get(
-      '/health',
-    );
+    const response = await request(
+      app.getHttpAdapter().getInstance() as App,
+    ).get('/health');
 
     expect(response.headers['x-dns-prefetch-control']).toBe('off');
     expect(response.headers['x-content-type-options']).toBe('nosniff');
   });
 
   it('returns CORS headers for the configured admin origin', async () => {
-    const response = await request(app.getHttpAdapter().getInstance())
+    const response = await request(app.getHttpAdapter().getInstance() as App)
       .get('/health')
       .set('Origin', 'http://localhost:5173');
 

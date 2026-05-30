@@ -28,7 +28,9 @@ describe('API contracts (e2e, no DB)', () => {
     }
   });
 
-  const http = () => request(app.getHttpAdapter().getInstance());
+  // getInstance() is typed `any`; assert the concrete app instance so supertest
+  // receives a typed handle (clears @typescript-eslint/no-unsafe-argument).
+  const http = () => request(app.getHttpAdapter().getInstance() as App);
 
   describe('input validation (global ValidationPipe)', () => {
     it('rejects an empty contact submission with 400', async () => {
