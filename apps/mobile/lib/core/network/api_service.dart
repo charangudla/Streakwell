@@ -435,6 +435,19 @@ class ApiService {
     );
   }
 
+  /// Invite an existing user (by id, no email) to one of the caller's custom
+  /// challenges — used by the chat Members sheet so a member can be invited
+  /// without exposing their email.
+  Future<void> inviteUserToChallenge(
+    String challengeId,
+    String userId,
+  ) async {
+    await _dio.post(
+      '/custom-challenges/$challengeId/invites/by-user',
+      data: {'userId': userId},
+    );
+  }
+
   Future<List<IncomingInvite>> getMyInvites() async {
     return _apiCall(
       () async {
@@ -455,5 +468,118 @@ class ApiService {
       data: {'decision': decision},
     );
     return res.data?['userChallengeId'] as String?;
+  }
+
+  // 12. Friends — the challenge-friends graph. GETs fall back to empty so
+  // the screen renders an empty state offline; mutations propagate errors
+  // so the UI can surface "already friends" / "request pending" etc.
+  Future<FriendsList> getFriends() async {
+    return _apiCall(
+      () async {
+        final res = await _dio.get<Map<String, dynamic>>('/friends');
+        return FriendsList.fromJson(res.data ?? const {});
+      },
+      () => FriendsList.empty,
+    );
+  }
+
+  /// Incoming-pending count for the header badge. Cheap endpoint, separate
+  /// from the full /friends payload.
+  Future<int> getIncomingFriendCount() async {
+    return _apiCall(
+      () async {
+        final res = await _dio.get<Map<String, dynamic>>('/friends/counts');
+        return (res.data?['incoming'] as int?) ?? 0;
+      },
+      () => 0,
+    );
+  }
+
+  Future<void> sendFriendRequest(String recipientId) async {
+    await _dio.post('/friends/request', data: {'recipientId': recipientId});
+  }
+
+  /// Accept or decline an incoming request. [decision] is 'ACCEPTED' or
+  /// 'DECLINED'.
+  Future<void> respondToFriendRequest(
+    String friendshipId,
+    String decision,
+  ) async {
+    await _dio.post(
+      '/friends/$friendshipId/respond',
+      data: {'decision': decision},
+    );
+  }
+
+  /// Removes a friend OR cancels an outgoing request — both just delete
+  /// the row, so a single endpoint covers them.
+  Future<void> unfriend(String friendshipId) async {
+    await _dio.delete('/friends/$friendshipId');
+  }
+
+  Future<void> blockUser(String userId) async {
+    await _dio.post('/friends/block', data: {'userId': userId});
+  }
+
+  Future<void> unblockUser(String friendshipId) async {
+    await _dio.post('/friends/$friendshipId/unblock');
+  }
+
+  /// A user's public profile. Errors propagate (no offline fallback) so
+  /// the screen can show a proper "couldn't load" state, matching the web.
+  Future<UserProfile> getUserProfile(String userId) async {
+    final res =
+        await _dio.get<Map<String, dynamic>>('/users/$userId/profile');
+    return UserProfile.fromJson(res.data ?? const {});
+  }
+
+  // 13. Challenge chat — a preset-only community channel per challenge.
+  // Errors propagate (no offline fallback): the channel is useless without
+  // its preset/emoji catalogs, so the screen shows a proper error state
+  // rather than a blank channel. Joiner-gated server-side.
+
+  /// Everything the chat panel needs in one round-trip: preset + emoji
+  /// catalogs, today's poll, and the message list (newest-first).
+  Future<ChatChannel> getChatChannel(String challengeId) async {
+    final res =
+        await _dio.get<Map<String, dynamic>>('/challenges/$challengeId/chat');
+    return ChatChannel.fromJson(res.data ?? const {});
+  }
+
+  /// Posts a canned status update. [presetCode] must be a known catalog
+  /// code; the server returns the created message.
+  Future<ChatMessage> postChatMessage(
+    String challengeId,
+    String presetCode,
+  ) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/challenges/$challengeId/chat',
+      data: {'presetCode': presetCode},
+    );
+    return ChatMessage.fromJson(res.data ?? const {});
+  }
+
+  /// Members of the challenge's chat (every joiner) with the viewer's
+  /// friendship state per row, for the Members sheet.
+  Future<List<ChatMember>> getChatMembers(String challengeId) async {
+    final res = await _dio
+        .get<List<dynamic>>('/challenges/$challengeId/members');
+    return (res.data ?? const [])
+        .map((j) => ChatMember.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Toggles one of the viewer's reactions on a message. [emoji] is the
+  /// reaction *code* from the catalog (e.g. 'fire'). Idempotent toggle:
+  /// a second call with the same code removes it.
+  Future<ToggleReactionResult> toggleChatReaction(
+    String messageId,
+    String emoji,
+  ) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/chat-messages/$messageId/reactions',
+      data: {'emoji': emoji},
+    );
+    return ToggleReactionResult.fromJson(res.data ?? const {});
   }
 }

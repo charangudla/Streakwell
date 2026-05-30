@@ -85,6 +85,11 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.push('/my-created-challenges'),
               ),
               _SettingsRow(
+                title: 'Challenge friends',
+                icon: Icons.group_outlined,
+                onTap: () => context.push('/friends'),
+              ),
+              _SettingsRow(
                 title: 'Challenge invites',
                 icon: Icons.mail_outline,
                 onTap: () => context.push('/invites'),

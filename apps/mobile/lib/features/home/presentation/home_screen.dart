@@ -15,6 +15,7 @@ import '../../../core/widgets/v_icon_button.dart';
 import '../../../core/widgets/v_pill.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../challenges/presentation/challenges_provider.dart';
+import '../../friends/application/friends_provider.dart';
 import '../../my_challenges/presentation/my_challenges_provider.dart';
 import '../../notifications/application/notifications_provider.dart';
 
@@ -27,6 +28,7 @@ class HomeScreen extends ConsumerWidget {
     final challengesAsync = ref.watch(challengesProvider);
     final myChallengesAsync = ref.watch(myChallengesNotifierProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
+    final incomingFriends = ref.watch(incomingFriendCountProvider);
 
     final firstName =
         (auth.user?.name ?? 'there').split(' ').first;
@@ -76,6 +78,23 @@ class HomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    VIconButton(
+                      icon: Icons.group_outlined,
+                      iconSize: 20,
+                      onPressed: () => context.push('/friends').then((_) =>
+                          ref.invalidate(incomingFriendCountProvider)),
+                      badge: incomingFriends.maybeWhen(
+                        data: (n) => n > 0,
+                        orElse: () => false,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    VIconButton(
+                      icon: Icons.forum_outlined,
+                      iconSize: 20,
+                      onPressed: () => context.push('/chat'),
+                    ),
+                    const SizedBox(width: 8),
                     VIconButton(
                       icon: Icons.notifications_outlined,
                       iconSize: 20,
