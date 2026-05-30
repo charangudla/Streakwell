@@ -34,7 +34,8 @@ class _ShareProgressScreenState extends ConsumerState<ShareProgressScreen> {
   final GlobalKey _cardKey = GlobalKey();
   bool _sharing = false;
 
-  Future<void> _shareImage(String challengeTitle, int activeDays, int dayNumber) async {
+  Future<void> _shareImage(
+      String challengeTitle, int activeDays, int dayNumber) async {
     if (_sharing) return;
     setState(() => _sharing = true);
     try {
@@ -69,14 +70,13 @@ class _ShareProgressScreenState extends ConsumerState<ShareProgressScreen> {
   }
 
   Future<Uint8List?> _capturePng() async {
-    final boundary = _cardKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    final boundary =
+        _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return null;
     // Higher pixelRatio = sharper image. 3.0 yields ~1080x1920 from a
     // 360x640 logical card — perfect for IG stories.
     final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-    final byteData =
-        await image.toByteData(format: ui.ImageByteFormat.png);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return byteData?.buffer.asUint8List();
   }
 
@@ -84,15 +84,13 @@ class _ShareProgressScreenState extends ConsumerState<ShareProgressScreen> {
   Widget build(BuildContext context) {
     final myAsync = ref.watch(myChallengesNotifierProvider);
     final challengesAsync = ref.watch(challengesProvider);
-    final checkinsAsync =
-        ref.watch(checkinsProvider(widget.userChallengeId));
+    final checkinsAsync = ref.watch(checkinsProvider(widget.userChallengeId));
 
     return Scaffold(
       backgroundColor: Vital30Colors.surface,
       body: SafeArea(
         child: myAsync.when(
-          loading: () =>
-              const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(
             child: Text('Could not load: $e', style: Vital30Text.body),
           ),
@@ -123,11 +121,9 @@ class _ShareProgressScreenState extends ConsumerState<ShareProgressScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final dayNumber = DateTime.now()
-                    .toUtc()
-                    .difference(uc.startDate.toUtc())
-                    .inDays +
-                1;
+            final dayNumber =
+                DateTime.now().toUtc().difference(uc.startDate.toUtc()).inDays +
+                    1;
             final clampedDay = dayNumber.clamp(1, challenge.durationDays);
             final checkins =
                 checkinsAsync.valueOrNull ?? const <DailyCheckin>[];

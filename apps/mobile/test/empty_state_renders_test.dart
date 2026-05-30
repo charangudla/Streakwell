@@ -38,7 +38,8 @@ void main() {
 class _EmptyMyChallengesNotifier
     extends StateNotifier<AsyncValue<List<UserChallenge>>>
     implements MyChallengesNotifier {
-  _EmptyMyChallengesNotifier() : super(const AsyncValue.data(<UserChallenge>[]));
+  _EmptyMyChallengesNotifier()
+      : super(const AsyncValue.data(<UserChallenge>[]));
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

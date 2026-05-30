@@ -38,11 +38,9 @@ class FavoritesScreen extends ConsumerWidget {
             ),
             Expanded(
               child: favs.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, __) => _ErrorState(
-                  onRetry: () =>
-                      ref.read(favoritesProvider.notifier).refresh(),
+                  onRetry: () => ref.read(favoritesProvider.notifier).refresh(),
                 ),
                 data: (items) {
                   if (items.isEmpty) return const _EmptyState();

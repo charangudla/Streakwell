@@ -7,8 +7,7 @@ import '../../../core/network/models.dart';
 /// Mints (or fetches) the current user's referral code. The backend assigns
 /// a code on signup; this is a safety net that also returns referredCount
 /// and the canonical shareText.
-final referralProvider =
-    AsyncNotifierProvider<ReferralNotifier, ReferralInfo>(
+final referralProvider = AsyncNotifierProvider<ReferralNotifier, ReferralInfo>(
   ReferralNotifier.new,
 );
 

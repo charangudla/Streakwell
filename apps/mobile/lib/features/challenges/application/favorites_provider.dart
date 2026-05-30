@@ -66,6 +66,7 @@ class FavoritesNotifier extends AsyncNotifier<List<FavoriteEntry>> {
 /// favorites list. Watching this from a list cell is cheap (Riverpod only
 /// notifies when this exact bool changes).
 final isFavoritedProvider = Provider.family<bool, String>((ref, challengeId) {
-  final favs = ref.watch(favoritesProvider).valueOrNull ?? const <FavoriteEntry>[];
+  final favs =
+      ref.watch(favoritesProvider).valueOrNull ?? const <FavoriteEntry>[];
   return favs.any((f) => f.challengeId == challengeId);
 });

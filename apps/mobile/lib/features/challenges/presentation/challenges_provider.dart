@@ -23,7 +23,8 @@ final filteredChallengesProvider = Provider<AsyncValue<List<Challenge>>>((ref) {
     return list.where((c) {
       final matchesSearch = c.title.toLowerCase().contains(query) ||
           c.shortDescription.toLowerCase().contains(query);
-      final matchesCategory = selectedCategoryId == null || c.categoryId == selectedCategoryId;
+      final matchesCategory =
+          selectedCategoryId == null || c.categoryId == selectedCategoryId;
       return matchesSearch && matchesCategory;
     }).toList();
   });

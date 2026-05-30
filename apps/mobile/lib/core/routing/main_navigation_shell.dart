@@ -11,8 +11,12 @@ final mainNavigationTabProvider = StateProvider<int>((ref) => 0);
 
 const _tabs = <VTabItem>[
   VTabItem(icon: Icons.home_outlined, label: 'Home', route: '/home'),
-  VTabItem(icon: Icons.grid_view_outlined, label: 'Challenges', route: '/challenges'),
-  VTabItem(icon: Icons.bar_chart_outlined, label: 'Progress', route: '/progress'),
+  VTabItem(
+      icon: Icons.grid_view_outlined,
+      label: 'Challenges',
+      route: '/challenges'),
+  VTabItem(
+      icon: Icons.bar_chart_outlined, label: 'Progress', route: '/progress'),
   VTabItem(icon: Icons.person_outline, label: 'Profile', route: '/profile'),
 ];
 

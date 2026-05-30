@@ -91,8 +91,7 @@ class AchievementsScreen extends ConsumerWidget {
             ),
             Expanded(
               child: achievements.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, __) => _ErrorView(
                   onRetry: () =>
                       ref.read(achievementsProvider.notifier).refresh(),
@@ -106,7 +105,8 @@ class AchievementsScreen extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(
                           Vital30Space.screenH, 16, Vital30Space.screenH, 32),
                       children: [
-                        _SummaryCard(earned: items.length, total: _allBadges.length),
+                        _SummaryCard(
+                            earned: items.length, total: _allBadges.length),
                         const SizedBox(height: 18),
                         for (final entry in _allBadges.entries)
                           _BadgeTile(
@@ -144,8 +144,8 @@ class _SummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('YOU\'VE EARNED',
-              style: Vital30Text.label
-                  .copyWith(color: Vital30Colors.surface.withValues(alpha: 0.6))),
+              style: Vital30Text.label.copyWith(
+                  color: Vital30Colors.surface.withValues(alpha: 0.6))),
           const SizedBox(height: 6),
           Text('$earned of $total badges',
               style: Vital30Text.h2
@@ -205,7 +205,8 @@ class _BadgeTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(meta.title, style: Vital30Text.title.copyWith(fontSize: 14)),
+                  Text(meta.title,
+                      style: Vital30Text.title.copyWith(fontSize: 14)),
                   const SizedBox(height: 4),
                   Text(meta.description,
                       style: Vital30Text.body.copyWith(fontSize: 13)),

@@ -9,16 +9,14 @@ import '../../../core/theme/v_spacing.dart';
 import '../../../core/theme/v_typography.dart';
 import '../../../core/widgets/v_icon_button.dart';
 
-final myInvitesProvider =
-    FutureProvider<List<IncomingInvite>>((ref) async {
+final myInvitesProvider = FutureProvider<List<IncomingInvite>>((ref) async {
   return ref.read(apiServiceProvider).getMyInvites();
 });
 
 class InvitesInboxScreen extends ConsumerStatefulWidget {
   const InvitesInboxScreen({super.key});
   @override
-  ConsumerState<InvitesInboxScreen> createState() =>
-      _InvitesInboxScreenState();
+  ConsumerState<InvitesInboxScreen> createState() => _InvitesInboxScreenState();
 }
 
 class _InvitesInboxScreenState extends ConsumerState<InvitesInboxScreen> {
@@ -70,14 +68,12 @@ class _InvitesInboxScreenState extends ConsumerState<InvitesInboxScreen> {
             ),
             Expanded(
               child: list.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Text('Could not load: $e',
-                        style: Vital30Text.body,
-                        textAlign: TextAlign.center),
+                        style: Vital30Text.body, textAlign: TextAlign.center),
                   ),
                 ),
                 data: (items) {

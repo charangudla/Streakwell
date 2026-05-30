@@ -52,8 +52,7 @@ class FavoriteButton extends ConsumerWidget {
       difficulty: challenge.difficulty,
       durationDays: challenge.durationDays,
     );
-    final result =
-        await ref.read(favoritesProvider.notifier).toggle(candidate);
+    final result = await ref.read(favoritesProvider.notifier).toggle(candidate);
     if (!context.mounted) return;
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -30,8 +30,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body:
           'Six wellness categories — from sleep to mental wellness. Pick one focus at a time.',
       tint: Vital30Colors.primaryTint,
-      body2:
-          'Build the habit before you stack the next one. Less is more.',
+      body2: 'Build the habit before you stack the next one. Less is more.',
     ),
     const _OnboardSlide(
       eyebrow: 'CHECK IN',
@@ -116,9 +115,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _Dots(count: _slides.length, active: _index),
                   const SizedBox(height: 18),
                   VButton(
-                    label: _index == _slides.length - 1
-                        ? 'Get started'
-                        : 'Next',
+                    label:
+                        _index == _slides.length - 1 ? 'Get started' : 'Next',
                     fullWidth: true,
                     onPressed: _next,
                   ),

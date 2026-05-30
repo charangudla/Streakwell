@@ -40,16 +40,19 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 18),
           if (user != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
               child: _IdentityCard(name: user.name, email: user.email),
             ),
           const SizedBox(height: 14),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+            padding:
+                const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
             child: Row(
               children: [
                 Expanded(
-                  child: _StatTile(label: 'Active challenges', value: '$active'),
+                  child:
+                      _StatTile(label: 'Active challenges', value: '$active'),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -60,7 +63,8 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 18),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+            padding:
+                const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
             child: _SettingsCard(rows: [
               _SettingsRow(
                 title: 'Edit profile',
@@ -83,6 +87,11 @@ class ProfileScreen extends ConsumerWidget {
                 title: 'Challenges you created',
                 icon: Icons.flag_outlined,
                 onTap: () => context.push('/my-created-challenges'),
+              ),
+              _SettingsRow(
+                title: 'Challenge friends',
+                icon: Icons.group_outlined,
+                onTap: () => context.push('/friends'),
               ),
               _SettingsRow(
                 title: 'Challenge invites',
@@ -119,15 +128,17 @@ class ProfileScreen extends ConsumerWidget {
           if (AppConstants.debugMenuEnabled) ...[
             const SizedBox(height: 18),
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: Vital30Space.screenH),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
               child: _DebugMenuCard(),
             ),
           ],
           const SizedBox(height: 18),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
-            child: _LogoutCard(onTap: () => ref.read(authProvider.notifier).logout()),
+            padding:
+                const EdgeInsets.symmetric(horizontal: Vital30Space.screenH),
+            child: _LogoutCard(
+                onTap: () => ref.read(authProvider.notifier).logout()),
           ),
           const SizedBox(height: 18),
           Center(
@@ -271,8 +282,8 @@ class _SettingsCard extends StatelessWidget {
             InkWell(
               onTap: rows[i].onTap,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
                     Container(

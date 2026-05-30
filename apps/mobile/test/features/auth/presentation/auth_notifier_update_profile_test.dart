@@ -76,8 +76,7 @@ void main() {
       final dio = _buildDio(handler: (options) {
         calls.add('${options.method} ${options.path}');
         if (options.path == '/api/auth/update-user') {
-          updateRequests
-              .add(Map<String, dynamic>.from(options.data as Map));
+          updateRequests.add(Map<String, dynamic>.from(options.data as Map));
           return Response<Map<String, dynamic>>(
             requestOptions: options,
             statusCode: 200,
@@ -115,8 +114,7 @@ void main() {
       expect(error, isNull);
       expect(notifier.state.user?.name, 'Renamed Person');
       expect(storage.saveUserCount, 1);
-      expect(
-          await storage.getUser(), containsPair('name', 'Renamed Person'));
+      expect(await storage.getUser(), containsPair('name', 'Renamed Person'));
       expect(calls, [
         'POST /api/auth/update-user',
         'GET /api/auth/get-session',

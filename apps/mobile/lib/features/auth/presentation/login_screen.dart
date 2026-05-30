@@ -50,8 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final ok = await ref.read(authProvider.notifier).login(email, password);
     if (!ok && mounted) {
       setState(() {
-        _errorMessage =
-            ref.read(authProvider).errorMessage ?? 'Login failed';
+        _errorMessage = ref.read(authProvider).errorMessage ?? 'Login failed';
       });
     }
   }
@@ -153,8 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             size: 20,
                             color: Vital30Colors.muted,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                         validator: (_) => _validationErrors['password'],
                       ),

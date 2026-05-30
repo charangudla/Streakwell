@@ -217,8 +217,8 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
                                   side: const BorderSide(
                                       color: Vital30Colors.berryTint),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        Vital30Radius.lg),
+                                    borderRadius:
+                                        BorderRadius.circular(Vital30Radius.lg),
                                   ),
                                 ),
                                 child: const Text('No, missed today'),
@@ -236,8 +236,8 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Vital30Colors.muted,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      Vital30Radius.lg),
+                                  borderRadius:
+                                      BorderRadius.circular(Vital30Radius.lg),
                                 ),
                               ),
                               child: const Padding(

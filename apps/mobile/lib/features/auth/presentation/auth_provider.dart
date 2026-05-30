@@ -23,7 +23,8 @@ class AuthState {
       AuthState(status: AuthStatus.authenticated, user: user);
   factory AuthState.unauthenticated({String? error}) =>
       AuthState(status: AuthStatus.unauthenticated, errorMessage: error);
-  factory AuthState.authenticating() => const AuthState(status: AuthStatus.authenticating);
+  factory AuthState.authenticating() =>
+      const AuthState(status: AuthStatus.authenticating);
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
 }
@@ -35,7 +36,8 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._apiService, this._secureStorage) : super(AuthState.initial()) {
+  AuthNotifier(this._apiService, this._secureStorage)
+      : super(AuthState.initial()) {
     checkAuth();
   }
 

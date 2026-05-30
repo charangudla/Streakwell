@@ -13,10 +13,14 @@ import '../../features/celebrations/presentation/challenge_complete_screen.dart'
 import '../../features/celebrations/presentation/day_complete_screen.dart';
 import '../../features/challenges/presentation/challenge_detail_screen.dart';
 import '../../features/challenges/presentation/favorites_screen.dart';
+import '../../features/chat/presentation/challenge_chat_screen.dart';
+import '../../features/chat/presentation/chat_inbox_screen.dart';
 import '../../features/custom_challenges/presentation/create_challenge_screen.dart';
 import '../../features/custom_challenges/presentation/invites_inbox_screen.dart';
 import '../../features/custom_challenges/presentation/my_created_challenges_screen.dart';
 import '../../features/checkins/presentation/daily_checkin_screen.dart';
+import '../../features/friends/presentation/friends_screen.dart';
+import '../../features/friends/presentation/user_profile_screen.dart';
 import '../../features/my_challenges/presentation/progress_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/onboarding/application/onboarding_provider.dart';
@@ -216,6 +220,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/invites',
         builder: (context, state) => const InvitesInboxScreen(),
+      ),
+      GoRoute(
+        path: '/friends',
+        builder: (context, state) => const FriendsScreen(),
+      ),
+      GoRoute(
+        path: '/users/:id',
+        builder: (context, state) =>
+            UserProfileScreen(userId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) => const ChatInboxScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:id',
+        builder: (context, state) =>
+            ChallengeChatScreen(challengeId: state.pathParameters['id'] ?? ''),
       ),
     ],
   );

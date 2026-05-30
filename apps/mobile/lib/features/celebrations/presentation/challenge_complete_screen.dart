@@ -67,8 +67,7 @@ class ChallengeCompleteScreen extends ConsumerWidget {
                         VIconButton(
                           icon: Icons.close,
                           iconSize: 16,
-                          background:
-                              Colors.white.withValues(alpha: 0.10),
+                          background: Colors.white.withValues(alpha: 0.10),
                           borderColor: Colors.transparent,
                           iconColor: Vital30Colors.surface,
                           onPressed: () => context.go('/home'),
@@ -91,8 +90,8 @@ class ChallengeCompleteScreen extends ConsumerWidget {
                           userId: '',
                           challengeId: '',
                           status: 'COMPLETED',
-                          startDate: DateTime.now()
-                              .subtract(const Duration(days: 30)),
+                          startDate:
+                              DateTime.now().subtract(const Duration(days: 30)),
                           progressPercent: 100,
                         ),
                       );
@@ -116,14 +115,14 @@ class ChallengeCompleteScreen extends ConsumerWidget {
                       );
                       final days = checkinsAsync.maybeWhen(
                         data: (cks) => _buildDayStates(uc.startDate, cks),
-                        orElse: () => List<_DayState>.filled(30, _DayState.done),
+                        orElse: () =>
+                            List<_DayState>.filled(30, _DayState.done),
                       );
 
                       return Column(
                         children: [
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 14, 24, 0),
+                            padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
                             child: Column(
                               children: [
                                 Text(
@@ -162,8 +161,8 @@ class ChallengeCompleteScreen extends ConsumerWidget {
                                   '${challenge?.title ?? "Your challenge"}. ${stats.completedCount} active days. New baseline, locked in.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color:
-                                        Vital30Colors.surface.withValues(alpha: 0.7),
+                                    color: Vital30Colors.surface
+                                        .withValues(alpha: 0.7),
                                     fontSize: 14,
                                     height: 1.55,
                                   ),
@@ -172,18 +171,15 @@ class ChallengeCompleteScreen extends ConsumerWidget {
                             ),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                            padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
                             child: _HeroStats(stats: stats),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                            padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
                             child: _DarkMap(days: days),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                             child: _WhatsNextCallout(),
                           ),
                         ],
@@ -233,8 +229,7 @@ class ChallengeCompleteScreen extends ConsumerWidget {
                       child: OutlinedButton(
                         onPressed: () => context.go('/challenges'),
                         style: OutlinedButton.styleFrom(
-                          backgroundColor:
-                              Colors.white.withValues(alpha: 0.08),
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
                           foregroundColor: Vital30Colors.surface,
                           side: BorderSide(
                             color: Colors.white.withValues(alpha: 0.14),
@@ -257,8 +252,7 @@ class ChallengeCompleteScreen extends ConsumerWidget {
     );
   }
 
-  List<_DayState> _buildDayStates(
-      DateTime start, List<DailyCheckin> checkins) {
+  List<_DayState> _buildDayStates(DateTime start, List<DailyCheckin> checkins) {
     final byKey = <String, String>{};
     for (final c in checkins) {
       final d = c.checkinDate.toLocal();
@@ -407,8 +401,7 @@ class _DarkMap extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 10,
               mainAxisSpacing: 5,
               crossAxisSpacing: 5,
@@ -427,8 +420,7 @@ class _DarkMap extends StatelessWidget {
                           : Colors.transparent,
                   borderRadius: BorderRadius.circular(5),
                   border: s == _DayState.skipped
-                      ? Border.all(
-                          color: Colors.white.withValues(alpha: 0.18))
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.18))
                       : (s == _DayState.missed
                           ? Border.all(
                               color: Vital30Colors.berry.withValues(alpha: 0.4))

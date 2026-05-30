@@ -209,7 +209,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                 child: Row(
                   children: [
-                    const Expanded(child: Divider(color: Vital30Colors.hairlineSoft)),
+                    const Expanded(
+                        child: Divider(color: Vital30Colors.hairlineSoft)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
@@ -217,7 +218,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         style: Vital30Text.label.copyWith(fontSize: 11),
                       ),
                     ),
-                    const Expanded(child: Divider(color: Vital30Colors.hairlineSoft)),
+                    const Expanded(
+                        child: Divider(color: Vital30Colors.hairlineSoft)),
                   ],
                 ),
               ),

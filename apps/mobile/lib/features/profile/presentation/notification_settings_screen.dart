@@ -135,8 +135,8 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          const EdgeInsets.fromLTRB(Vital30Space.screenH, 0, Vital30Space.screenH, 20),
+      padding: const EdgeInsets.fromLTRB(
+          Vital30Space.screenH, 0, Vital30Space.screenH, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -163,8 +163,8 @@ class _Section extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(rows[i].title,
-                                  style: Vital30Text.title
-                                      .copyWith(fontSize: 14)),
+                                  style:
+                                      Vital30Text.title.copyWith(fontSize: 14)),
                               const SizedBox(height: 2),
                               Text(
                                 rows[i].description,
