@@ -14,6 +14,11 @@ on:
       - 'apps/mobile/**'
       - '.github/workflows/flutter-ci.yml'
 
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: flutter-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   flutter-test:
     name: Flutter Mobile Quality Checks
@@ -43,4 +48,12 @@ jobs:
         run: flutter analyze
 
       - name: Run Widget and Unit Tests
-        run: flutter test
+        run: flutter test --coverage
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-coverage
+          path: apps/mobile/coverage/lcov.info
+          if-no-files-found: ignore

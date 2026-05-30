@@ -1,0 +1,65 @@
+name: Web CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-ci.yml'
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-test:
+    name: Next.js Web Quality Checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    env:
+      # Build-time public base URL so any static generation that reads it
+      # resolves to the live API instead of localhost.
+      NEXT_PUBLIC_API_BASE_URL: https://api.challenge.charangudla.com
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Lint is advisory for now: apps/web has pre-existing
+      # react-hooks/set-state-in-effect violations (tracked in docs/ci-testing.md).
+      # Keep the signal visible without blocking the pipeline; flip to blocking
+      # once the backlog is cleared.
+      - name: Run Linter (advisory)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Type Check
+        run: npm run typecheck
+
+      - name: Run Unit Tests (Vitest)
+        run: npm run test
+
+      - name: Compile Next.js Production Build
+        run: npm run build
