@@ -1,7 +1,7 @@
 # Vital30 MVP Status & Pending Tasks
 
-**Last updated:** 2026-05-27 (end of multi-session push)
-**Scope:** Mobile (`apps/mobile`), public website (`apps/web` — now full app, not just marketing), backend (`services/api`), admin (`apps/admin` — needs rework).
+**Last updated:** 2026-05-30
+**Scope:** Mobile (`apps/mobile`), public website (`apps/web` — full app, not just marketing), backend (`services/api`), admin (`apps/admin` — reworked + live).
 
 > Read this before starting work. Verify claims against the code before acting on them — items here may have been completed since this was last updated.
 
@@ -11,11 +11,11 @@
 
 | Surface | State | Verified |
 |---|---|---|
-| **Backend** (`services/api`) | Better Auth + 9 domain modules (challenges, user-challenges, checkins, notifications, achievements, favorites, referrals, share-events, public-contact). 12/12 jest. Typecheck clean. | curl + on-device |
+| **Backend** (`services/api`) | Better Auth + the original 9 domain modules **plus** custom-challenges, invites, challenge-chat, friends, audit, and a full admin module. RBAC: USER / ADMIN / SUPER_ADMIN. | curl + on-device |
 | **Mobile** (`apps/mobile`) | Full Vital30 client. 46/46 flutter tests. 0 analyzer issues. End-to-end verified on iOS Simulator (register → join → check-in → achievement notification). | on-device |
 | **Website** (`apps/web`) | Was scaffolded as marketing-only on 2026-05-26 AM. By 2026-05-27 expanded to **full app parity** + PWA-installable. Build green, 14/14 vitest. | curl + browser |
-| **Admin** (`apps/admin`) | 2,500 lines of pages exist but still on pre-Better-Auth Bearer auth and references `/admin/*` API endpoints that don't exist. **Needs a dedicated rework session.** | broken |
-| **Deploy** | docker-compose.prod.yml + nginx prod.conf + Dockerfile per app + launch-checklist.md ready. SSL plan: single SAN cert for all 4 hostnames. Not yet deployed. | doc only |
+| **Admin** (`apps/admin`) | **Reworked.** Migrated to Better Auth + `useSession` with an RBAC gate (ADMIN / SUPER_ADMIN); wired to real `/admin/*` endpoints (dashboard stats, users, challenge/category CRUD, check-ins, share-events, moderation, contact inbox). | deployed; e2e smoke recommended |
+| **Deploy** | **Live in production** on Hostinger KVM 4 (challenge / api / admin / www .charangudla.com), HTTPS via a Let's Encrypt SAN cert. **Staging environment** runs alongside prod (staging.challenge.charangudla.com) — see [docs/staging-environment.md](docs/staging-environment.md). | live |
 
 ---
 
@@ -40,6 +40,12 @@ sign-up, sign-in, sign-out, request-password-reset, reset-password, send-verific
 | `GET /referrals/me`, `POST /referrals/redeem` | session-gated. Redeem emits REFERRAL_JOIN notification to the inviter. |
 | `POST /share-events` | session-gated |
 | `POST /public/contact` | anonymous, rate-limited 5/hr/IP, honeypot, persists to `ContactSubmission` table + emails CONTACT_INBOX |
+
+**Added since 2026-05-27** (routes not expanded here — see each module):
+- **`custom-challenges`** — user-created challenges + `ChallengeInvite` tokens (`/c/[token]` join flow), joiners list, auto-join creator.
+- **`challenge-chat`** — per-challenge messages + reactions (daily system prompts via a unique `(challengeId, kind, scheduledDate)` constraint, **no cron**).
+- **`friends`** — `ChallengeFriendship` connections.
+- **`admin`** — RBAC-gated `/admin/*` surface (dashboard stats, user management, challenge/category CRUD, check-in + share-event viewers, moderation, contact-submission inbox).
 
 **Security posture:**
 - `AuthGuard` registered globally; every route is authenticated unless `@AllowAnonymous()`.
@@ -82,25 +88,29 @@ sign-up, sign-in, sign-out, request-password-reset, reset-password, send-verific
 
 **Quality:** build green (68 routes), `vitest` 14/14, no lint errors.
 
-### Admin `apps/admin` — REWORK NEEDED
+### Admin `apps/admin` — REWORKED
 
-Has CategoriesPage, ChallengesPage, UsersPage, UserDetailPage, CheckinsPage, ShareEventsPage, DashboardPage, LoginPage. ~2,500 lines.
+The rework session is **done** (the three planned steps below all landed):
 
-**Problem:** uses pre-Better-Auth Bearer auth (`localStorage.vital30_admin_token`) and references `/admin/*` API endpoints that don't exist on the current API. Likely all pages are broken against the live backend.
+1. **Auth migrated to Better Auth.** No more `localStorage.vital30_admin_token`; `src/lib/auth-client.ts` uses `createAuthClient` + `useSession`, and `src/routing/AuthProvider.tsx` bridges it to the app's `useAuth()`. RBAC gate restricts sign-in to `role IN ('ADMIN', 'SUPER_ADMIN')` (backed by the `User.isActive` + role migration).
+2. **All pages wired to the real `/admin/*` API** — dashboard stats, users management + enriched UserDetail, challenge/category CRUD, check-in + share-event viewers, and moderation (custom challenges, chat, friends, contact).
+3. **Contact-submission inbox** view shipped against the `GET /admin/contact-submissions` endpoint.
 
-**Estimated rework:** ~6–8h. Plan:
-1. Migrate to Better Auth (Bearer mode is fine — admin can use the same `useSession` pattern as web). Add a role-check so only `role IN ('ADMIN', 'SUPER_ADMIN')` users can sign in.
-2. Audit each page against current API surface; rewrite endpoints that moved.
-3. Build the missing **`/contact-submissions`** inbox view (backend rows already exist as of 2026-05-27; just needs a `GET /admin/contact-submissions` + `PATCH /admin/contact-submissions/:id/resolve` and a React page).
+> [!NOTE]
+> Verified at the build/endpoint level; the SPA serves on
+> `admin.challenge.charangudla.com`. A full click-through e2e smoke against the
+> live API (login as an admin → load each page) is still worth doing once.
 
-### Deploy
+### Deploy — LIVE
 
-- **Hostinger KVM 4 walkthrough** in [docs/hostinger-kvm4-deployment.md](docs/hostinger-kvm4-deployment.md).
-- **One-page launch checklist** in [docs/launch-checklist.md](docs/launch-checklist.md).
-- `.env.prod.example` covers BETTER_AUTH_SECRET, BETTER_AUTH_URL, COOKIE_DOMAIN, CORS_ORIGIN, CONTACT_INBOX, EMAIL_PROVIDER=resend, RESEND_API_KEY, POSTGRES_*, NEXT_PUBLIC_*, VITE_API_BASE_URL. Deploy script `scripts/deploy-prod.sh` refuses to run while any `<REPLACE_ME_*>` placeholder remains.
-- `docker-compose.prod.yml` covers postgres + redis + api + admin + web + nginx. Web uses Next.js standalone output. nginx serves the 4 subdomains.
-- **DNS:** 4 A records (`@`, `www`, `api`, `admin`) → VPS IP.
-- **SSL:** single Let's Encrypt SAN cert for all 4 hostnames via Certbot.
+- **Production is live** on Hostinger KVM 4 (`root@2.24.89.83`, `/opt/vital30`): challenge.charangudla.com (web) + api / admin / www subdomains, all HTTPS.
+- **Staging environment** runs alongside prod on the same VPS — see [docs/staging-environment.md](docs/staging-environment.md). Isolated DB/Redis/volumes/network; fronted by the same nginx over a shared `vital30_edge` network; staging.challenge.charangudla.com + api/admin variants.
+- `docker-compose.prod.yml` covers postgres + redis + api + admin + web + nginx (Next.js standalone). `docker-compose.staging.yml` mirrors it with `staging-*` service names.
+- **Deploy flow:** `./scripts/deploy-remote.sh` (Mac → push + VPS pull + `deploy-prod.sh`). `deploy-prod.sh` validates `.env`, builds, migrates, restarts nginx (refreshes cached upstream IPs), prints the safe catalog-seed command. `deploy-staging.sh` additionally auto-seeds the catalog.
+- **DNS:** 7 A records (`@`, `www`, `api`, `admin` + `staging`, `api.staging`, `admin.staging`) → `2.24.89.83`.
+- **SSL:** one Let's Encrypt SAN cert (lineage `challenge.charangudla.com`) covering all 7 hostnames; auto-renew timer active.
+- **Recent prod fixes:** SSR fetches routed over the internal Docker network + 4s timeout (fixed a 502); nginx auto-restart on redeploy (stale upstream IPs); web healthcheck probes `127.0.0.1` not `localhost` (IPv4-only standalone bind → was false `unhealthy`).
+- Reference docs: [docs/hostinger-kvm4-deployment.md](docs/hostinger-kvm4-deployment.md), [docs/launch-checklist.md](docs/launch-checklist.md).
 
 ---
 
@@ -113,9 +123,18 @@ These genuinely need YOU (your accounts, decisions, money, or human review). No 
 | **Push notifications** (FCM + APNs) | Firebase project + APNs key from your Apple Developer account ($99/yr) | ~6h after credentials |
 | **Real testimonials** on landing | Need real beta users to ask | n/a |
 | **App Store / Play Store submission** | Apple Developer + Google Play Console accounts; screenshots; data-safety answers | ~half a day each |
-| **Production deploy** | Hostinger VPS provisioning, DNS at registrar, real BETTER_AUTH_SECRET + Resend key | ~2h pairing |
 | **Attorney review** of `/docs/{privacy,terms,health-disclaimer}.md` | Human only | n/a |
-| **Admin rework** (above) | Not blocked, but better as a dedicated session | ~6-8h |
+
+> ✅ **Production deploy** and **Admin rework** (both previously listed here) are
+> done — see the Deploy and Admin sections above.
+
+---
+
+## Known gaps / tech debt (code-only, not blocked on you)
+
+| Item | Why it matters | Effort |
+|---|---|---|
+| **Data retention / pruning job** | No scheduler exists (`@nestjs/schedule` not installed, no cron). `Notification`, expired `Session`, `ContactSubmission`, `ShareEvent`, and `ChallengeChatMessage` rows accumulate without bound, and nightly DB backups under `./backups` are never rotated. Needs a scheduled task that deletes rows past a retention window + prunes old backup files. Fine to defer at low traffic. | ~3–4h once retention windows are decided |
 
 ---
 
@@ -128,7 +147,13 @@ These genuinely need YOU (your accounts, decisions, money, or human review). No 
 
 ---
 
-## Verification commands (latest run: 2026-05-27)
+## Verification commands
+
+> [!NOTE]
+> Last **full** local test run was 2026-05-27 (backend 12/12 jest, web 14/14
+> vitest, mobile 46/46). The backend gained custom-challenges, challenge-chat,
+> friends, and the admin module since, and the admin SPA was reworked — re-run
+> the suites below before trusting those counts.
 
 ```bash
 # Backend
